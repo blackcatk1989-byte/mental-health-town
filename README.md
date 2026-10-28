@@ -32,3 +32,8 @@ npx serve .
 用 Three.js 做的 3D 版晨光廣場：本機開啟 <http://localhost:8000/3d.html>，線上版為 <https://blackcatk1989-byte.github.io/mental-health-town/3d.html>。
 沿用同一份 `content/` 內容與 `maps/` 的 Tiled 地圖，2D 版 `index.html` 不受影響。
 鏡頭可用 Q、E 或拖曳畫面旋轉；是否改用 3D 尚待兩位協作者決定。
+
+### 3D 角色畫風
+
+參考「いらすとや」（<https://www.irasutoya.com/>）的畫風自行建模，未使用其圖檔。
+若之後直接使用いらすとや的圖檔，需遵守其使用條款（<https://www.irasutoya.com/p/terms.html>）：商用作品最多 20 張、不可把素材本身當成主要商品，版權仍屬原作者。

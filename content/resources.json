@@ -1,0 +1,69 @@
+{
+  "_說明": "資源卡清單。所有資訊尚未經人類協作者核對，verification 皆為「待核對」；核對後請改為核對日期（例如 2026-11-01 已核對）並更新 source。",
+  "emergency": {
+    "text": "如果你或身邊的人有立即的生命危險，請直接撥打 119（救護）或 110（報案）。",
+    "verification": "待核對"
+  },
+  "resources": [
+    {
+      "id": "1925",
+      "name": "安心專線",
+      "phone": "1925",
+      "type": "政府",
+      "provider": "衛生福利部",
+      "hours": "24 小時（待核對）",
+      "cost": "免付費（待核對）",
+      "description": "心理困擾、情緒低落或有自殺念頭時，可撥打的心理諮詢專線。",
+      "source": "https://www.mohw.gov.tw/",
+      "verification": "待核對"
+    },
+    {
+      "id": "1995",
+      "name": "生命線協談專線",
+      "phone": "1995",
+      "type": "民間",
+      "provider": "社團法人國際生命線台灣總會",
+      "hours": "24 小時（待核對）",
+      "cost": "待核對",
+      "description": "由受過訓練的志工提供電話協談與情緒支持。",
+      "source": "https://www.life1995.org.tw/",
+      "verification": "待核對"
+    },
+    {
+      "id": "1980",
+      "name": "張老師專線",
+      "phone": "1980",
+      "type": "民間",
+      "provider": "財團法人救國團社會福利基金會（張老師）",
+      "hours": "待核對",
+      "cost": "待核對",
+      "description": "提供心理輔導與情緒支持的電話協談服務。",
+      "source": "https://www.1980.org.tw/",
+      "verification": "待核對"
+    },
+    {
+      "id": "community-mental-health-center",
+      "name": "社區心理衛生中心",
+      "phone": null,
+      "type": "政府",
+      "provider": "各縣市政府衛生局",
+      "hours": "依各中心公告（待核對）",
+      "cost": "待核對",
+      "description": "各縣市設有社區心理衛生中心，提供心理諮詢、心理健康促進與轉介服務。可查詢居住地的中心聯絡方式。",
+      "source": "https://dep.mohw.gov.tw/DOMHAOH/",
+      "verification": "待核對"
+    },
+    {
+      "id": "public-counseling-program",
+      "name": "公費心理諮商方案",
+      "phone": null,
+      "type": "政府",
+      "provider": "衛生福利部",
+      "hours": "依合作機構（待核對）",
+      "cost": "符合資格者可獲公費補助（待核對）",
+      "description": "衛福部推動的心理健康支持方案，符合年齡等資格者可至合作機構接受免費心理諮商。適用年齡、次數與方案是否仍在進行中皆需核對。",
+      "source": "https://www.mohw.gov.tw/",
+      "verification": "待核對"
+    }
+  ]
+}

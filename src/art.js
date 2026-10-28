@@ -39,45 +39,109 @@ function replaceTexture(scene, key, g, w, h) {
   g.destroy();
 }
 
+const OUTLINE = 0x8a6f60;
+const BLUSH = 0xf4a6a0;
+
+// 臉：大眼睛加高光、腮紅、小微笑
+function drawFace(g, cx, cy, spread, eye) {
+  g.fillStyle(0x4a3f38).fillEllipse(cx - spread, cy, eye, eye * 1.2).fillEllipse(cx + spread, cy, eye, eye * 1.2);
+  g.fillStyle(0xffffff).fillCircle(cx - spread + eye * 0.2, cy - eye * 0.25, eye * 0.28)
+    .fillCircle(cx + spread + eye * 0.2, cy - eye * 0.25, eye * 0.28);
+  g.fillStyle(BLUSH, 0.55).fillEllipse(cx - spread - eye * 1.1, cy + eye * 1.1, eye * 1.4, eye * 0.8)
+    .fillEllipse(cx + spread + eye * 1.1, cy + eye * 1.1, eye * 1.4, eye * 0.8);
+  g.lineStyle(1.6, 0x7a5a4c).beginPath()
+    .arc(cx, cy + eye * 0.7, eye * 0.5, Math.PI * 0.15, Math.PI * 0.85).strokePath();
+}
+
 export function drawCharacter(scene, key, look) {
   const g = scene.make.graphics({ add: false });
-  g.fillStyle(0x000000, 0.12).fillEllipse(32, 74, 36, 10);
-  g.fillStyle(color(look.outfit)).fillRoundedRect(16, 44, 32, 28, 10);
-
   const hair = color(look.hairColor);
-  if (look.hairStyle === 'long') {
-    g.fillStyle(hair).fillRoundedRect(11, 18, 42, 36, 10);
-  }
-  g.fillStyle(color(look.skin)).fillCircle(32, 30, 20);
-  g.fillStyle(hair).fillEllipse(32, 17, 42, 20);
-  if (look.hairStyle === 'bun') g.fillCircle(32, 6, 8);
-  if (look.hairStyle === 'short') g.fillEllipse(18, 22, 10, 14).fillEllipse(46, 22, 10, 14);
+  const skin = color(look.skin);
+  const outfit = color(look.outfit);
+  const darker = (c) => Phaser.Display.Color.IntegerToColor(c).darken(15).color;
 
-  g.fillStyle(0x4a3f38).fillCircle(25, 33, 2.5).fillCircle(39, 33, 2.5);
-  g.fillStyle(0xe8a99a, 0.6).fillCircle(21, 39, 3.5).fillCircle(43, 39, 3.5);
+  g.fillStyle(0x000000, 0.1).fillEllipse(32, 76, 30, 7);
+  // 腳與身體
+  g.fillStyle(darker(outfit)).fillEllipse(26, 72, 10, 7).fillEllipse(38, 72, 10, 7);
+  g.fillStyle(outfit).fillRoundedRect(20, 48, 24, 24, 10);
+  g.lineStyle(1.5, OUTLINE, 0.6).strokeRoundedRect(20, 48, 24, 24, 10);
+  g.fillStyle(skin).fillCircle(19, 60, 4.5).fillCircle(45, 60, 4.5);
+
+  // 長髮在頭後面
+  if (look.hairStyle === 'long') {
+    g.fillStyle(hair).fillRoundedRect(9, 20, 46, 42, 16);
+    g.lineStyle(1.5, OUTLINE, 0.5).strokeRoundedRect(9, 20, 46, 42, 16);
+  }
+  // 大大的頭
+  g.fillStyle(skin).fillCircle(32, 32, 22);
+  g.lineStyle(1.5, OUTLINE, 0.6).strokeCircle(32, 32, 22);
+
+  // 頭髮與瀏海
+  if (look.hairStyle === 'bun') {
+    g.fillStyle(hair).fillCircle(32, 7, 9);
+    g.lineStyle(1.5, OUTLINE, 0.5).strokeCircle(32, 7, 9);
+  }
+  g.fillStyle(hair).fillEllipse(32, 18, 46, 24);
+  g.fillCircle(19, 23, 7).fillCircle(30, 22, 8).fillCircle(43, 23, 7);
+  if (look.hairStyle === 'short') g.fillEllipse(12, 30, 8, 14).fillEllipse(52, 30, 8, 14);
+  g.fillStyle(0xffffff, 0.3).fillEllipse(24, 13, 12, 4);
+
+  drawFace(g, 32, 37, 8, 4.6);
   replaceTexture(scene, key, g, 64, 80);
 }
 
 export function drawCompanion(scene, key, type) {
   const g = scene.make.graphics({ add: false });
-  const fur = { cat: 0xd9a877, dog: 0xc49a6c, hedgehog: 0x8a7060, otter: 0xa07a5a }[type];
-  g.fillStyle(0x000000, 0.12).fillEllipse(24, 37, 30, 6);
+  const fur = { cat: 0xf0c493, dog: 0xd9b088, hedgehog: 0xf1dcc0, otter: 0xc49a76 }[type];
+  const accent = { cat: 0xe0a46e, dog: 0xb48a62, hedgehog: 0xa88a72, otter: 0xa47a58 }[type];
+  g.fillStyle(0x000000, 0.1).fillEllipse(26, 39, 30, 5);
 
+  // 尾巴
+  if (type === 'cat') g.lineStyle(4, accent).beginPath().arc(40, 24, 6, Math.PI * 0.5, Math.PI * 1.6, true).strokePath();
+  if (type === 'dog') g.fillStyle(accent).fillEllipse(41, 25, 7, 10);
+  if (type === 'otter') g.fillStyle(accent).fillEllipse(42, 34, 12, 6);
+
+  // 刺蝟的背刺：一圈圓圓的小波浪
   if (type === 'hedgehog') {
-    g.fillStyle(0x6e5a4c);
-    for (let i = 0; i < 6; i++) g.fillTriangle(8 + i * 6, 22, 12 + i * 6, 8, 16 + i * 6, 22);
+    g.fillStyle(accent);
+    for (let i = 0; i <= 6; i++) {
+      const a = Math.PI * (1.05 + i * 0.16);
+      g.fillCircle(27 + Math.cos(a) * 13, 29 + Math.sin(a) * 11, 5.5);
+    }
   }
-  g.fillStyle(fur).fillEllipse(24, 28, 32, 16);
-  if (type === 'otter') g.fillEllipse(40, 32, 14, 6); // 尾巴
+  // 身體
+  g.fillStyle(type === 'hedgehog' ? accent : fur).fillEllipse(28, 30, 28, 17);
+  g.lineStyle(1.3, OUTLINE, 0.5).strokeEllipse(28, 30, 28, 17);
+  g.fillStyle(0xffffff, 0.35).fillEllipse(28, 34, 14, 7);
+  g.fillStyle(accent).fillEllipse(20, 37, 6, 4).fillEllipse(34, 37, 6, 4);
 
-  if (type === 'cat') g.fillTriangle(14, 14, 17, 2, 22, 10).fillTriangle(26, 10, 31, 2, 34, 14);
-  if (type === 'otter') g.fillCircle(15, 9, 3.5).fillCircle(33, 9, 3.5);
-  g.fillStyle(type === 'hedgehog' ? 0xe6cdb0 : fur).fillCircle(24, 17, 11);
-  if (type === 'dog') g.fillStyle(0x9a7450).fillEllipse(13, 18, 7, 14).fillEllipse(35, 18, 7, 14);
-  if (type === 'otter') g.fillStyle(0xe6cdb0).fillEllipse(24, 22, 12, 7);
+  // 耳朵
+  if (type === 'cat') {
+    g.fillStyle(fur).fillTriangle(10, 12, 12, 1, 20, 8).fillTriangle(24, 8, 32, 1, 34, 12);
+    g.fillStyle(BLUSH, 0.8).fillTriangle(12, 10, 13, 4, 17, 8).fillTriangle(27, 8, 31, 4, 32, 10);
+  }
+  if (type === 'otter' || type === 'hedgehog') g.fillStyle(type === 'otter' ? accent : fur).fillCircle(13, 8, 3.5).fillCircle(31, 8, 3.5);
 
-  g.fillStyle(0x4a3f38).fillCircle(20, 16, 1.8).fillCircle(28, 16, 1.8).fillCircle(24, 20, 1.6);
-  replaceTexture(scene, key, g, 48, 40);
+  // 頭
+  g.fillStyle(fur).fillCircle(22, 18, 12);
+  g.lineStyle(1.3, OUTLINE, 0.5).strokeCircle(22, 18, 12);
+  if (type === 'dog') g.fillStyle(accent).fillEllipse(10, 18, 7, 14).fillEllipse(34, 18, 7, 14);
+  if (type === 'dog' || type === 'otter') g.fillStyle(0xfff4e6).fillEllipse(22, 23, 11, 7);
+
+  drawFace(g, 22, 18, 5, 3);
+  g.fillStyle(0x6b4f45).fillEllipse(22, 21.5, 3, 2);
+  replaceTexture(scene, key, g, 48, 44);
+}
+
+// 灰霧散去時的小閃光
+export function ensureSparkleTexture(scene) {
+  if (scene.textures.exists('sparkle')) return;
+  const g = scene.make.graphics({ add: false });
+  g.fillStyle(0xfff6d8, 0.5).fillCircle(8, 8, 7);
+  g.fillStyle(0xffffff).fillTriangle(8, 0, 6.5, 8, 9.5, 8).fillTriangle(8, 16, 6.5, 8, 9.5, 8)
+    .fillTriangle(0, 8, 8, 6.5, 8, 9.5).fillTriangle(16, 8, 8, 6.5, 8, 9.5);
+  g.generateTexture('sparkle', 16, 16);
+  g.destroy();
 }
 
 // 灰霧用的柔邊圓形
@@ -99,12 +163,25 @@ export const TEXT_STYLE = {
   resolution: 2,
 };
 
+// 圓角膠囊按鈕。style: fill、color、fontSize、padX、padY
 export function makeButton(scene, x, y, label, onClick, style = {}) {
-  const btn = scene.add.text(x, y, label, {
-    ...TEXT_STYLE, fontSize: '18px', backgroundColor: '#fbf6ee', padding: { x: 12, y: 6 }, ...style,
-  }).setOrigin(0.5).setInteractive({ useHandCursor: true });
-  btn.on('pointerover', () => btn.setAlpha(0.8));
-  btn.on('pointerout', () => btn.setAlpha(1));
+  const { fill = '#fffaf3', color: textColor = '#4a3f38', fontSize = '18px', padX = 16, padY = 8 } = style;
+  const text = scene.add.text(0, 0, label, { ...TEXT_STYLE, fontSize, color: textColor }).setOrigin(0.5);
+  const w = text.width + padX * 2;
+  const h = text.height + padY * 2;
+  const r = Math.min(h / 2, 22);
+  const bg = scene.add.graphics();
+  const btn = scene.add.container(x, y, [bg, text]).setSize(w, h).setInteractive({ useHandCursor: true });
+  btn.setFill = (f) => {
+    bg.clear();
+    bg.fillStyle(0x8a6f60, 0.12).fillRoundedRect(-w / 2, -h / 2 + 3, w, h, r);
+    bg.fillStyle(color(f)).fillRoundedRect(-w / 2, -h / 2, w, h, r);
+    bg.lineStyle(2, 0xead6c4).strokeRoundedRect(-w / 2, -h / 2, w, h, r);
+    return btn;
+  };
+  btn.setFill(fill);
+  btn.on('pointerover', () => scene.tweens.add({ targets: btn, scale: 1.06, duration: 120 }));
+  btn.on('pointerout', () => scene.tweens.add({ targets: btn, scale: 1, duration: 120 }));
   btn.on('pointerup', onClick);
   return btn;
 }

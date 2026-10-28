@@ -14,15 +14,20 @@ export default class UIScene extends Phaser.Scene {
     // ---- 對話框 ----
     this.box = this.add.container(0, 0).setVisible(false);
     const bg = this.add.graphics();
-    bg.fillStyle(0xfbf6ee, 0.96).fillRoundedRect(20, 430, 760, 150, 16);
-    bg.lineStyle(3, 0xc98a6b).strokeRoundedRect(20, 430, 760, 150, 16);
-    this.speaker = this.add.text(44, 444, '', { ...TEXT_STYLE, fontSize: '18px', color: '#c98a6b', fontStyle: 'bold' });
-    this.bodyText = this.add.text(44, 476, '', {
-      ...TEXT_STYLE, fontSize: '20px', lineSpacing: 6, wordWrap: { width: 712, useAdvancedWrap: true },
+    bg.fillStyle(0x8a6f60, 0.12).fillRoundedRect(20, 446, 760, 140, 24);
+    bg.fillStyle(0xfffaf3, 0.97).fillRoundedRect(20, 440, 760, 140, 24);
+    bg.lineStyle(3, 0xf0c9b8).strokeRoundedRect(20, 440, 760, 140, 24);
+    bg.lineStyle(1.5, 0xf6dfd3).strokeRoundedRect(28, 448, 744, 124, 18);
+    // 說話者名牌（膠囊形，依名字長度重畫）
+    this.nameTag = this.add.graphics();
+    this.speaker = this.add.text(70, 440, '', { ...TEXT_STYLE, fontSize: '17px', color: '#ffffff', fontStyle: 'bold' })
+      .setOrigin(0.5);
+    this.bodyText = this.add.text(48, 468, '', {
+      ...TEXT_STYLE, fontSize: '20px', lineSpacing: 8, wordWrap: { width: 704, useAdvancedWrap: true },
     });
-    this.more = this.add.text(756, 560, '▼', { ...TEXT_STYLE, fontSize: '14px' }).setOrigin(1);
-    this.tweens.add({ targets: this.more, alpha: 0.3, duration: 500, yoyo: true, repeat: -1 });
-    this.box.add([bg, this.speaker, this.bodyText, this.more]);
+    this.more = this.add.text(752, 562, '♡', { ...TEXT_STYLE, fontSize: '16px', color: '#e8a08a' }).setOrigin(1);
+    this.tweens.add({ targets: this.more, y: 557, duration: 500, yoyo: true, repeat: -1, ease: 'Sine.easeInOut' });
+    this.box.add([bg, this.nameTag, this.speaker, this.bodyText, this.more]);
 
     this.input.on('pointerdown', () => this.open && !this.choiceButtons.length && this.next());
     this.input.keyboard.on('keydown-SPACE', () => this.open && !this.choiceButtons.length && this.next());
@@ -30,11 +35,18 @@ export default class UIScene extends Phaser.Scene {
 
     // ---- 互動提示 ----
     this.touch = this.sys.game.device.input.touch;
-    this.hint = this.add.text(400, 590, '', {
-      ...TEXT_STYLE, fontSize: '16px', backgroundColor: '#fbf6eecc', padding: { x: 10, y: 4 },
-    }).setOrigin(0.5, 1).setVisible(false);
-    this.talkButton = makeButton(this, 700, 500, '對話', () => this.onTalk?.(), {
-      fontSize: '22px', backgroundColor: '#c98a6b', color: '#ffffff', padding: { x: 18, y: 14 },
+    const hintBg = this.add.graphics();
+    const hintText = this.add.text(0, 0, '', { ...TEXT_STYLE, fontSize: '16px' }).setOrigin(0.5);
+    this.hint = this.add.container(400, 570, [hintBg, hintText]).setVisible(false);
+    this.hint.setText = (t) => {
+      if (hintText.text === t) return;
+      hintText.setText(t);
+      const w = hintText.width + 28;
+      hintBg.clear().fillStyle(0xfffaf3, 0.92).fillRoundedRect(-w / 2, -16, w, 32, 16)
+        .lineStyle(2, 0xf0c9b8).strokeRoundedRect(-w / 2, -16, w, 32, 16);
+    };
+    this.talkButton = makeButton(this, 700, 500, '對話 ♡', () => this.onTalk?.(), {
+      fontSize: '22px', fill: '#e8a08a', color: '#ffffff', padX: 20, padY: 14,
     }).setVisible(false);
 
     if (this.touch) this.joystick = new Joystick(this, 110, 490);
@@ -70,18 +82,22 @@ export default class UIScene extends Phaser.Scene {
     const line = this.queue.shift();
     if (!line) return this.close();
     this.speaker.setText(line.speaker || '');
+    const w = this.speaker.width + 32;
+    this.speaker.setX(40 + w / 2);
+    this.nameTag.clear();
+    if (line.speaker) this.nameTag.fillStyle(0xe8a08a).fillRoundedRect(40, 425, w, 30, 15);
     this.bodyText.setText(line.text);
     this.more.setVisible(!line.choices);
     if (line.choices) this.showChoices(line.choices);
   }
 
   showChoices(choices) {
-    this.choiceButtons = choices.map((c, i) => makeButton(this, 400, 410 - (choices.length - 1 - i) * 48, c.text, () => {
+    this.choiceButtons = choices.map((c, i) => makeButton(this, 400, 392 - (choices.length - 1 - i) * 54, c.text, () => {
       this.choiceButtons.forEach((b) => b.destroy());
       this.choiceButtons = [];
       this.queue.unshift(...(c.response || []));
       this.next();
-    }, { fontSize: '18px', backgroundColor: '#f0d9c8', padding: { x: 16, y: 8 } }));
+    }, { fontSize: '18px', fill: '#fdeee6', padX: 20, padY: 10 }));
   }
 
   close() {

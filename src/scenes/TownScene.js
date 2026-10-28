@@ -1,4 +1,4 @@
-import { drawCharacter, drawCompanion, ensureMistTexture, TEXT_STYLE } from '../art.js';
+import { drawCharacter, drawCompanion, ensureMistTexture, ensureSparkleTexture, TEXT_STYLE } from '../art.js';
 
 const SPEED = 130;
 const TALK_DISTANCE = 56;
@@ -46,8 +46,10 @@ export default class TownScene extends Phaser.Scene {
       const sprite = this.physics.add.image(pos.x, pos.y, `resident:${data.id}`).setScale(0.5).setImmovable(true);
       sprite.body.setSize(36, 22).setOffset(14, 54);
       this.physics.add.collider(this.player, sprite);
-      this.add.text(pos.x, pos.y - 30, data.name, { ...TEXT_STYLE, fontSize: '11px' }).setOrigin(0.5).setDepth(5000);
-      const marker = this.add.text(pos.x, pos.y - 44, '！', { ...TEXT_STYLE, fontSize: '14px', color: '#c98a6b' })
+      this.add.text(pos.x, pos.y - 30, data.name, {
+        ...TEXT_STYLE, fontSize: '11px', backgroundColor: '#fffaf3', padding: { x: 5, y: 1 },
+      }).setOrigin(0.5).setDepth(5000);
+      const marker = this.add.text(pos.x, pos.y - 46, '♡', { ...TEXT_STYLE, fontSize: '15px', color: '#e8a08a' })
         .setOrigin(0.5).setDepth(5000);
       this.tweens.add({ targets: marker, y: marker.y - 4, duration: 600, yoyo: true, repeat: -1 });
       const resident = { data, sprite, marker, talked: false };
@@ -57,8 +59,20 @@ export default class TownScene extends Phaser.Scene {
       return resident;
     });
 
-    // ---- 灰霧 ----
+    // ---- 灰霧與微光 ----
     this.createFog(map.widthInPixels, map.heightInPixels);
+    ensureSparkleTexture(this);
+    // 漂浮的小光點：灰霧越淡，出現得越頻繁
+    this.motes = this.add.particles(0, 0, 'sparkle', {
+      x: { min: 0, max: map.widthInPixels }, y: { min: 0, max: map.heightInPixels },
+      lifespan: 4000, speedY: { min: -12, max: -4 }, speedX: { min: -4, max: 4 },
+      scale: { start: 0.5, end: 0.1 }, alpha: { start: 0.9, end: 0 }, frequency: 1500,
+    }).setDepth(9002);
+    this.burst = this.add.particles(0, 0, 'sparkle', {
+      lifespan: 1600, speed: { min: 30, max: 90 }, gravityY: -30,
+      scale: { start: 0.9, end: 0 }, alpha: { start: 1, end: 0 }, emitting: false,
+    }).setDepth(9003);
+    this.applyFog();
 
     // ---- 鏡頭與輸入 ----
     const cam = this.cameras.main;
@@ -81,7 +95,7 @@ export default class TownScene extends Phaser.Scene {
 
   createFog(w, h) {
     ensureMistTexture(this);
-    this.fogOverlay = this.add.rectangle(0, 0, w, h, 0xcfcac3).setOrigin(0).setDepth(9000);
+    this.fogOverlay = this.add.rectangle(0, 0, w, h, 0xd6d0cb).setOrigin(0).setDepth(9000);
     this.mists = [];
     for (let i = 0; i < 10; i++) {
       const m = this.add.image(Phaser.Math.Between(0, w), Phaser.Math.Between(0, h), 'mist')
@@ -101,6 +115,7 @@ export default class TownScene extends Phaser.Scene {
     this.fogOverlay.setAlpha(0.3 * this.fogLevel);
     this.mists.forEach((m) => m.setAlpha(0.45 * this.fogLevel));
     if (this.colorFx) this.colorFx.reset().saturate(-0.75 * this.fogLevel);
+    this.motes?.setFrequency(250 + 1500 * this.fogLevel);
   }
 
   clearFog(amount) {
@@ -124,6 +139,7 @@ export default class TownScene extends Phaser.Scene {
       if (resident.talked) return;
       resident.talked = true;
       resident.marker.destroy();
+      this.burst.explode(40, resident.sprite.x, resident.sprite.y - 10);
       this.clearFog(resident.data.fogReduction ?? 0.3);
       this.time.delayedCall(1200, () => this.companionSay('你看，廣場的顏色回來了一些。'));
     });
@@ -161,6 +177,11 @@ export default class TownScene extends Phaser.Scene {
       this.player.setFlipX(this.facing < 0);
     }
 
+    // 走路時輕輕搖擺，站著時慢慢呼吸
+    const t = this.time.now;
+    this.player.setAngle(v.length() > 0 ? Math.sin(t / 70) * 5 : 0);
+    this.residents.forEach((r) => r.sprite.setAngle(Math.sin(t / 700 + r.sprite.x) * 2.5));
+
     // 依 y 座標排前後
     this.player.setDepth(this.player.y);
     this.residents.forEach((r) => r.sprite.setDepth(r.sprite.y));
@@ -169,7 +190,7 @@ export default class TownScene extends Phaser.Scene {
     const tx = this.player.x - 18 * this.facing;
     const ty = this.player.y + 8;
     this.companion.x += (tx - this.companion.x) * 0.08;
-    this.companion.y += (ty - this.companion.y) * 0.08;
+    this.companion.y += (ty - this.companion.y) * 0.08 + Math.sin(t / 160) * 0.25;
     this.companion.setFlipX(this.facing < 0).setDepth(this.companion.y);
     if (this.bubble?.active) this.bubble.setPosition(this.companion.x, this.companion.y - 22);
   }

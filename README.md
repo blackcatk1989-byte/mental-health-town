@@ -26,3 +26,9 @@ npx serve .
 
 最小原型：角色創建、晨光廣場地圖、與新鄰居小禾對話、對話後灰霧變淡。美術皆為佔位素材。
 `content/resources.json` 的資訊全部標註「待核對」。
+
+## 3D 試作（3d-prototype 分支）
+
+用 Three.js 做的 3D 版晨光廣場，開啟 <http://localhost:8000/3d.html>。
+沿用同一份 `content/` 內容與 `maps/` 的 Tiled 地圖，2D 版 `index.html` 不受影響。
+鏡頭可用 Q、E 或拖曳畫面旋轉；是否改用 3D 尚待兩位協作者決定。

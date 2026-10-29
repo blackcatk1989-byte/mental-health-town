@@ -50,7 +50,6 @@
     .moods button { padding: 4px 9px; font-size: 13px; }
     #pet-say { min-height: 42px; margin: 10px 0; font-size: 14px; text-align: center; }
     #start { width: 100%; padding: 10px; font-size: 18px; }
-    #preset { width: 100%; margin-bottom: 8px; font-size: 15px; }
     @media (max-width: 700px) {
       #create { top: auto; bottom: 12px; right: 16px; transform: none; padding: 12px 14px; max-height: 58vh; overflow: auto; }
       #create h1 { font-size: 18px; margin-bottom: 4px; }
@@ -92,8 +91,7 @@
   </style>
   <script type="importmap">
     { "imports": {
-      "three": "https://cdn.jsdelivr.net/npm/three@0.170.0/build/three.module.js",
-      "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.170.0/examples/jsm/"
+      "three": "https://cdn.jsdelivr.net/npm/three@0.170.0/build/three.module.js"
     } }
   </script>
 </head>
@@ -107,7 +105,6 @@
     <div>今日心情溫度計<small>（可略過，不會儲存）</small></div>
     <div class="moods" id="moods"></div>
     <div id="pet-say"></div>
-    <button id="preset" class="pill" type="button">一鍵套用：羽球愛好者 🏸</button>
     <button id="start" class="pill primary" type="button">出發，去晨光廣場</button>
   </section>
 

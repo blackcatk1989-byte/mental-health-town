@@ -1,7 +1,7 @@
 // 3D 試作版主程式（Three.js）。內容與地圖沿用 content/ 與 maps/ 的 JSON。
 import * as THREE from 'three';
-import { HAIR_STYLES, HAIR_COLORS, OUTFITS, SKINS, COMPANIONS, GLASSES } from '../art.js';
-import { loadModels, makePerson, makePet } from './characters.js';
+import { HAIR_STYLES, HAIR_COLORS, OUTFITS, SKINS, COMPANIONS } from '../art.js';
+import { makePerson, makePet } from './characters.js';
 import { buildWorld } from './world.js';
 import {
   Dialogue, makeLabel, setupCreatePanel, showPlayControls, setTalkHint, setupJoystick, setupRotateButtons, isTouch,
@@ -24,7 +24,6 @@ const MOODS = [
 
 const content = await fetch(`content/${ZONE}.json`).then((r) => r.json());
 const tiled = await fetch(content.map).then((r) => r.json());
-await loadModels();
 
 // ---- 場景、光線 ----
 const container = document.getElementById('scene');
@@ -151,8 +150,6 @@ function rebuildCharacters(choice) {
     hairColor: HAIR_COLORS[choice.hairColor].id,
     outfit: OUTFITS[choice.outfit].id,
     skin: SKINS[choice.skin].id,
-    outfitStyle: OUTFITS[choice.outfit].style ?? 'casual',
-    glasses: GLASSES[choice.glasses].id,
   });
   petInfo = COMPANIONS[choice.companion];
   pet = makePet(petInfo.id);
@@ -182,7 +179,6 @@ panel = setupCreatePanel([
   ['髮色', 'hairColor', HAIR_COLORS],
   ['服裝', 'outfit', OUTFITS],
   ['膚色', 'skin', SKINS, 1],
-  ['眼鏡', 'glasses', GLASSES],
   ['陪伴小動物', 'companion', COMPANIONS],
 ], MOODS, {
   onChange: (choice) => {
@@ -200,16 +196,6 @@ panel = setupCreatePanel([
   },
 });
 panel.say(`我是你的${petInfo.label}夥伴，會陪你逛小鎮，也會提醒你休息喔。`);
-
-// 一鍵套用：羽球愛好者（刺刺黑髮、黑框眼鏡、羽球衣）
-const pick = (list, test) => list.findIndex(test);
-document.getElementById('preset').onclick = () => panel.set({
-  hairStyle: pick(HAIR_STYLES, (o) => o.id === 'spiky'),
-  hairColor: pick(HAIR_COLORS, (o) => o.label === '黑'),
-  outfit: pick(OUTFITS, (o) => o.style === 'jersey'),
-  skin: 1,
-  glasses: 1,
-});
 
 let bubble = null;
 function companionSay(text) {

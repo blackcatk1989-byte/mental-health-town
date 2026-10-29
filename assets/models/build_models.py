@@ -10,7 +10,9 @@
 - 座標沿用 Three.js 的單位，角色高約 1.3，面向 +Z（Blender 的 -Y）。
 - 材質名稱代表用途：Skin、Outfit、Pants、Hair、Shoe、White、Fur、Accent、Belly、
   Eye、Highlight、Blush、Mouth、Nose、Outline（描邊，用反轉外殼法）。
-- 人物的頭髮物件以 Hair_ 開頭：Hair_common_* 一定顯示，Hair_short_*、Hair_long_*、Hair_bun_* 依髮型切換。
+- 人物的頭髮物件以 Hair_ 開頭：Hair_common_* 一定顯示，Hair_short_*、Hair_long_*、Hair_bun_*、Hair_spiky_* 依髮型切換。
+- 依造型切換的其他物件：Legwear_long_*（長褲）／Legwear_shorts_*（短褲、小腿、襪子）、
+  Jersey_*（羽球衣的潑墨圖案、護腕、球拍）、Glasses_*（眼鏡）。
 """
 import math
 import os
@@ -46,6 +48,8 @@ PREVIEW_COLORS = {
     "Skin": "#f1d3b8", "Outfit": "#c98a6b", "Pants": "#91634d", "Hair": "#4a3a32", "Shoe": "#8a6450",
     "White": "#fffaf2", "Eye": "#2f2622", "Highlight": "#ffffff", "Blush": "#f59a9a", "Mouth": "#c0504a",
     "Nose": "#2f2622", "Outline": "#4f3c33",
+    "Mint": "#8fd6c0", "Navy": "#34426b", "Frame": "#2a2a2a", "Band": "#26262a", "Racket": "#e9e9ee",
+    "Strings": "#f6f6f6",
 }
 MATS = {}
 
@@ -163,12 +167,61 @@ def cone(coll, name, material, base, direction, radius, height, outline=False):
     return finish(name, bm, material, coll, outline)
 
 
+def on_ellipsoid(coll, name, material, center, radii, direction, size, tilt=0.0, depth=0.012):
+    """貼在橢球表面的扁平色塊（衣服圖案）。direction 為 Three.js 座標方向。"""
+    rx, ry, rz = radii
+    d = Vector(direction).normalized()
+    surf = Vector((center[0] + rx * d.x, center[1] + ry * d.y, center[2] + rz * d.z))
+    normal = P(d.x / rx, d.y / ry, d.z / rz).normalized()
+    basis = surface_basis(normal) @ Matrix.Rotation(tilt, 3, "Z")
+    bm = bmesh.new()
+    bmesh.ops.create_uvsphere(bm, u_segments=16, v_segments=8, radius=1)
+    transform(bm, Vector((0, 0, 0)), (size[0], size[1], depth), basis)
+    transform(bm, P(*surf))
+    return finish(name, bm, material, coll, outline=False)
+
+
+def rod(coll, name, material, a, b, radius, outline=False):
+    """兩點之間的細圓柱（眼鏡架、球拍握把）。a、b 為 Three.js 座標。"""
+    pa, pb = P(*a), P(*b)
+    axis = pb - pa
+    bm = bmesh.new()
+    bmesh.ops.create_cone(bm, cap_ends=True, segments=10, radius1=radius, radius2=radius, depth=axis.length)
+    transform(bm, Vector((0, 0, 0)), rot=axis.normalized().to_track_quat("Z", "Y").to_matrix())
+    transform(bm, (pa + pb) / 2)
+    return finish(name, bm, material, coll, outline)
+
+
+def ring(coll, name, material, center, normal, radius, tube, squash=1.0):
+    """圓環（眼鏡框、球拍框、護腕）。center、normal 為 Three.js 座標。"""
+    bm = bmesh.new()
+    seg, tseg = 28, 6
+    rings = []
+    for i in range(seg):
+        a = i / seg * math.tau
+        c = Vector((math.cos(a) * radius, math.sin(a) * radius * squash, 0))
+        out = Vector((math.cos(a), math.sin(a) * squash, 0)).normalized()
+        rings.append([bm.verts.new(c + out * math.cos(b) * tube + Vector((0, 0, math.sin(b) * tube)))
+                      for b in (j / tseg * math.tau for j in range(tseg))])
+    for i in range(seg):
+        r0, r1 = rings[i], rings[(i + 1) % seg]
+        for j in range(tseg):
+            bm.faces.new((r0[j], r1[j], r1[(j + 1) % tseg], r0[(j + 1) % tseg]))
+    bmesh.ops.recalc_face_normals(bm, faces=bm.faces)
+    transform(bm, Vector((0, 0, 0)), rot=surface_basis(P(*normal)))
+    transform(bm, P(*center))
+    return finish(name, bm, material, coll, outline=False)
+
+
 # ---------------------------------------------------------------- 人物
 def build_person(coll):
     skin, outfit, pants, hair, shoe, white = (MATS[k] for k in ("Skin", "Outfit", "Pants", "Hair", "Shoe", "White"))
     for s in (-1, 1):
         ellipsoid(coll, "shoe", shoe, (s * 0.09, 0.05, 0.04), (0.08, 0.055, 0.1))
-        ellipsoid(coll, "leg", pants, (s * 0.085, 0.18, 0), (0.07, 0.13, 0.07))
+        ellipsoid(coll, "Legwear_long_leg", pants, (s * 0.085, 0.18, 0), (0.07, 0.13, 0.07))
+        ellipsoid(coll, "Legwear_shorts_short", white, (s * 0.09, 0.25, 0), (0.085, 0.075, 0.085))
+        ellipsoid(coll, "Legwear_shorts_shin", skin, (s * 0.085, 0.15, 0), (0.05, 0.08, 0.05))
+        ellipsoid(coll, "Legwear_shorts_sock", white, (s * 0.088, 0.085, 0.01), (0.055, 0.04, 0.055), outline=False)
         arm_rot = Matrix.Rotation(s * 0.2, 3, "Y")  # 手臂微微張開（Blender 的 Y 軸為前後）
         ellipsoid(coll, "arm", outfit, (s * 0.24, 0.45, 0), (0.06, 0.13, 0.06), rot=arm_rot)
         ellipsoid(coll, "hand", skin, (s * 0.28, 0.3, 0.01), (0.058, 0.058, 0.058))
@@ -195,7 +248,58 @@ def build_person(coll):
     ellipsoid(coll, "Hair_long_back", hair, (0, 0.8, -0.1), (0.37, 0.45, 0.28))
     ellipsoid(coll, "Hair_bun_ball", hair, (0, 1.33, -0.08), (0.12, 0.12, 0.12))
 
+    # 刺刺短髮：頭頂一圈短短的髮束，自然蓬鬆
+    for i in range(22):
+        a = i / 22 * math.tau * 2.0
+        up = 0.45 + 0.5 * (i / 22)
+        d = Vector((math.sin(a) * (1 - up * 0.6), up, math.cos(a) * (1 - up * 0.6) - 0.15)).normalized()
+        base = (head_c[0] + d.x * R * 0.98, head_c[1] + d.y * R * 0.98, head_c[2] + d.z * R * 0.98)
+        cone(coll, "Hair_spiky_tuft", hair, base, (d.x, d.y + 0.35, d.z - 0.15), 0.06, 0.075, outline=True)
+    for x in (-0.15, -0.04, 0.07, 0.17):
+        cone(coll, "Hair_spiky_fringe", hair, (x, 1.13, 0.24), (x * 0.4, -0.5, 0.85), 0.05, 0.07, outline=True)
     face(coll, "face", head_c, R)
+
+    # 黑框眼鏡
+    frame = MATS["Frame"]
+    rims = []
+    for s in (-1, 1):
+        d = Vector((s * 0.3, -0.05, 0.93)).normalized()
+        c = (head_c[0] + d.x * R * 1.07, head_c[1] + d.y * R * 1.07, head_c[2] + d.z * R * 1.07)
+        ring(coll, "Glasses_rim", frame, c, tuple(d), R * 0.2, 0.012, squash=0.8)
+        rims.append(c)
+        ear = (s * 0.32, 0.93, 0.02)
+        rod(coll, "Glasses_temple", frame, (c[0] + s * R * 0.2, c[1], c[2] - 0.02), ear, 0.008)
+    rod(coll, "Glasses_bridge", frame, (rims[0][0] + R * 0.2, rims[0][1] + 0.01, rims[0][2]),
+        (rims[1][0] - R * 0.2, rims[1][1] + 0.01, rims[1][2]), 0.008)
+
+    # 羽球衣：黑底上薄荷綠與深藍的潑墨色塊、胸前白色小標
+    mint, navy = MATS["Mint"], MATS["Navy"]
+    tc, tr = (0, 0.45, 0), (0.22, 0.23, 0.18)
+    patches = [  # 細長的筆刷感色塊
+        (mint, (-0.45, 0.4, 0.8), (0.16, 0.035), 0.55), (mint, (-0.2, 0.1, 1), (0.13, 0.025), 0.35),
+        (mint, (0.05, -0.2, 1), (0.09, 0.02), 0.6), (navy, (-0.3, -0.25, 0.95), (0.1, 0.025), 0.2),
+        (navy, (0.25, 0.3, 0.95), (0.07, 0.02), -0.5), (mint, (0.5, -0.4, 0.75), (0.08, 0.018), 0.7),
+        (mint, (0.35, 0.45, -0.82), (0.15, 0.03), -0.45), (navy, (-0.3, -0.05, -0.95), (0.12, 0.025), 0.3),
+        (mint, (-0.1, -0.35, -0.95), (0.1, 0.02), -0.2), (mint, (-0.95, 0.25, 0.15), (0.08, 0.025), 1.2),
+        (mint, (0.95, 0.3, -0.1), (0.07, 0.02), -1.0),
+    ]
+    for m, d, size, tilt in patches:
+        on_ellipsoid(coll, "Jersey_patch", m, tc, tr, d, size, tilt)
+    on_ellipsoid(coll, "Jersey_logo", white, tc, tr, (0.4, 0.2, 0.9), (0.025, 0.03), 0.0)
+    for s in (-1, 1):
+        on_ellipsoid(coll, "Jersey_sleeve", mint, (s * 0.24, 0.45, 0), (0.06, 0.13, 0.06), (s * 0.6, 0.5, 0.6), (0.035, 0.03), 0.5)
+        ring(coll, "Jersey_band", MATS["Band"], (s * 0.275, 0.335, 0.01), (s * 0.15, 1, 0), 0.05, 0.018)
+
+    # 右手拿的羽球拍：往上斜靠在肩膀旁
+    hand = (0.28, 0.3, 0.01)
+    grip_end = (0.31, 0.46, -0.05)
+    shaft_end = (0.33, 0.6, -0.1)
+    head_center = (0.34, 0.76, -0.14)
+    rod(coll, "Jersey_racket_grip", frame, (hand[0], hand[1] - 0.03, hand[2] + 0.02), grip_end, 0.018)
+    rod(coll, "Jersey_racket_shaft", MATS["Racket"], grip_end, shaft_end, 0.009)
+    ring(coll, "Jersey_racket_head", MATS["Racket"], head_center, (1, 0.05, 0.3), 0.11, 0.011, squash=1.3)
+    ellipsoid(coll, "Jersey_racket_strings", MATS["Strings"], head_center, (0.004, 0.14, 0.105),
+              rot=Matrix.Rotation(-0.3, 3, "Z"), outline=False)
 
 
 # ---------------------------------------------------------------- 小動物
@@ -330,9 +434,12 @@ if PREVIEW:
     for name, coll in collections.items():
         for obj in coll.objects:
             obj.location.x += offsets[name]
-    for obj in collections["person"].objects:  # 預覽只顯示短髮
-        if obj.name.startswith(("Hair_long", "Hair_bun")):
+    # 預覽人物用「羽球愛好者」造型：刺刺短髮、眼鏡、羽球衣、白短褲白鞋
+    for obj in collections["person"].objects:
+        if obj.name.startswith(("Hair_short", "Hair_long", "Hair_bun", "Legwear_long")):
             obj.hide_render = True
+    for name, hex_color in (("Outfit", "#2a2a30"), ("Shoe", "#f2f2f2"), ("Hair", "#1f1b1a")):
+        MATS[name].node_tree.nodes["Principled BSDF"].inputs["Base Color"].default_value = srgb(hex_color)
     bpy.ops.mesh.primitive_plane_add(size=20)
     bpy.context.object.data.materials.append(mat("Ground", "#d9e7c8"))
     sun = bpy.data.objects.new("太陽", bpy.data.lights.new("太陽", "SUN"))

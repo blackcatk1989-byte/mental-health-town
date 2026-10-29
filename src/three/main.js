@@ -1,6 +1,5 @@
 // 3D 試作版主程式（Three.js）。內容讀 content/ 的 JSON；造景與人物已清空，暫用空地與標記。
 import * as THREE from 'three';
-import { COMPANIONS } from '../art.js';
 import { makePetMarker, makePlayerMarker, makeResidentMarker } from './characters.js';
 import { buildWorld } from './world.js';
 import { CozyCamera } from './camera.js';
@@ -20,6 +19,7 @@ const REST_REMINDER_MS = 15 * 60 * 1000;
 const content = await fetch(`content/${ZONE}.json`).then((r) => r.json());
 // 陪伴小動物的台詞與心情溫度計（與 2D 版共用）
 const lines = await fetch('content/陪伴小動物.json').then((r) => r.json());
+const COMPANIONS = lines.companions;
 const greeting = () => lines.greeting.replace('{animal}', petInfo.label);
 
 // ---- 場景、光線 ----

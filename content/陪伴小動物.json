@@ -1,5 +1,11 @@
 {
   "_說明": "陪伴小動物的台詞與今日心情溫度計。心情溫度計只是互動，不儲存、不評分。{animal} 會換成玩家選的小動物名稱。",
+  "companions": [
+    { "id": "cat", "label": "貓" },
+    { "id": "dog", "label": "狗" },
+    { "id": "hedgehog", "label": "刺蝟" },
+    { "id": "otter", "label": "水獺" }
+  ],
   "greeting": "我是你的{animal}夥伴，會陪你逛小鎮，也會提醒你休息喔。",
   "restReminder": "玩一陣子了，要不要起來伸展一下、喝口水？",
   "fogCleared": "你看，廣場的顏色回來了一些。",

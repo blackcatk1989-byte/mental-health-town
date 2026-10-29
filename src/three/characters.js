@@ -287,14 +287,29 @@ function fromModel(src, colors, visible = () => true) {
 export function makePerson(look) {
   if (!models.person) return makePersonProcedural(look);
   const outfit = new THREE.Color(look.outfit);
+  const jersey = look.outfitStyle === 'jersey';
+  // 依物件名稱前綴切換造型（規則見 assets/models/build_models.py 開頭）
+  const visible = ({ name }) => {
+    if (name.startsWith('Hair_')) return name.startsWith('Hair_common') || name.startsWith(`Hair_${look.hairStyle}`);
+    if (name.startsWith('Legwear_')) return name.startsWith(jersey ? 'Legwear_shorts' : 'Legwear_long');
+    if (name.startsWith('Jersey_')) return jersey;
+    if (name.startsWith('Glasses_')) return !!look.glasses;
+    return true;
+  };
   return fromModel(models.person, {
     Skin: look.skin,
     Outfit: look.outfit,
     Pants: outfit.clone().multiplyScalar(0.72).getHex(),
     Hair: look.hairColor,
-    Shoe: 0x8a6450,
+    Shoe: jersey ? 0xf4f4f4 : 0x8a6450,
     White: 0xfffaf2,
-  }, (node) => !node.name.startsWith('Hair_') || node.name.startsWith('Hair_common') || node.name.startsWith(`Hair_${look.hairStyle}`));
+    Mint: 0x8fd6c0,
+    Navy: 0x34426b,
+    Frame: 0x2a2a2a,
+    Band: 0x26262a,
+    Racket: 0xe9e9ee,
+    Strings: 0xf6f6f6,
+  }, visible);
 }
 
 export function makePet(type) {

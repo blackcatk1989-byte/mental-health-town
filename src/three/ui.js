@@ -6,6 +6,7 @@ export const isTouch = matchMedia('(pointer: coarse)').matches || 'ontouchstart'
 export function setupCreatePanel(rows, moods, { onChange, onMood, onStart }) {
   const wrap = $('create-rows');
   const choice = {};
+  const refreshers = [];
   for (const [label, field, options, initial = 0] of rows) {
     choice[field] = initial;
     const row = document.createElement('div');
@@ -20,6 +21,7 @@ export function setupCreatePanel(rows, moods, { onChange, onMood, onStart }) {
       refresh();
       onChange(choice);
     };
+    refreshers.push(refresh);
     prev.onclick = () => step(-1);
     next.onclick = () => step(1);
     refresh();
@@ -42,7 +44,15 @@ export function setupCreatePanel(rows, moods, { onChange, onMood, onStart }) {
     onStart(choice);
   };
   onChange(choice);
-  return { say: (text) => { $('pet-say').textContent = text; } };
+  return {
+    say: (text) => { $('pet-say').textContent = text; },
+    // 一次設定多個選項（例如套用預設造型）
+    set: (values) => {
+      Object.assign(choice, values);
+      refreshers.forEach((r) => r());
+      onChange(choice);
+    },
+  };
 }
 
 export class Dialogue {

@@ -5,18 +5,26 @@ export const HAIR_STYLES = [
   { id: 'short', label: '短髮' },
   { id: 'long', label: '長髮' },
   { id: 'bun', label: '丸子頭' },
+  { id: 'spiky', label: '刺刺短髮' }, // 3D 版專用；2D 版會畫成一般短髮
 ];
 export const HAIR_COLORS = [
   { id: '#4a3a32', label: '深褐' },
   { id: '#7a5a44', label: '栗色' },
   { id: '#b08a62', label: '亞麻' },
   { id: '#8c8c8c', label: '銀灰' },
+  { id: '#25201e', label: '黑' },
 ];
 export const OUTFITS = [
   { id: '#c98a6b', label: '陶土' },
   { id: '#9bb7a5', label: '鼠尾草綠' },
   { id: '#a9b8d0', label: '霧藍' },
   { id: '#e3c98f', label: '麥黃' },
+  { id: '#2a2a30', label: '羽球衣', style: 'jersey' }, // 3D 版有潑墨圖案、短褲與球拍
+];
+// 3D 版的配件
+export const GLASSES = [
+  { id: false, label: '無' },
+  { id: true, label: '黑框眼鏡' },
 ];
 export const SKINS = [
   { id: '#f6dcc5', label: '淺' },

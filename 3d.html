@@ -40,7 +40,7 @@
     /* 角色創建 */
     #create { position: fixed; right: 24px; top: 50%; transform: translateY(-50%); width: min(360px, calc(100vw - 32px));
       background: rgba(255, 250, 243, .94); border: 3px solid var(--line); border-radius: 28px; padding: 18px 20px; z-index: 10;
-      box-sizing: border-box; }
+      box-sizing: border-box; max-height: calc(100vh - 24px); overflow: auto; }
     #create h1 { margin: 0 0 12px; font-size: 24px; text-align: center; }
     .row { display: flex; align-items: center; gap: 8px; margin: 8px 0; }
     .row .label { flex: 1; }
@@ -50,6 +50,7 @@
     .moods button { padding: 4px 9px; font-size: 13px; }
     #pet-say { min-height: 42px; margin: 10px 0; font-size: 14px; text-align: center; }
     #start { width: 100%; padding: 10px; font-size: 18px; }
+    #preset { width: 100%; margin-bottom: 8px; font-size: 15px; }
     @media (max-width: 700px) {
       #create { top: auto; bottom: 12px; right: 16px; transform: none; padding: 12px 14px; max-height: 58vh; overflow: auto; }
       #create h1 { font-size: 18px; margin-bottom: 4px; }
@@ -106,6 +107,7 @@
     <div>今日心情溫度計<small>（可略過，不會儲存）</small></div>
     <div class="moods" id="moods"></div>
     <div id="pet-say"></div>
+    <button id="preset" class="pill" type="button">一鍵套用：羽球愛好者 🏸</button>
     <button id="start" class="pill primary" type="button">出發，去晨光廣場</button>
   </section>
 

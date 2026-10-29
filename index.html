@@ -5,32 +5,122 @@
   <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
   <title>心理健康衛教小鎮（名稱未定）</title>
   <style>
-    :root { --ink: #4a3f38; --paper: #fbf6ee; --accent: #c98a6b; }
-    html, body { margin: 0; height: 100%; background: #e9e1d4; overflow: hidden;
-      font-family: "PingFang TC", "Microsoft JhengHei", "Noto Sans TC", sans-serif; color: var(--ink); }
-    #game { width: 100%; height: 100%; }
+    :root { --ink: #5a4a42; --paper: #fffaf3; --accent: #e8a08a; --line: #f0c9b8; }
+    html, body { margin: 0; height: 100%; overflow: hidden; background: #f6efe4; color: var(--ink);
+      font-family: "PingFang TC", "Microsoft JhengHei", "Noto Sans TC", sans-serif;
+      -webkit-user-select: none; user-select: none; touch-action: none; }
+    #scene { position: fixed; inset: 0; transition: filter .3s; }
+    #scene canvas { display: block; }
+    button { font: inherit; color: inherit; cursor: pointer; }
+    .pill { background: var(--paper); border: 2px solid var(--line); border-radius: 999px;
+      box-shadow: 0 3px 0 rgba(138, 111, 96, .15); padding: 6px 16px; transition: transform .12s; }
+    .pill:hover { transform: scale(1.05); }
+    .pill.on { background: #f6d3c6; }
+    .pill.primary { background: var(--accent); border-color: #fff; color: #fff; font-weight: bold; }
+    .hidden { display: none !important; }
+    #loading { position: fixed; left: 50%; top: 50%; transform: translate(-50%, -50%); z-index: 30; font-size: 16px; }
 
     /* 「我需要幫忙」按鈕：依 AGENTS.md 第 5 節必須常駐，任何修改都不可移除 */
     #help-button { position: fixed; top: 12px; right: 12px; z-index: 1000; padding: 10px 16px;
-      border: 2px solid #fff; border-radius: 999px; background: var(--accent); color: #fff;
-      font: inherit; font-size: 16px; font-weight: bold; box-shadow: 0 2px 8px rgba(0,0,0,.2); cursor: pointer; }
+      border: 2px solid #fff; border-radius: 999px; background: #c98a6b; color: #fff;
+      font-size: 16px; font-weight: bold; box-shadow: 0 2px 8px rgba(0,0,0,.2); }
     #help-button:focus-visible { outline: 3px solid #4a3f38; }
-    #help-dialog { max-width: min(520px, 92vw); max-height: 85vh; border: none; border-radius: 16px;
+    #help-dialog { max-width: min(520px, 92vw); max-height: 85vh; border: none; border-radius: 20px;
       padding: 20px 22px; background: var(--paper); color: var(--ink); box-shadow: 0 8px 30px rgba(0,0,0,.25); }
     #help-dialog::backdrop { background: rgba(60, 50, 44, .45); }
     #help-dialog h2 { margin: 0 0 8px; font-size: 20px; }
-    #help-dialog .emergency { background: #f6e1d6; border-radius: 10px; padding: 10px 12px; margin: 8px 0 14px; }
+    #help-dialog .emergency { background: #f6e1d6; border-radius: 12px; padding: 10px 12px; margin: 8px 0 14px; }
     #help-dialog ul { list-style: none; padding: 0; margin: 0; }
-    #help-dialog li { border-bottom: 1px solid #e6dccd; padding: 10px 0; }
-    #help-dialog .phone { font-size: 22px; font-weight: bold; color: var(--accent); text-decoration: none; }
+    #help-dialog li { border-bottom: 1px solid #efe2d4; padding: 10px 0; }
+    #help-dialog .phone { font-size: 22px; font-weight: bold; color: #c98a6b; text-decoration: none; }
     #help-dialog .meta { font-size: 13px; opacity: .75; }
     #help-dialog .pending { font-size: 12px; background: #efe2b8; border-radius: 4px; padding: 1px 6px; margin-left: 6px; }
-    #help-close { margin-top: 14px; width: 100%; padding: 10px; border: none; border-radius: 10px;
-      background: var(--ink); color: #fff; font: inherit; font-size: 16px; cursor: pointer; }
+    #help-close { margin-top: 14px; width: 100%; padding: 10px; border: none; border-radius: 12px;
+      background: var(--ink); color: #fff; font-size: 16px; }
+
+    /* 角色創建 */
+    #create { position: fixed; right: 24px; top: 50%; transform: translateY(-50%); width: min(360px, calc(100vw - 32px));
+      background: rgba(255, 250, 243, .94); border: 3px solid var(--line); border-radius: 28px; padding: 18px 20px; z-index: 10;
+      box-sizing: border-box; max-height: calc(100vh - 24px); overflow: auto; }
+    #create h1 { margin: 0 0 12px; font-size: 24px; text-align: center; }
+    .row { display: flex; align-items: center; gap: 8px; margin: 8px 0; }
+    .row .label { flex: 1; }
+    .row .value { width: 86px; text-align: center; }
+    .row button { width: 36px; height: 32px; padding: 0; }
+    .moods { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 6px; }
+    .moods button { padding: 4px 9px; font-size: 13px; }
+    #pet-say { min-height: 42px; margin: 10px 0; font-size: 14px; text-align: center; }
+    #start { width: 100%; padding: 10px; font-size: 18px; }
+    @media (max-width: 700px) {
+      #create { top: auto; bottom: 12px; right: 16px; transform: none; padding: 12px 14px; max-height: 58vh; overflow: auto; }
+      #create h1 { font-size: 18px; margin-bottom: 4px; }
+      .row { margin: 4px 0; }
+    }
+
+    /* 頭上的名牌與愛心 */
+    #labels { position: fixed; inset: 0; pointer-events: none; z-index: 5; }
+    .tag { position: absolute; transform: translate(-50%, -100%); white-space: nowrap; font-size: 13px;
+      background: var(--paper); border: 2px solid var(--line); border-radius: 999px; padding: 1px 9px; }
+    .heart { position: absolute; transform: translate(-50%, -100%); color: var(--accent); font-size: 20px;
+      animation: bob 1.2s ease-in-out infinite; }
+    .bubble { position: absolute; transform: translate(-50%, -100%); max-width: 220px; font-size: 14px;
+      background: var(--paper); border: 2px solid var(--line); border-radius: 16px; padding: 6px 12px; transition: opacity .8s; }
+    @keyframes bob { 50% { margin-top: -5px; } }
+
+    /* 對話框 */
+    #dialogue { position: fixed; left: 50%; bottom: 16px; transform: translateX(-50%); width: min(760px, calc(100vw - 32px));
+      z-index: 20; }
+    #dlg-box { position: relative; background: rgba(255, 250, 243, .97); border: 3px solid var(--line); border-radius: 26px;
+      padding: 26px 26px 22px; min-height: 80px; font-size: 19px; line-height: 1.6; box-shadow: 0 5px 0 rgba(138,111,96,.12); }
+    #dlg-name { position: absolute; top: -16px; left: 22px; background: var(--accent); color: #fff; font-weight: bold;
+      border-radius: 999px; padding: 3px 16px; font-size: 16px; }
+    #dlg-more { position: absolute; right: 20px; bottom: 10px; color: var(--accent); animation: bob .9s ease-in-out infinite; }
+    #dlg-choices { display: flex; flex-direction: column; align-items: center; gap: 10px; margin-bottom: 26px; }
+    #dlg-choices button { background: #fdeee6; font-size: 17px; padding: 8px 20px; }
+
+    /* 提示、手機操作 */
+    #hint { position: fixed; left: 50%; bottom: 18px; transform: translateX(-50%); z-index: 6; font-size: 15px; }
+    #controls-tip { position: fixed; left: 12px; top: 12px; z-index: 6; font-size: 13px; opacity: .8; }
+    #talk { position: fixed; right: 24px; bottom: 36px; z-index: 6; font-size: 20px; padding: 14px 22px; }
+    #rotate { position: fixed; right: 24px; bottom: 110px; z-index: 6; display: flex; gap: 8px; }
+    #rotate button { width: 46px; height: 46px; padding: 0; font-size: 20px; }
+    #stick { position: fixed; left: 28px; bottom: 28px; width: 110px; height: 110px; border-radius: 50%; z-index: 6;
+      background: rgba(255, 250, 243, .6); border: 3px solid rgba(232, 160, 138, .7); touch-action: none; }
+    .talking #stick, .talking #rotate, .talking #talk { display: none; }
+    #stick-thumb { position: absolute; left: 50%; top: 50%; width: 48px; height: 48px; margin: -24px 0 0 -24px;
+      border-radius: 50%; background: rgba(232, 160, 138, .9); }
   </style>
+  <script type="importmap">
+    { "imports": {
+      "three": "https://cdn.jsdelivr.net/npm/three@0.170.0/build/three.module.js",
+      "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.170.0/examples/jsm/"
+    } }
+  </script>
 </head>
 <body>
-  <div id="game"></div>
+  <div id="scene"></div>
+  <div id="labels"></div>
+  <div id="loading" class="pill">小鎮載入中……</div>
+
+  <section id="create">
+    <h1>建立你的角色</h1>
+    <div id="create-rows"></div>
+    <div>今日心情溫度計<small>（可略過，不會儲存）</small></div>
+    <div class="moods" id="moods"></div>
+    <div id="pet-say"></div>
+    <button id="start" class="pill primary" type="button">出發，去晨光廣場</button>
+  </section>
+
+  <div id="controls-tip" class="hidden">方向鍵／WASD 移動　Q、E 或拖曳畫面旋轉鏡頭</div>
+  <button id="hint" class="pill hidden" type="button"></button>
+  <button id="talk" class="pill primary hidden" type="button">對話 ♡</button>
+  <div id="rotate" class="hidden"><button class="pill" type="button" data-rot="1">⟲</button><button class="pill" type="button" data-rot="-1">⟳</button></div>
+  <div id="stick" class="hidden"><div id="stick-thumb"></div></div>
+
+  <section id="dialogue" class="hidden">
+    <div id="dlg-choices"></div>
+    <div id="dlg-box"><span id="dlg-name"></span><div id="dlg-text"></div><span id="dlg-more">♡</span></div>
+  </section>
 
   <button id="help-button" type="button" aria-haspopup="dialog">我需要幫忙</button>
   <dialog id="help-dialog" aria-labelledby="help-title">
@@ -46,8 +136,7 @@
     <button id="help-close" type="button">我知道了，回到小鎮</button>
   </dialog>
 
-  <script src="https://cdn.jsdelivr.net/npm/phaser@3.80.1/dist/phaser.min.js"></script>
   <script type="module" src="src/help.js"></script>
-  <script type="module" src="src/main.js"></script>
+  <script type="module" src="src/three/main.js"></script>
 </body>
 </html>

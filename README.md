@@ -37,3 +37,13 @@ npx serve .
 
 參考「いらすとや」（<https://www.irasutoya.com/>）的畫風自行建模，未使用其圖檔。
 若之後直接使用いらすとや的圖檔，需遵守其使用條款（<https://www.irasutoya.com/p/terms.html>）：商用作品最多 20 張、不可把素材本身當成主要商品，版權仍屬原作者。
+
+### 3D 模型（Blender）
+
+人物與小動物模型在 `assets/models/*.glb`，由 `assets/models/build_models.py` 用 Blender 產生。修改造型後重新產生：
+
+```bash
+"C:\Program Files\Blender Foundation\Blender 5.2\blender.exe" --background --python assets/models/build_models.py
+```
+
+加上 `-- --preview 預覽圖.png` 可另外渲染一張全部模型的預覽圖。遊戲依材質名稱上色、依 `Hair_` 物件名稱切換髮型，規則寫在腳本開頭。

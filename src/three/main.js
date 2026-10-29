@@ -1,7 +1,7 @@
 // 3D 試作版主程式（Three.js）。內容與地圖沿用 content/ 與 maps/ 的 JSON。
 import * as THREE from 'three';
 import { HAIR_STYLES, HAIR_COLORS, OUTFITS, SKINS, COMPANIONS } from '../art.js';
-import { makePerson, makePet } from './characters.js';
+import { loadModels, makePerson, makePet } from './characters.js';
 import { buildWorld } from './world.js';
 import {
   Dialogue, makeLabel, setupCreatePanel, showPlayControls, setTalkHint, setupJoystick, setupRotateButtons, isTouch,
@@ -24,6 +24,7 @@ const MOODS = [
 
 const content = await fetch(`content/${ZONE}.json`).then((r) => r.json());
 const tiled = await fetch(content.map).then((r) => r.json());
+await loadModels();
 
 // ---- 場景、光線 ----
 const container = document.getElementById('scene');

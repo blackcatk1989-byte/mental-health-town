@@ -2,6 +2,7 @@
 // 畫風重點：平塗色塊、細深咖啡描邊、圓臉、黑豆眼加白色高光、小腮紅、張口微笑、動物用自然毛色。
 // 未使用いらすとや的圖檔，只參考風格；如之後直接使用其圖檔，需遵守其使用條款並在 README 註明出處。
 import * as THREE from 'three';
+import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 
 // 兩階光影，接近平塗插畫
 const gradientMap = (() => {
@@ -87,7 +88,7 @@ function addFace(head, r, { spread = 0.32, eyeY = 0, brows = true, mouth = true 
   }
 }
 
-export function makePerson(look) {
+function makePersonProcedural(look) {
   const root = new THREE.Group();
   const body = new THREE.Group(); // 呼吸、走路時縮放這一層
   root.add(body);
@@ -152,7 +153,7 @@ const PET = {
   otter: { fur: 0xa47450, accent: 0x7d553a, belly: 0xf1e0c8 },
 };
 
-export function makePet(type) {
+function makePetProcedural(type) {
   const root = new THREE.Group();
   const body = new THREE.Group();
   root.add(body);
@@ -239,4 +240,65 @@ export function makePet(type) {
 
   root.userData.body = body;
   return root;
+}
+
+// ---- Blender 模型（assets/models/*.glb，由 assets/models/build_models.py 產生）----
+// 載入失敗時改用上面程式拼出來的備用造型。
+const MODEL_NAMES = ['person', 'cat', 'dog', 'hedgehog', 'otter'];
+const models = {};
+const OUTLINE_GLB = new THREE.MeshBasicMaterial({ color: 0x4f3c33 }); // glb 的描邊外殼已翻轉法線
+const FIXED = { Outline: OUTLINE_GLB, Eye: BLACK, Nose: BLACK, Highlight: WHITE, Blush: BLUSH, Mouth: MOUTH };
+
+export async function loadModels() {
+  const loader = new GLTFLoader();
+  await Promise.all(MODEL_NAMES.map(async (name) => {
+    try {
+      models[name] = (await loader.loadAsync(`assets/models/${name}.glb`)).scene;
+    } catch (e) {
+      console.warn(`模型 ${name}.glb 載入失敗，改用備用造型`, e);
+    }
+  }));
+}
+
+// 依材質名稱上色；visible(node) 回傳 false 的物件會隱藏（用來切換髮型）
+function fromModel(src, colors, visible = () => true) {
+  const root = new THREE.Group();
+  const body = new THREE.Group();
+  root.add(body);
+  const model = src.clone(true);
+  const mats = {};
+  model.traverse((o) => {
+    if (o !== model && o.parent === model && !visible(o)) o.visible = false;
+    if (!o.isMesh) return;
+    const key = o.material.name.split('.')[0];
+    if (FIXED[key]) {
+      o.material = FIXED[key];
+    } else {
+      mats[key] ??= toon(colors[key] ?? 0xcccccc);
+      o.material = mats[key];
+      o.castShadow = true;
+    }
+  });
+  body.add(model);
+  root.userData.body = body;
+  return root;
+}
+
+export function makePerson(look) {
+  if (!models.person) return makePersonProcedural(look);
+  const outfit = new THREE.Color(look.outfit);
+  return fromModel(models.person, {
+    Skin: look.skin,
+    Outfit: look.outfit,
+    Pants: outfit.clone().multiplyScalar(0.72).getHex(),
+    Hair: look.hairColor,
+    Shoe: 0x8a6450,
+    White: 0xfffaf2,
+  }, (node) => !node.name.startsWith('Hair_') || node.name.startsWith('Hair_common') || node.name.startsWith(`Hair_${look.hairStyle}`));
+}
+
+export function makePet(type) {
+  if (!models[type]) return makePetProcedural(type);
+  const c = PET[type];
+  return fromModel(models[type], { Fur: c.fur, Accent: c.accent, Belly: c.belly });
 }

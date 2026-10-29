@@ -3,6 +3,7 @@
 執行（在專案根目錄）：
     "C:\\Program Files\\Blender Foundation\\Blender 5.2\\blender.exe" --background --python assets/models/build_models.py
     加上 `-- --preview <png路徑>` 會另外渲染一張全部模型的預覽圖。
+    加上 `-- --save-blend <blend路徑>` 會另存一份可在 Blender 手動編輯的檔案（描邊仍是可調整的修改器）。
 
 輸出：assets/models/person.glb、cat.glb、dog.glb、hedgehog.glb、otter.glb
 
@@ -28,6 +29,7 @@ SEG = (24, 12)  # 球體細分：手機也跑得動
 
 argv = sys.argv[sys.argv.index("--") + 1:] if "--" in sys.argv else []
 PREVIEW = argv[argv.index("--preview") + 1] if "--preview" in argv else None
+SAVE_BLEND = argv[argv.index("--save-blend") + 1] if "--save-blend" in argv else None
 
 
 def P(x, y, z):
@@ -408,6 +410,16 @@ for kind in PETS:
 
 for name, coll in collections.items():
     export(coll, f"{name}.glb")
+
+if SAVE_BLEND:
+    # 描邊材質開啟背面剔除，Blender 視窗裡才看得到描邊底下的顏色
+    MATS["Outline"].use_backface_culling = True
+    for m in bpy.data.materials:  # 視窗顯示用的顏色
+        bsdf = m.node_tree.nodes.get("Principled BSDF") if m.node_tree else None
+        if bsdf:
+            m.diffuse_color = bsdf.inputs["Base Color"].default_value
+    bpy.ops.wm.save_as_mainfile(filepath=os.path.abspath(SAVE_BLEND))
+    print(f"已另存可編輯檔：{SAVE_BLEND}")
 
 # ---------------------------------------------------------------- 預覽圖（選用）
 if PREVIEW:

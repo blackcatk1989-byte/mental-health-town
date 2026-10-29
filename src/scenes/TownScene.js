@@ -1,4 +1,8 @@
-import { drawCharacter, drawCompanion, ensureMistTexture, ensureSparkleTexture, TEXT_STYLE } from '../art.js';
+import { drawMarker, ensureMistTexture, ensureSparkleTexture, TEXT_STYLE } from '../art.js';
+
+// 造景已清空：先用一塊空地（30 × 20 格，每格 32 像素）當活動範圍
+const WORLD_W = 960;
+const WORLD_H = 640;
 
 const SPEED = 130;
 const TALK_DISTANCE = 56;
@@ -17,35 +21,32 @@ export default class TownScene extends Phaser.Scene {
     this.companionInfo = this.registry.get('companion');
     this.lines = this.cache.json.get('companion-lines');
 
-    // ---- 地圖 ----
-    const map = this.make.tilemap({ key: `map:${this.zone}` });
-    const tileset = map.addTilesetImage('placeholder-tiles', 'tiles');
-    const layers = ['ground', 'obstacles'].map((name) => {
-      const layer = map.createLayer(name, tileset);
-      layer.setCollisionByProperty({ collides: true });
-      return layer;
-    });
-    this.physics.world.setBounds(0, 0, map.widthInPixels, map.heightInPixels);
-    const spawns = map.getObjectLayer('spawns').objects;
-    const spawn = (name) => spawns.find((o) => o.name === name);
+    // ---- 空地與出生點 ----
+    this.add.rectangle(0, 0, WORLD_W, WORLD_H, 0xe8efdc).setOrigin(0);
+    this.physics.world.setBounds(0, 0, WORLD_W, WORLD_H);
+    const residentsData = this.content.residents;
+    const spawn = (name) => {
+      if (name === 'player') return { x: WORLD_W / 2, y: WORLD_H * 0.75 };
+      const i = residentsData.findIndex((r) => r.id === name);
+      return { x: WORLD_W / 2 + (i - (residentsData.length - 1) / 2) * 96, y: WORLD_H * 0.4 };
+    };
 
-    // ---- 玩家與陪伴小動物 ----
-    drawCharacter(this, 'player', this.registry.get('look'));
-    drawCompanion(this, 'companion', this.companionInfo.id);
+    // ---- 玩家與陪伴小動物（暫用標記）----
+    drawMarker(this, 'player', 0xe8a08a);
+    drawMarker(this, 'companion', 0xf3d29b, 20, 16);
+    drawMarker(this, 'resident', 0x9bb7a5);
     const p = spawn('player');
-    this.player = this.physics.add.sprite(p.x, p.y, 'player').setScale(0.5);
-    this.player.body.setSize(36, 22).setOffset(14, 54);
+    this.player = this.physics.add.sprite(p.x, p.y, 'player');
+    this.player.body.setSize(28, 16).setOffset(2, 30);
     this.player.setCollideWorldBounds(true);
-    this.companion = this.add.image(p.x - 20, p.y + 6, 'companion').setScale(0.6);
+    this.companion = this.add.image(p.x - 20, p.y + 6, 'companion');
     this.facing = 1;
-    layers.forEach((layer) => this.physics.add.collider(this.player, layer));
 
     // ---- 居民 ----
-    this.residents = this.content.residents.map((data) => {
+    this.residents = residentsData.map((data) => {
       const pos = spawn(data.id);
-      drawCharacter(this, `resident:${data.id}`, data.appearance);
-      const sprite = this.physics.add.image(pos.x, pos.y, `resident:${data.id}`).setScale(0.5).setImmovable(true);
-      sprite.body.setSize(36, 22).setOffset(14, 54);
+      const sprite = this.physics.add.image(pos.x, pos.y, 'resident').setImmovable(true);
+      sprite.body.setSize(28, 16).setOffset(2, 30);
       this.physics.add.collider(this.player, sprite);
       this.add.text(pos.x, pos.y - 30, data.name, {
         ...TEXT_STYLE, fontSize: '11px', backgroundColor: '#fffaf3', padding: { x: 5, y: 1 },
@@ -61,11 +62,11 @@ export default class TownScene extends Phaser.Scene {
     });
 
     // ---- 灰霧與微光 ----
-    this.createFog(map.widthInPixels, map.heightInPixels);
+    this.createFog(WORLD_W, WORLD_H);
     ensureSparkleTexture(this);
     // 漂浮的小光點：灰霧越淡，出現得越頻繁
     this.motes = this.add.particles(0, 0, 'sparkle', {
-      x: { min: 0, max: map.widthInPixels }, y: { min: 0, max: map.heightInPixels },
+      x: { min: 0, max: WORLD_W }, y: { min: 0, max: WORLD_H },
       lifespan: 4000, speedY: { min: -12, max: -4 }, speedX: { min: -4, max: 4 },
       scale: { start: 0.5, end: 0.1 }, alpha: { start: 0.9, end: 0 }, frequency: 1500,
     }).setDepth(9002);
@@ -77,7 +78,7 @@ export default class TownScene extends Phaser.Scene {
 
     // ---- 鏡頭與輸入 ----
     const cam = this.cameras.main;
-    cam.setBounds(0, 0, map.widthInPixels, map.heightInPixels).setZoom(1.5);
+    cam.setBounds(0, 0, WORLD_W, WORLD_H).setZoom(1.5);
     cam.startFollow(this.player, true, 0.12, 0.12);
     this.keys = this.input.keyboard.addKeys('UP,DOWN,LEFT,RIGHT,W,A,S,D,SPACE,ENTER');
 

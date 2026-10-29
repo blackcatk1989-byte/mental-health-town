@@ -1,13 +1,10 @@
-import {
-  HAIR_STYLES, HAIR_COLORS, OUTFITS, SKINS, COMPANIONS,
-  drawCharacter, drawCompanion, makeButton, TEXT_STYLE,
-} from '../art.js';
+import { COMPANIONS, drawMarker, makeButton, TEXT_STYLE } from '../art.js';
 
 export default class CreateScene extends Phaser.Scene {
   constructor() { super('Create'); }
 
   create() {
-    this.choice = { hairStyle: 0, hairColor: 0, outfit: 0, skin: 1, companion: 0 };
+    this.choice = { companion: 0 };
     this.mood = null;
     this.lines = this.cache.json.get('companion-lines'); // 台詞與心情溫度計（content/陪伴小動物.json）
 
@@ -19,8 +16,9 @@ export default class CreateScene extends Phaser.Scene {
       });
     this.add.text(400, 44, '建立你的角色', { ...TEXT_STYLE, fontSize: '30px' }).setOrigin(0.5);
 
-    drawCharacter(this, 'player-preview', this.look());
-    drawCompanion(this, 'pet-preview', COMPANIONS[this.choice.companion].id);
+    // 人物已清空，暫時用標記代表玩家與小動物
+    drawMarker(this, 'player-preview', 0xe8a08a);
+    drawMarker(this, 'pet-preview', 0xf3d29b, 20, 16);
     this.add.ellipse(200, 270, 260, 300, 0xfffaf3).setStrokeStyle(3, 0xf0d9c8);
     this.preview = this.add.image(185, 250, 'player-preview').setScale(2.4);
     this.petPreview = this.add.image(275, 330, 'pet-preview').setScale(1.6);
@@ -31,14 +29,10 @@ export default class CreateScene extends Phaser.Scene {
     }).setOrigin(0.5, 0);
 
     const rows = [
-      ['髮型', 'hairStyle', HAIR_STYLES],
-      ['髮色', 'hairColor', HAIR_COLORS],
-      ['服裝', 'outfit', OUTFITS],
-      ['膚色', 'skin', SKINS],
       ['陪伴小動物', 'companion', COMPANIONS],
     ];
     rows.forEach(([label, field, options], i) => {
-      const y = 115 + i * 54;
+      const y = 285 + i * 54;
       this.add.text(410, y, label, { ...TEXT_STYLE, fontSize: '18px' }).setOrigin(0, 0.5);
       const value = this.add.text(640, y, '', { ...TEXT_STYLE, fontSize: '18px' }).setOrigin(0.5);
       const refresh = () => value.setText(options[this.choice[field]].label);
@@ -67,26 +61,12 @@ export default class CreateScene extends Phaser.Scene {
     this.redraw();
   }
 
-  look() {
-    return {
-      hairStyle: HAIR_STYLES[this.choice.hairStyle].id,
-      hairColor: HAIR_COLORS[this.choice.hairColor].id,
-      outfit: OUTFITS[this.choice.outfit].id,
-      skin: SKINS[this.choice.skin].id,
-    };
-  }
-
   redraw() {
-    drawCharacter(this, 'player-preview', this.look());
-    drawCompanion(this, 'pet-preview', COMPANIONS[this.choice.companion].id);
-    this.preview.setTexture('player-preview');
-    this.petPreview.setTexture('pet-preview');
     if (this.mood === null) this.petSay.setText(this.lines.greeting.replace('{animal}', COMPANIONS[this.choice.companion].label));
   }
 
   start() {
     const companion = COMPANIONS[this.choice.companion];
-    this.registry.set('look', this.look());
     this.registry.set('companion', { id: companion.id, label: companion.label });
     this.scene.start('Town', { zone: '晨光廣場' });
   }

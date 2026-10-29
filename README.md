@@ -24,14 +24,19 @@ npx serve .
 
 ## 目前狀態
 
-最小原型：角色創建、晨光廣場地圖、與新鄰居小禾對話、對話後灰霧變淡。美術皆為佔位素材。
-`content/resources.json` 的資訊全部標註「待核對」。
+2026-10-29 起**重新設計造景與人物**：保留文本與遊戲框架，環境造景與人物都已清空。
+
+- **保留的文本**（`content/`）：`晨光廣場.json`（開場白、小禾的對話）、`resources.json`（求助資源，全部標註「待核對」）、
+  `陪伴小動物.json`（小動物台詞、今日心情溫度計）。
+- **保留的遊戲框架**：角色創建（選陪伴小動物、心情溫度計）、對話框與選項、「我需要幫忙」按鈕、灰霧與光點、
+  鍵盤與手機搖桿操控；3D 版另有 45 度鏡頭、光線與 `island.glb` 載入架構。
+- **暫時的樣子**：2D 版是 960 × 640 像素的空地，3D 版是 30 × 20 單位的空地；玩家、居民、小動物都用簡單的標記代表。
+- 刪除前的地圖、圖塊、角色與模型都還在 git 歷史裡（commit `76b4e4e`、`9e36a72` 之前）。
 
 ## 3D 試作版
 
-用 Three.js 做的 3D 版晨光廣場：本機開啟 <http://localhost:8000/3d.html>，線上版為 <https://blackcatk1989-byte.github.io/mental-health-town/3d.html>。
-沿用同一份 `content/` 內容與 `maps/` 的 Tiled 地圖，2D 版 `index.html` 不受影響。
-鏡頭可用 Q、E 或拖曳畫面旋轉；是否改用 3D 尚待兩位協作者決定。
+用 Three.js 做的 3D 版：本機開啟 <http://localhost:8000/3d.html>，線上版為 <https://blackcatk1989-byte.github.io/mental-health-town/3d.html>。
+與 2D 版 `index.html` 共用 `content/` 的文本。鏡頭可用 Q、E 或拖曳畫面旋轉；是否改用 3D 尚待兩位協作者決定。
 
 ### 鏡頭與光線
 
@@ -41,23 +46,17 @@ npx serve .
 
 ### 島嶼模型 island.glb（整座小鎮）
 
-把小鎮模型放在 `assets/models/island.glb`，3D 版就會改用它當外觀；沒有這個檔案時，照舊用 Tiled 地圖蓋出小鎮。
+把小鎮模型放在 `assets/models/island.glb`，3D 版就會改用它當外觀；沒有這個檔案時顯示空地。
 載入程式在 `src/three/island.js`，支援 Draco 壓縮。製作時請遵守：
 
-- **座標對齊 Tiled 地圖**：1 單位 = 1 格；地圖左上角在原點，往東為 +X、往南為 +Z（Blender 裡往南是 -Y，匯出時勾選 +Y Up）。
-- **地面高度 y = 0**。碰撞、角色與居民的出生點仍然讀 `maps/` 的 Tiled 地圖，所以房子、樹、水池的位置要和地圖上的障礙物格子一致。
+- **座標**：活動範圍是 30 × 20 單位（`src/three/world.js`），西北角在原點，往東為 +X、往南為 +Z（Blender 裡往南是 -Y，匯出時勾選 +Y Up）。
+- **地面高度 y = 0**。目前碰撞只有活動範圍的邊界，出生點寫在 `world.js`；造景重新設計時再一起決定障礙物與出生點要放在哪裡（例如回到 Tiled 地圖）。
 - 名稱以 `Water` 開頭的網格會有水面閃動效果；以 `NoShadow` 開頭的網格不投影。
 - 檔案建議 5 MB 以內（減面、貼圖 1024～2048、可用 Draco 壓縮），手機才載得動。
 - 外部或 AI 生成的模型，依 `AGENTS.md` 第 5 節在這裡註明來源與條款。
 
-### 3D 角色模型（待協作者建立）
+### 3D 角色（待重新設計）
 
-目前 3D 版的人物與小動物是簡單的佔位造型（膠囊身體＋圓頭、小圓球），寫在 `src/three/characters.js`。
-正式模型由協作者重新建立，替換時請保留：
-
-- `makePerson(look)`：`look` 有 `hairStyle`、`hairColor`、`outfit`、`skin`（顏色為 `#rrggbb` 字串），選項清單在 `src/art.js`。
-- `makePet(type)`：`type` 為 `cat`、`dog`、`hedgehog`、`otter`。
-- 兩者回傳的物件要有 `userData.body`（main.js 用它做呼吸與走路動畫），角色腳底在原點、面向 +Z、身高約 1.3。
-- 使用外部或 AI 生成的素材時，依 `AGENTS.md` 第 5 節在這裡註明來源、工具與條款連結。
-
-先前的模型與建模腳本已於 2026-10-29 刪除，需要參考時可從 git 歷史找回（commit `133b298` 之前的 `assets/models/`）。
+目前玩家、居民、小動物是 `src/three/characters.js` 的簡單標記（`makePlayerMarker`、`makeResidentMarker`、`makePetMarker`）。
+替換成正式角色時請保留：回傳的物件要有 `userData.body`（main.js 用它做呼吸與走路動畫），角色腳底在原點、面向 +Z、身高約 1.1～1.3。
+2D 版的標記在 `src/art.js` 的 `drawMarker`。

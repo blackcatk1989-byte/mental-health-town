@@ -33,17 +33,14 @@ npx serve .
 沿用同一份 `content/` 內容與 `maps/` 的 Tiled 地圖，2D 版 `index.html` 不受影響。
 鏡頭可用 Q、E 或拖曳畫面旋轉；是否改用 3D 尚待兩位協作者決定。
 
-### 3D 角色畫風
+### 3D 角色模型（待協作者建立）
 
-參考「いらすとや」（<https://www.irasutoya.com/>）的畫風自行建模，未使用其圖檔。
-若之後直接使用いらすとや的圖檔，需遵守其使用條款（<https://www.irasutoya.com/p/terms.html>）：商用作品最多 20 張、不可把素材本身當成主要商品，版權仍屬原作者。
+目前 3D 版的人物與小動物是簡單的佔位造型（膠囊身體＋圓頭、小圓球），寫在 `src/three/characters.js`。
+正式模型由協作者重新建立，替換時請保留：
 
-### 3D 模型（Blender）
+- `makePerson(look)`：`look` 有 `hairStyle`、`hairColor`、`outfit`、`skin`（顏色為 `#rrggbb` 字串），選項清單在 `src/art.js`。
+- `makePet(type)`：`type` 為 `cat`、`dog`、`hedgehog`、`otter`。
+- 兩者回傳的物件要有 `userData.body`（main.js 用它做呼吸與走路動畫），角色腳底在原點、面向 +Z、身高約 1.3。
+- 使用外部或 AI 生成的素材時，依 `AGENTS.md` 第 5 節在這裡註明來源、工具與條款連結。
 
-人物與小動物模型在 `assets/models/*.glb`，由 `assets/models/build_models.py` 用 Blender 產生。修改造型後重新產生：
-
-```bash
-"C:\Program Files\Blender Foundation\Blender 5.2\blender.exe" --background --python assets/models/build_models.py
-```
-
-加上 `-- --preview 預覽圖.png` 可另外渲染一張全部模型的預覽圖。遊戲依材質名稱上色、依 `Hair_` 物件名稱切換髮型，規則寫在腳本開頭。
+先前的模型與建模腳本已於 2026-10-29 刪除，需要參考時可從 git 歷史找回（commit `133b298` 之前的 `assets/models/`）。

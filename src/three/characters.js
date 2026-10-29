@@ -1,7 +1,9 @@
-// 3D 角色佔位造型：等協作者完成正式的人物與小動物模型後替換。
+// 3D 角色：玩家使用 assets/models/player.glb（見檔案最下方）；居民與小動物仍是佔位造型，
+// 等協作者完成正式模型後替換。
 // 人物＝膠囊身體＋圓頭，小動物＝小圓球；兩個小黑點標示臉朝的方向（+Z）。
 // main.js 會用 root.userData.body 做呼吸、走路的縮放動畫，替換時請保留這個結構。
 import * as THREE from 'three';
+import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 
 // 兩階光影，接近平塗插畫
 const gradientMap = (() => {
@@ -51,6 +53,29 @@ export function makePet(type) {
   root.add(body);
   body.add(part(sphereGeo, toon(PET_COLORS[type] ?? 0xcccccc), 0, 0.22, 0, 0.22));
   eyes(body, 0.27, 0.2, 0.07, 0.022);
+  root.userData.body = body;
+  return root;
+}
+
+// ---- 主要玩家角色：assets/models/player.glb（固定造型，不隨換裝選項改變）----
+let playerModel = null;
+
+export async function loadPlayerModel() {
+  try {
+    playerModel = (await new GLTFLoader().loadAsync('assets/models/player.glb')).scene;
+    playerModel.traverse((o) => { if (o.isMesh) o.castShadow = true; });
+  } catch (e) {
+    console.warn('player.glb 載入失敗，改用佔位造型', e);
+  }
+  return !!playerModel;
+}
+
+export function makePlayer(look) {
+  if (!playerModel) return makePerson(look);
+  const root = new THREE.Group();
+  const body = new THREE.Group();
+  root.add(body);
+  body.add(playerModel.clone(true));
   root.userData.body = body;
   return root;
 }

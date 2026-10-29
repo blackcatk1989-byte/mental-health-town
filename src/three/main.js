@@ -1,7 +1,7 @@
 // 3D 試作版主程式（Three.js）。內容與地圖沿用 content/ 與 maps/ 的 JSON。
 import * as THREE from 'three';
 import { HAIR_STYLES, HAIR_COLORS, OUTFITS, SKINS, COMPANIONS } from '../art.js';
-import { loadPlayerModel, makePerson, makePet, makePlayer } from './characters.js';
+import { makePerson, makePet } from './characters.js';
 import { buildWorld } from './world.js';
 import {
   Dialogue, makeLabel, setupCreatePanel, showPlayControls, setTalkHint, setupJoystick, setupRotateButtons, isTouch,
@@ -24,7 +24,6 @@ const MOODS = [
 
 const content = await fetch(`content/${ZONE}.json`).then((r) => r.json());
 const tiled = await fetch(content.map).then((r) => r.json());
-const hasPlayerModel = await loadPlayerModel();
 
 // ---- 場景、光線 ----
 const container = document.getElementById('scene');
@@ -146,7 +145,7 @@ let yaw = 0; // 0 = 面向鏡頭（+z）
 function rebuildCharacters(choice) {
   if (player) scene.remove(player);
   if (pet) scene.remove(pet);
-  player = makePlayer({
+  player = makePerson({
     hairStyle: HAIR_STYLES[choice.hairStyle ?? 0].id,
     hairColor: HAIR_COLORS[choice.hairColor ?? 0].id,
     outfit: OUTFITS[choice.outfit ?? 0].id,
@@ -175,15 +174,11 @@ const residents = content.residents.map((data) => {
 const dialogue = new Dialogue();
 let mode = 'create';
 let panel = null;
-// 有玩家模型時造型固定，只保留選擇陪伴小動物
-const appearanceRows = hasPlayerModel ? [] : [
+panel = setupCreatePanel([
   ['髮型', 'hairStyle', HAIR_STYLES],
   ['髮色', 'hairColor', HAIR_COLORS],
   ['服裝', 'outfit', OUTFITS],
   ['膚色', 'skin', SKINS, 1],
-];
-panel = setupCreatePanel([
-  ...appearanceRows,
   ['陪伴小動物', 'companion', COMPANIONS],
 ], MOODS, {
   onChange: (choice) => {

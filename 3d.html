@@ -18,6 +18,7 @@
     .pill.on { background: #f6d3c6; }
     .pill.primary { background: var(--accent); border-color: #fff; color: #fff; font-weight: bold; }
     .hidden { display: none !important; }
+    #loading { position: fixed; left: 50%; top: 50%; transform: translate(-50%, -50%); z-index: 30; font-size: 16px; }
 
     /* 「我需要幫忙」按鈕：依 AGENTS.md 第 5 節必須常駐，任何修改都不可移除 */
     #help-button { position: fixed; top: 12px; right: 12px; z-index: 1000; padding: 10px 16px;
@@ -91,13 +92,15 @@
   </style>
   <script type="importmap">
     { "imports": {
-      "three": "https://cdn.jsdelivr.net/npm/three@0.170.0/build/three.module.js"
+      "three": "https://cdn.jsdelivr.net/npm/three@0.170.0/build/three.module.js",
+      "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.170.0/examples/jsm/"
     } }
   </script>
 </head>
 <body>
   <div id="scene"></div>
   <div id="labels"></div>
+  <div id="loading" class="pill">小鎮載入中……</div>
 
   <section id="create">
     <h1>建立你的角色</h1>

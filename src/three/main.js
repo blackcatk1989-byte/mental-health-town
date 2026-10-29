@@ -3,11 +3,15 @@ import * as THREE from 'three';
 import { HAIR_STYLES, HAIR_COLORS, OUTFITS, SKINS, COMPANIONS } from '../art.js';
 import { makePerson, makePet } from './characters.js';
 import { buildWorld } from './world.js';
+import { CozyCamera } from './camera.js';
+import { setupLighting } from './lighting.js';
+import { animateWaters, loadIsland } from './island.js';
 import {
   Dialogue, makeLabel, setupCreatePanel, showPlayControls, setTalkHint, setupJoystick, setupRotateButtons, isTouch,
 } from './ui.js';
 
 const ZONE = '晨光廣場';
+const ISLAND_URL = 'assets/models/island.glb'; // 整座小鎮的 3D 模型；沒有這個檔案時用 Tiled 地圖蓋出小鎮
 const SPEED = 3;
 const RADIUS = 0.28;
 const TALK_DISTANCE = 1.7;
@@ -30,8 +34,6 @@ const container = document.getElementById('scene');
 const renderer = new THREE.WebGLRenderer({ antialias: true });
 renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
 renderer.setSize(innerWidth, innerHeight);
-renderer.shadowMap.enabled = true;
-renderer.shadowMap.type = THREE.PCFSoftShadowMap;
 container.append(renderer.domElement);
 
 const scene = new THREE.Scene();
@@ -39,19 +41,18 @@ const CLEAR_SKY = new THREE.Color(0xfbeee0);
 const FOG_SKY = new THREE.Color(0xdcd6d0);
 scene.background = FOG_SKY.clone();
 scene.fog = new THREE.Fog(FOG_SKY.clone(), 8, 26);
-const camera = new THREE.PerspectiveCamera(38, innerWidth / innerHeight, 0.1, 200);
+const cozy = new CozyCamera(innerWidth / innerHeight);
+const camera = cozy.camera;
+const lighting = setupLighting(renderer, scene);
 
+// Tiled 地圖提供碰撞與出生點；有 island.glb 時改用模型當外觀
 const world = buildWorld(scene, tiled);
-const center = new THREE.Vector3(world.width / 2, 0, world.height / 2);
-scene.add(new THREE.HemisphereLight(0xfff6ea, 0xc5d6b4, 2.2));
-const sun = new THREE.DirectionalLight(0xfff1dc, 1.6);
-sun.position.set(center.x + 8, 16, center.z + 10);
-sun.target.position.copy(center);
-sun.castShadow = true;
-sun.shadow.mapSize.set(2048, 2048);
-Object.assign(sun.shadow.camera, { left: -22, right: 22, top: 22, bottom: -22, near: 1, far: 60 });
-sun.shadow.bias = -0.0008;
-scene.add(sun, sun.target);
+const loadingEl = document.getElementById('loading');
+const island = await loadIsland(scene, ISLAND_URL, (ratio) => {
+  loadingEl.textContent = `小鎮載入中…… ${Math.round(ratio * 100)}%`;
+});
+if (island) world.visuals.visible = false;
+loadingEl.classList.add('hidden');
 
 // ---- 灰霧：去飽和（CSS filter）、霧氣距離、飄動的霧團與光點 ----
 let fogLevel = 1;
@@ -188,6 +189,7 @@ panel = setupCreatePanel([
   onMood: (m) => panel.say(m.reply),
   onStart: () => {
     mode = 'play';
+    cozy.mode = 'play';
     colorPreview = false;
     applyFog();
     showPlayControls();
@@ -206,23 +208,15 @@ function companionSay(text) {
   setTimeout(() => { el.remove(); if (bubble === el) bubble = null; }, 5000);
 }
 
-// 對話時鏡頭轉到主角斜後方，把兩個人都拍進畫面
-let talkFocus = null;
-let talkAzimuth = 0;
-const angleDiff = (a, b) => Math.atan2(Math.sin(a - b), Math.cos(a - b));
-
 function talk(r) {
   if (!r || !dialogue.canStart()) return;
   const dx = r.mesh.position.x - playerPos.x;
   const dz = r.mesh.position.z - playerPos.z;
   yaw = Math.atan2(dx, dz);
   r.mesh.rotation.y = Math.atan2(-dx, -dz);
-  talkFocus = new THREE.Vector3(playerPos.x + dx / 2, 0, playerPos.z + dz / 2);
-  // 從主角的斜後方看過去，看得到居民的正臉
-  const back = Math.atan2(-dx, -dz);
-  talkAzimuth = Math.abs(angleDiff(back + 1.3, azimuth)) < Math.abs(angleDiff(back - 1.3, azimuth)) ? back + 1.3 : back - 1.3;
+  cozy.startTalk(playerPos, r.mesh.position); // 對話時鏡頭轉到主角斜後方，把兩個人都拍進畫面
   dialogue.show(r.data.dialogue, () => {
-    talkFocus = null;
+    cozy.endTalk();
     if (r.talked) return;
     r.talked = true;
     r.heart.remove();
@@ -253,27 +247,26 @@ addEventListener('keydown', (e) => {
 addEventListener('keyup', (e) => keys.delete(e.code));
 addEventListener('blur', () => keys.clear());
 
-// 拖曳畫面旋轉鏡頭
-let azimuth = 0;
+// 拖曳畫面旋轉鏡頭、滾輪縮放
 let dragId = null;
 let dragX = 0;
 renderer.domElement.addEventListener('pointerdown', (e) => { if (mode === 'play') { dragId = e.pointerId; dragX = e.clientX; } });
 addEventListener('pointermove', (e) => {
   if (e.pointerId !== dragId) return;
-  azimuth -= (e.clientX - dragX) * 0.008;
+  cozy.rotate(-(e.clientX - dragX) * 0.008);
   dragX = e.clientX;
 });
 addEventListener('pointerup', (e) => { if (e.pointerId === dragId) dragId = null; });
+renderer.domElement.addEventListener('wheel', (e) => {
+  if (mode === 'play') cozy.zoomBy(e.deltaY * 0.01);
+}, { passive: true });
 
 addEventListener('resize', () => {
-  camera.aspect = innerWidth / innerHeight;
-  camera.updateProjectionMatrix();
+  cozy.setAspect(innerWidth / innerHeight);
   renderer.setSize(innerWidth, innerHeight);
 });
 
 // ---- 主迴圈 ----
-const camState = { dist: 3.4, polar: 1.25, height: 0.55, side: 0 };
-const camTarget = new THREE.Vector3();
 const tmp = new THREE.Vector3();
 const clock = new THREE.Clock();
 let lastNearName = undefined;
@@ -300,14 +293,15 @@ function frame() {
   if (mode === 'play' && !dialogue.open) {
     ix = (keys.has('ArrowRight') || keys.has('KeyD') ? 1 : 0) - (keys.has('ArrowLeft') || keys.has('KeyA') ? 1 : 0) + stick.x;
     iy = (keys.has('ArrowDown') || keys.has('KeyS') ? 1 : 0) - (keys.has('ArrowUp') || keys.has('KeyW') ? 1 : 0) + stick.y;
-    azimuth += ((keys.has('KeyQ') ? 1 : 0) - (keys.has('KeyE') ? 1 : 0) + rotateState.rotate) * dt * 1.8;
+    cozy.rotate(((keys.has('KeyQ') ? 1 : 0) - (keys.has('KeyE') ? 1 : 0) + rotateState.rotate) * dt * 1.8);
   }
   const len = Math.hypot(ix, iy);
   if (len > 1) { ix /= len; iy /= len; }
   const moving = len > 0.1;
   if (moving) {
-    const wx = ix * Math.cos(azimuth) + iy * Math.sin(azimuth);
-    const wz = -ix * Math.sin(azimuth) + iy * Math.cos(azimuth);
+    const az = cozy.azimuth;
+    const wx = ix * Math.cos(az) + iy * Math.sin(az);
+    const wz = -ix * Math.sin(az) + iy * Math.cos(az);
     const nx = playerPos.x + wx * SPEED * dt;
     const nz = playerPos.z + wz * SPEED * dt;
     if (!blocked(nx, playerPos.z)) playerPos.x = nx;
@@ -392,28 +386,10 @@ function frame() {
     if (burstTime <= 0) burst.visible = false;
   }
 
-  // 鏡頭：創建畫面時拉近看角色，出發後退到俯視角
-  const play = mode === 'play';
-  const wide = innerWidth > 700;
-  const k = Math.min(1, dt * 2.5);
-  const talking = play && dialogue.open && talkFocus;
-  if (talking) azimuth += angleDiff(talkAzimuth, azimuth) * k;
-  const focus = talking ? talkFocus : playerPos;
-  // 直式螢幕視野較窄，鏡頭拉遠一點
-  const narrow = Math.max(1, 1 / camera.aspect);
-  const createDist = 3.4 * Math.min(2, Math.max(1, 0.95 / camera.aspect));
-  camState.dist += ((talking ? 5 * Math.sqrt(narrow) : play ? 10 * Math.sqrt(narrow) * 0.85 : createDist) - camState.dist) * k;
-  camState.polar += ((talking ? 1.2 : play ? 0.92 : 1.25) - camState.polar) * k;
-  camState.height += ((play ? 0.5 : 0.6) - camState.height) * k;
-  camState.side += ((play || !wide ? 0 : 0.85) - camState.side) * k;
-  const lift = !play && !wide ? 1.25 : 0; // 手機：角色往畫面上方，讓出下方的面板
-  camTarget.set(focus.x + Math.cos(azimuth) * camState.side, camState.height - lift, focus.z - Math.sin(azimuth) * camState.side);
-  camera.position.set(
-    camTarget.x + Math.sin(azimuth) * Math.sin(camState.polar) * camState.dist,
-    camTarget.y + Math.cos(camState.polar) * camState.dist,
-    camTarget.z + Math.cos(azimuth) * Math.sin(camState.polar) * camState.dist,
-  );
-  camera.lookAt(camTarget);
+  // 鏡頭與陽光跟著角色；有島嶼模型時讓水面閃動
+  cozy.update(dt, playerPos, { wide: innerWidth > 700 });
+  lighting.follow(cozy.target);
+  if (island) animateWaters(island.waters, t);
 
   // 頭上的名牌、愛心、對話泡泡
   for (const r of residents) {

@@ -27,6 +27,10 @@ function instanced(scene, geo, mat, list, { shadow = true, outline = 0 } = {}) {
 }
 
 export function buildWorld(scene, tiled) {
+  // 所有看得到的物件放進 visuals；載入 island.glb 後會把它隱藏，只保留碰撞與出生點
+  const visuals = new THREE.Group();
+  visuals.name = 'tiled-visuals';
+  scene.add(visuals);
   const W = tiled.width;
   const H = tiled.height;
   const layer = (name) => tiled.layers.find((l) => l.name === name);
@@ -40,7 +44,7 @@ export function buildWorld(scene, tiled) {
   grass.rotation.x = -Math.PI / 2;
   grass.position.set(W / 2, 0, H / 2);
   grass.receiveShadow = true;
-  scene.add(grass);
+  visuals.add(grass);
 
   const box = new THREE.BoxGeometry(1, 1, 1);
   const sphere = new THREE.SphereGeometry(1, 20, 14);
@@ -84,16 +88,16 @@ export function buildWorld(scene, tiled) {
     }
   }
 
-  instanced(scene, box, toon(0xe8d3b0), lists.path, { shadow: false });
-  instanced(scene, box, toon(0xffffff), lists.stone, { shadow: false });
-  instanced(scene, sphere, toon(0xffffff), lists.flowerPetal, { shadow: false });
-  instanced(scene, sphere, toon(0xf6c96b), lists.flowerCenter, { shadow: false });
-  instanced(scene, new THREE.CylinderGeometry(1, 1.2, 2, 12), toon(0xc9a07c), lists.trunk);
-  instanced(scene, sphere, toon(0xffffff), lists.canopy, { outline: 0.03 });
-  instanced(scene, sphere, toon(0xf4a3a0), lists.fruit, { shadow: false });
+  instanced(visuals, box, toon(0xe8d3b0), lists.path, { shadow: false });
+  instanced(visuals, box, toon(0xffffff), lists.stone, { shadow: false });
+  instanced(visuals, sphere, toon(0xffffff), lists.flowerPetal, { shadow: false });
+  instanced(visuals, sphere, toon(0xf6c96b), lists.flowerCenter, { shadow: false });
+  instanced(visuals, new THREE.CylinderGeometry(1, 1.2, 2, 12), toon(0xc9a07c), lists.trunk);
+  instanced(visuals, sphere, toon(0xffffff), lists.canopy, { outline: 0.03 });
+  instanced(visuals, sphere, toon(0xf4a3a0), lists.fruit, { shadow: false });
 
-  buildFountain(scene, ground, W, H);
-  buildHouses(scene, obst, W, H);
+  buildFountain(visuals, ground, W, H);
+  buildHouses(visuals, obst, W, H);
 
   const spawns = {};
   for (const o of layer('spawns').objects) spawns[o.name] = { x: o.x / tiled.tilewidth, z: o.y / tiled.tileheight };
@@ -107,7 +111,7 @@ export function buildWorld(scene, tiled) {
     }
     return false;
   };
-  return { width: W, height: H, spawns, blocked };
+  return { width: W, height: H, spawns, blocked, visuals };
 }
 
 function buildFountain(scene, ground, W, H) {

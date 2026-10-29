@@ -1,6 +1,5 @@
-// 3D 角色佔位造型：等協作者完成正式的人物與小動物模型後替換。
-// 人物＝膠囊身體＋圓頭，小動物＝小圓球；兩個小黑點標示臉朝的方向（+Z）。
-// main.js 會用 root.userData.body 做呼吸、走路的縮放動畫，替換時請保留這個結構。
+// 3D 人物已清空，等重新設計；暫時用簡單的標記代表玩家、居民與陪伴小動物。
+// 標記前方的小圓錐指出面對的方向（+Z）。main.js 會用 root.userData.body 做呼吸、走路的動畫，替換時請保留這個結構。
 import * as THREE from 'three';
 
 // 兩階光影，接近平塗插畫
@@ -16,42 +15,21 @@ export function toon(hex) {
   return new THREE.MeshToonMaterial({ color: hex, gradientMap });
 }
 
-export const OUTLINE_MAT = new THREE.MeshBasicMaterial({ color: 0x4f3c33, side: THREE.BackSide });
-const EYE = new THREE.MeshBasicMaterial({ color: 0x2f2622 });
-const sphereGeo = new THREE.SphereGeometry(1, 24, 16);
-
-function part(geo, mat, x, y, z, scale = 1) {
-  const m = new THREE.Mesh(geo, mat);
-  m.position.set(x, y, z);
-  m.scale.setScalar(scale);
-  m.castShadow = true;
-  return m;
-}
-
-function eyes(body, y, z, spread, size) {
-  body.add(part(sphereGeo, EYE, -spread, y, z, size), part(sphereGeo, EYE, spread, y, z, size));
-}
-
-export function makePerson(look) {
+function marker(color, radius, height) {
   const root = new THREE.Group();
   const body = new THREE.Group();
   root.add(body);
-  body.add(part(new THREE.CapsuleGeometry(0.22, 0.3, 8, 16), toon(look.outfit), 0, 0.4, 0));
-  body.add(part(sphereGeo, toon(look.skin), 0, 0.92, 0, 0.3));
-  eyes(body, 0.94, 0.28, 0.1, 0.03);
+  const capsule = new THREE.Mesh(new THREE.CapsuleGeometry(radius, height - radius * 2, 6, 16), toon(color));
+  capsule.position.y = height / 2;
+  const nose = new THREE.Mesh(new THREE.ConeGeometry(radius * 0.35, radius * 0.8, 12), toon(0xfffaf3));
+  nose.rotation.x = Math.PI / 2;
+  nose.position.set(0, height * 0.7, radius * 1.1);
+  for (const m of [capsule, nose]) m.castShadow = true;
+  body.add(capsule, nose);
   root.userData.body = body;
   return root;
 }
 
-const PET_COLORS = { cat: 0xf3b56e, dog: 0xe9a25b, hedgehog: 0x8d6a52, otter: 0xa47450 };
-
-export function makePet(type) {
-  const root = new THREE.Group();
-  const body = new THREE.Group();
-  root.add(body);
-  body.add(part(sphereGeo, toon(PET_COLORS[type] ?? 0xcccccc), 0, 0.22, 0, 0.22));
-  eyes(body, 0.27, 0.2, 0.07, 0.022);
-  root.userData.body = body;
-  return root;
-}
-
+export const makePlayerMarker = () => marker(0xe8a08a, 0.25, 1.1);
+export const makeResidentMarker = () => marker(0x9bb7a5, 0.25, 1.1);
+export const makePetMarker = () => marker(0xf3d29b, 0.16, 0.4);

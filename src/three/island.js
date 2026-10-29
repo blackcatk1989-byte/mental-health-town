@@ -1,9 +1,9 @@
 // 載入整座小鎮的 3D 模型（assets/models/island.glb）。
-// 檔案不存在或載入失敗時回傳 null，main.js 就繼續使用由 Tiled 地圖蓋出來的小鎮。
+// 檔案不存在或載入失敗時回傳 null，main.js 就繼續使用 world.js 的空地。
 //
 // island.glb 製作約定（詳見 README「島嶼模型 island.glb」）：
-// - 1 單位 = Tiled 地圖的 1 格；地圖左上角在原點，+X 往東、+Z 往南（Blender 匯出時勾選 +Y Up）。
-// - 地面高度 y = 0；碰撞與角色出生點仍讀 Tiled 地圖，模型只負責外觀。
+// - 活動範圍為 world.js 的 30 × 20 單位，西北角在原點，+X 往東、+Z 往南（Blender 匯出時勾選 +Y Up）。
+// - 地面高度 y = 0；碰撞與出生點目前由 world.js 提供，模型只負責外觀。
 // - 名稱以 Water 開頭的網格會自動有水面波光；以 NoShadow 開頭的網格不投影。
 import * as THREE from 'three';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
@@ -37,7 +37,7 @@ async function exists(url) {
  */
 export async function loadIsland(scene, url, onProgress) {
   if (!(await exists(url))) {
-    console.info(`沒有找到 ${url}，使用 Tiled 地圖蓋出的小鎮`);
+    console.info(`沒有找到 ${url}，使用空地`);
     return null;
   }
   try {
@@ -60,7 +60,7 @@ export async function loadIsland(scene, url, onProgress) {
     scene.add(root);
     return { root, waters };
   } catch (e) {
-    console.warn(`${url} 載入失敗，使用 Tiled 地圖蓋出的小鎮`, e);
+    console.warn(`${url} 載入失敗，使用空地`, e);
     return null;
   }
 }

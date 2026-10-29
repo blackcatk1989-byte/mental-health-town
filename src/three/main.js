@@ -1,7 +1,7 @@
-// 3D 試作版主程式（Three.js）。內容與地圖沿用 content/ 與 maps/ 的 JSON。
+// 3D 試作版主程式（Three.js）。內容讀 content/ 的 JSON；造景與人物已清空，暫用空地與標記。
 import * as THREE from 'three';
-import { HAIR_STYLES, HAIR_COLORS, OUTFITS, SKINS, COMPANIONS } from '../art.js';
-import { makePerson, makePet } from './characters.js';
+import { COMPANIONS } from '../art.js';
+import { makePetMarker, makePlayerMarker, makeResidentMarker } from './characters.js';
 import { buildWorld } from './world.js';
 import { CozyCamera } from './camera.js';
 import { setupLighting } from './lighting.js';
@@ -11,7 +11,7 @@ import {
 } from './ui.js';
 
 const ZONE = '晨光廣場';
-const ISLAND_URL = 'assets/models/island.glb'; // 整座小鎮的 3D 模型；沒有這個檔案時用 Tiled 地圖蓋出小鎮
+const ISLAND_URL = 'assets/models/island.glb'; // 整座小鎮的 3D 模型；沒有這個檔案時用 world.js 的空地
 const SPEED = 3;
 const RADIUS = 0.28;
 const TALK_DISTANCE = 1.7;
@@ -21,7 +21,6 @@ const content = await fetch(`content/${ZONE}.json`).then((r) => r.json());
 // 陪伴小動物的台詞與心情溫度計（與 2D 版共用）
 const lines = await fetch('content/陪伴小動物.json').then((r) => r.json());
 const greeting = () => lines.greeting.replace('{animal}', petInfo.label);
-const tiled = await fetch(content.map).then((r) => r.json());
 
 // ---- 場景、光線 ----
 const container = document.getElementById('scene');
@@ -39,8 +38,8 @@ const cozy = new CozyCamera(innerWidth / innerHeight);
 const camera = cozy.camera;
 const lighting = setupLighting(renderer, scene);
 
-// Tiled 地圖提供碰撞與出生點；有 island.glb 時改用模型當外觀
-const world = buildWorld(scene, tiled);
+// 空地提供活動範圍與出生點；有 island.glb 時改用模型當外觀
+const world = buildWorld(scene, { residents: content.residents });
 const loadingEl = document.getElementById('loading');
 const island = await loadIsland(scene, ISLAND_URL, (ratio) => {
   loadingEl.textContent = `小鎮載入中…… ${Math.round(ratio * 100)}%`;
@@ -140,14 +139,9 @@ let yaw = 0; // 0 = 面向鏡頭（+z）
 function rebuildCharacters(choice) {
   if (player) scene.remove(player);
   if (pet) scene.remove(pet);
-  player = makePerson({
-    hairStyle: HAIR_STYLES[choice.hairStyle ?? 0].id,
-    hairColor: HAIR_COLORS[choice.hairColor ?? 0].id,
-    outfit: OUTFITS[choice.outfit ?? 0].id,
-    skin: SKINS[choice.skin ?? 1].id,
-  });
+  player = makePlayerMarker();
   petInfo = COMPANIONS[choice.companion];
-  pet = makePet(petInfo.id);
+  pet = makePetMarker();
   player.position.copy(playerPos);
   pet.position.set(playerPos.x - 0.75, 0, playerPos.z + 0.3);
   scene.add(player, pet);
@@ -155,7 +149,7 @@ function rebuildCharacters(choice) {
 
 const residents = content.residents.map((data) => {
   const sp = world.spawns[data.id];
-  const mesh = makePerson(data.appearance);
+  const mesh = makeResidentMarker();
   mesh.position.set(sp.x, 0, sp.z);
   scene.add(mesh);
   return {
@@ -170,10 +164,6 @@ const dialogue = new Dialogue();
 let mode = 'create';
 let panel = null;
 panel = setupCreatePanel([
-  ['髮型', 'hairStyle', HAIR_STYLES],
-  ['髮色', 'hairColor', HAIR_COLORS],
-  ['服裝', 'outfit', OUTFITS],
-  ['膚色', 'skin', SKINS, 1],
   ['陪伴小動物', 'companion', COMPANIONS],
 ], lines.moods, {
   onChange: (choice) => {

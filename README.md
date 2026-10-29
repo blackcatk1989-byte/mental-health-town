@@ -1,6 +1,8 @@
 # 心理健康衛教小鎮（名稱未定）
 
-一款心理健康衛教網頁遊戲。協作規則請見 [AGENTS.md](AGENTS.md)。
+一款心理健康衛教 3D 網頁遊戲（Three.js）。協作規則請見 [AGENTS.md](AGENTS.md)。
+
+線上版：<https://blackcatk1989-byte.github.io/mental-health-town/>
 
 ## 本機執行
 
@@ -18,8 +20,8 @@ npx serve .
 
 ## 操作
 
-- 方向鍵或 WASD 移動，靠近居民後按空白鍵對話
-- 手機：左下角虛擬搖桿移動，右下角「對話」按鈕
+- 方向鍵或 WASD 移動，靠近居民後按空白鍵對話；Q、E 或拖曳畫面旋轉鏡頭，滾輪縮放
+- 手機：左下角虛擬搖桿移動，右下角「對話」按鈕與旋轉鏡頭按鈕
 - 右上角「我需要幫忙」隨時可開啟求助專線
 
 ## 目前狀態
@@ -29,14 +31,14 @@ npx serve .
 - **保留的文本**（`content/`）：`晨光廣場.json`（開場白、小禾的對話）、`resources.json`（求助資源，全部標註「待核對」）、
   `陪伴小動物.json`（小動物台詞、今日心情溫度計）。
 - **保留的遊戲框架**：角色創建（選陪伴小動物、心情溫度計）、對話框與選項、「我需要幫忙」按鈕、灰霧與光點、
-  鍵盤與手機搖桿操控；3D 版另有 45 度鏡頭、光線與 `island.glb` 載入架構。
-- **暫時的樣子**：2D 版是 960 × 640 像素的空地，3D 版是 30 × 20 單位的空地；玩家、居民、小動物都用簡單的標記代表。
-- 刪除前的地圖、圖塊、角色與模型都還在 git 歷史裡（commit `76b4e4e`、`9e36a72` 之前）。
+  鍵盤與手機搖桿操控、45 度鏡頭、光線與 `island.glb` 載入架構。
+- **暫時的樣子**：30 × 20 單位的空地；玩家、居民、小動物都用簡單的標記代表。
+- 2D 版（Phaser）已於 2026-10-29 刪除，只保留 3D 版。
+- 刪除前的 2D 版、地圖、圖塊、角色與模型都還在 git 歷史裡（commit `76b4e4e`、`9e36a72`、`e93c41c` 之前）。
 
-## 3D 試作版
+## 3D 遊戲架構
 
-用 Three.js 做的 3D 版：本機開啟 <http://localhost:8000/3d.html>，線上版為 <https://blackcatk1989-byte.github.io/mental-health-town/3d.html>。
-與 2D 版 `index.html` 共用 `content/` 的文本。鏡頭可用 Q、E 或拖曳畫面旋轉；是否改用 3D 尚待兩位協作者決定。
+程式都在 `src/three/`，Three.js 透過 CDN 載入，不需要建置工具。舊網址 `3d.html` 會自動轉到首頁。
 
 ### 鏡頭與光線
 
@@ -59,4 +61,3 @@ npx serve .
 
 目前玩家、居民、小動物是 `src/three/characters.js` 的簡單標記（`makePlayerMarker`、`makeResidentMarker`、`makePetMarker`）。
 替換成正式角色時請保留：回傳的物件要有 `userData.body`（main.js 用它做呼吸與走路動畫），角色腳底在原點、面向 +Z、身高約 1.1～1.3。
-2D 版的標記在 `src/art.js` 的 `drawMarker`。

@@ -17,16 +17,10 @@ const RADIUS = 0.28;
 const TALK_DISTANCE = 1.7;
 const REST_REMINDER_MS = 15 * 60 * 1000;
 
-// 今日心情溫度計：只是互動，不儲存、不評分（與 2D 版 CreateScene 相同）
-const MOODS = [
-  { label: '有點冷', reply: '今天有點冷啊。那我們慢慢走就好，不用急。' },
-  { label: '涼涼的', reply: '涼涼的也沒關係，我會陪著你。' },
-  { label: '普通', reply: '普普通通的一天，也是很好的一天。' },
-  { label: '暖暖的', reply: '暖暖的呀，真好。一起去看看小鎮吧！' },
-  { label: '很溫暖', reply: '你的溫暖，說不定也能分一點給小鎮呢。' },
-];
-
 const content = await fetch(`content/${ZONE}.json`).then((r) => r.json());
+// 陪伴小動物的台詞與心情溫度計（與 2D 版共用）
+const lines = await fetch('content/陪伴小動物.json').then((r) => r.json());
+const greeting = () => lines.greeting.replace('{animal}', petInfo.label);
 const tiled = await fetch(content.map).then((r) => r.json());
 
 // ---- 場景、光線 ----
@@ -181,10 +175,10 @@ panel = setupCreatePanel([
   ['服裝', 'outfit', OUTFITS],
   ['膚色', 'skin', SKINS, 1],
   ['陪伴小動物', 'companion', COMPANIONS],
-], MOODS, {
+], lines.moods, {
   onChange: (choice) => {
     rebuildCharacters(choice);
-    panel?.say(`我是你的${petInfo.label}夥伴，會陪你逛小鎮，也會提醒你休息喔。`);
+    panel?.say(greeting());
   },
   onMood: (m) => panel.say(m.reply),
   onStart: () => {
@@ -194,10 +188,10 @@ panel = setupCreatePanel([
     applyFog();
     showPlayControls();
     dialogue.show([{ speaker: petInfo.label, text: content.intro }]);
-    setInterval(() => companionSay('玩一陣子了，要不要起來伸展一下、喝口水？'), REST_REMINDER_MS);
+    setInterval(() => companionSay(lines.restReminder), REST_REMINDER_MS);
   },
 });
-panel.say(`我是你的${petInfo.label}夥伴，會陪你逛小鎮，也會提醒你休息喔。`);
+panel.say(greeting());
 
 let bubble = null;
 function companionSay(text) {
@@ -222,7 +216,7 @@ function talk(r) {
     r.heart.remove();
     sparkleAt(r.mesh.position);
     clearFog(r.data.fogReduction ?? 0.3);
-    setTimeout(() => companionSay('你看，廣場的顏色回來了一些。'), 1500);
+    setTimeout(() => companionSay(lines.fogCleared), 1500);
   });
 }
 

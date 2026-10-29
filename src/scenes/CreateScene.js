@@ -3,21 +3,13 @@ import {
   drawCharacter, drawCompanion, makeButton, TEXT_STYLE,
 } from '../art.js';
 
-// 今日心情溫度計：只是互動，不儲存、不評分
-const MOODS = [
-  { label: '有點冷', reply: '今天有點冷啊。那我們慢慢走就好，不用急。' },
-  { label: '涼涼的', reply: '涼涼的也沒關係，我會陪著你。' },
-  { label: '普通', reply: '普普通通的一天，也是很好的一天。' },
-  { label: '暖暖的', reply: '暖暖的呀，真好。一起去看看小鎮吧！' },
-  { label: '很溫暖', reply: '你的溫暖，說不定也能分一點給小鎮呢。' },
-];
-
 export default class CreateScene extends Phaser.Scene {
   constructor() { super('Create'); }
 
   create() {
     this.choice = { hairStyle: 0, hairColor: 0, outfit: 0, skin: 1, companion: 0 };
     this.mood = null;
+    this.lines = this.cache.json.get('companion-lines'); // 台詞與心情溫度計（content/陪伴小動物.json）
 
     // 柔和的背景光點
     [[90, 80, 70, 0xf6cfc6], [720, 70, 50, 0xd7e8c8], [760, 560, 80, 0xf8e3b0], [40, 540, 60, 0xd9e6ef], [400, 590, 40, 0xe9dcf2]]
@@ -61,7 +53,7 @@ export default class CreateScene extends Phaser.Scene {
     });
 
     this.add.text(410, 395, '今日心情溫度計（可略過，不會儲存）', { ...TEXT_STYLE, fontSize: '16px' }).setOrigin(0, 0.5);
-    this.moodButtons = MOODS.map((m, i) => makeButton(this, 448 + i * 72, 440, m.label, () => {
+    this.moodButtons = this.lines.moods.map((m, i) => makeButton(this, 448 + i * 72, 440, m.label, () => {
       this.mood = i;
       this.moodButtons.forEach((b, j) => b.setFill(j === i ? '#f6d3c6' : '#fffaf3'));
       this.petSay.setText(m.reply);
@@ -89,7 +81,7 @@ export default class CreateScene extends Phaser.Scene {
     drawCompanion(this, 'pet-preview', COMPANIONS[this.choice.companion].id);
     this.preview.setTexture('player-preview');
     this.petPreview.setTexture('pet-preview');
-    if (this.mood === null) this.petSay.setText(`我是你的${COMPANIONS[this.choice.companion].label}夥伴，會陪你逛小鎮，也會提醒你休息喔。`);
+    if (this.mood === null) this.petSay.setText(this.lines.greeting.replace('{animal}', COMPANIONS[this.choice.companion].label));
   }
 
   start() {

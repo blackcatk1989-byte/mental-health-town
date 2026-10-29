@@ -15,6 +15,7 @@ export default class TownScene extends Phaser.Scene {
   create() {
     this.content = this.cache.json.get(`content:${this.zone}`);
     this.companionInfo = this.registry.get('companion');
+    this.lines = this.cache.json.get('companion-lines');
 
     // ---- 地圖 ----
     const map = this.make.tilemap({ key: `map:${this.zone}` });
@@ -89,7 +90,7 @@ export default class TownScene extends Phaser.Scene {
     // 陪伴小動物提醒休息
     this.time.addEvent({
       delay: REST_REMINDER_MS, loop: true,
-      callback: () => this.companionSay('玩一陣子了，要不要起來伸展一下、喝口水？'),
+      callback: () => this.companionSay(this.lines.restReminder),
     });
   }
 
@@ -141,7 +142,7 @@ export default class TownScene extends Phaser.Scene {
       resident.marker.destroy();
       this.burst.explode(40, resident.sprite.x, resident.sprite.y - 10);
       this.clearFog(resident.data.fogReduction ?? 0.3);
-      this.time.delayedCall(1200, () => this.companionSay('你看，廣場的顏色回來了一些。'));
+      this.time.delayedCall(1200, () => this.companionSay(this.lines.fogCleared));
     });
   }
 

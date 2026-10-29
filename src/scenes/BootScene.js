@@ -10,6 +10,7 @@ export default class BootScene extends Phaser.Scene {
     this.add.text(400, 300, '小鎮甦醒中……', { ...TEXT_STYLE, fontSize: '20px' }).setOrigin(0.5);
     this.load.image('tiles', 'assets/images/placeholder-tiles.png');
     for (const zone of ZONES) this.load.json(`content:${zone}`, `content/${zone}.json`);
+    this.load.json('companion-lines', 'content/陪伴小動物.json');
   }
 
   create() {

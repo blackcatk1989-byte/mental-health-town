@@ -1,4 +1,4 @@
-// 溫馨的午後光線：暖色天光＋地面反光、斜斜的暖陽（柔和陰影）、一點冷色補光讓暗部不死黑。
+// 溫暖的日光：暖色天光＋地面反光、斜斜的暖陽（柔和陰影）、一點冷色補光讓暗部不死黑。
 // 陽光的陰影範圍跟著鏡頭目標移動，陰影才會清楚又不用很大的陰影貼圖。
 import * as THREE from 'three';
 
@@ -32,6 +32,14 @@ export function setupLighting(renderer, scene) {
     follow(target) {
       sun.target.position.copy(target);
       sun.position.copy(target).add(SUN_OFFSET);
+    },
+    // 省電畫質：關閉陰影
+    setQuality(quality) {
+      const on = quality !== 'low';
+      if (sun.castShadow === on) return;
+      sun.castShadow = on;
+      renderer.shadowMap.enabled = on;
+      scene.traverse((o) => { if (o.material) o.material.needsUpdate = true; });
     },
   };
 }

@@ -1,0 +1,91 @@
+{
+  "_說明": "晴隅小鎮的區域與可互動物件。座標單位約 1 公尺，西北角在原點，+X 往東、+Z 往南（與 src/three/world.js 的地圖一致）。talk 依序比對 when 條件，用第一個符合的對話。cardTarget 為 true 的物件會出現「使用理解卡」按鈕。",
+  "town": "晴隅小鎮",
+  "areas": [
+    {
+      "id": "plaza",
+      "name": "小廣場",
+      "description": "鋪著淺色石板的小廣場，中間有座花台，旁邊立著社區資源告示牌。往西是咖啡店，往東是小花園。",
+      "spawn": { "x": 18, "z": 17 }
+    },
+    {
+      "id": "cafe",
+      "name": "咖啡店外",
+      "description": "咖啡店的遮陽棚下擺著幾張小桌椅，窗台上放著盆栽，門口有一個公告架。",
+      "spawn": { "x": 9, "z": 15 }
+    },
+    {
+      "id": "garden",
+      "name": "小花園",
+      "description": "矮籬笆圍著的社區花園，有花圃、薄荷盆栽、一串風鈴和一張木頭長椅。",
+      "spawn": { "x": 26.5, "z": 12 }
+    }
+  ],
+  "objects": [
+    {
+      "id": "board",
+      "name": "社區資源告示牌",
+      "area": "plaza",
+      "x": 18, "z": 9.6,
+      "talk": [
+        { "when": { "step": ["arrive"] }, "dialogue": "board.arrive" },
+        { "dialogue": "board.default" }
+      ]
+    },
+    {
+      "id": "note",
+      "name": "活動便條",
+      "area": "cafe",
+      "x": 8.6, "z": 12.6,
+      "talk": [
+        { "when": { "step": ["arrive", "meetMuyu"] }, "dialogue": "note.early" },
+        { "when": { "step": ["thought"] }, "dialogue": "note.open" },
+        { "dialogue": "note.after" }
+      ]
+    },
+    {
+      "id": "chime",
+      "name": "風鈴",
+      "area": "garden",
+      "x": 27.4, "z": 15.2,
+      "talk": [
+        { "when": { "step": ["present"] }, "dialogue": "chime.present" },
+        { "when": { "stepFrom": "arrange" }, "dialogue": "chime.after" },
+        { "dialogue": "chime.default" }
+      ]
+    },
+    {
+      "id": "bench",
+      "name": "花園長椅",
+      "area": "garden",
+      "x": 31.5, "z": 12.8,
+      "cardTarget": true,
+      "notApplicable": "你看了看長椅和旁邊的空地。這張卡的想法很好，只是好像不是在這裡用的。",
+      "talk": [
+        { "when": { "step": ["arrange"] }, "dialogue": "bench.arrange" },
+        { "when": { "stepFrom": "wrap" }, "dialogue": "bench.after" },
+        { "dialogue": "bench.default" }
+      ],
+      "arrangement": {
+        "spots": [
+          { "id": "shade", "label": "樹蔭下", "note": "靠近大樹，比較涼。", "x": 33.6, "z": 11.2 },
+          { "id": "trellis", "label": "花架旁", "note": "看得到花架上的小花。", "x": 32.6, "z": 14.8 },
+          { "id": "path", "label": "步道邊", "note": "離入口近，想走就走。", "x": 29.8, "z": 11.0 }
+        ],
+        "signs": [
+          "歡迎坐一下，不聊天也沒關係",
+          "想停多久就停多久",
+          "這裡可以安靜一下"
+        ],
+        "onFirstComplete": [
+          { "advance": { "from": ["arrange"], "to": "wrap", "then": [{ "dialogue": "arrange.after" }] } }
+        ],
+        "quiet": {
+          "card": "E01",
+          "label": "安靜座位配置",
+          "note": "多放一張面向花圃的單人椅，和主位置隔開一點，給想一個人待著的人。"
+        }
+      }
+    }
+  ]
+}

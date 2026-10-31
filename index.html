@@ -1,94 +1,205 @@
 <!doctype html>
-<html lang="zh-Hant-TW">
+<html lang="zh-Hant-TW" data-text-size="m">
 <head>
   <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
-  <title>心理健康衛教小鎮（名稱未定）</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="description" content="心之間：在溫暖的小鎮裡，透過相遇、探索與練習，多理解自己與別人一點。心理健康衛教 3D 網頁 RPG 原型。">
+  <title>心之間</title>
   <style>
-    :root { --ink: #5a4a42; --paper: #fffaf3; --accent: #e8a08a; --line: #f0c9b8; }
-    html, body { margin: 0; height: 100%; overflow: hidden; background: #f6efe4; color: var(--ink);
-      font-family: "PingFang TC", "Microsoft JhengHei", "Noto Sans TC", sans-serif;
-      -webkit-user-select: none; user-select: none; touch-action: none; }
-    #scene { position: fixed; inset: 0; transition: filter .3s; }
-    #scene canvas { display: block; }
-    button { font: inherit; color: inherit; cursor: pointer; }
-    .pill { background: var(--paper); border: 2px solid var(--line); border-radius: 999px;
-      box-shadow: 0 3px 0 rgba(138, 111, 96, .15); padding: 6px 16px; transition: transform .12s; }
-    .pill:hover { transform: scale(1.05); }
-    .pill.on { background: #f6d3c6; }
-    .pill.primary { background: var(--accent); border-color: #fff; color: #fff; font-weight: bold; }
-    .hidden { display: none !important; }
-    #loading { position: fixed; left: 50%; top: 50%; transform: translate(-50%, -50%); z-index: 30; font-size: 16px; }
-
-    /* 「我需要幫忙」按鈕：依 AGENTS.md 第 5 節必須常駐，任何修改都不可移除 */
-    #help-button { position: fixed; top: 12px; right: 12px; z-index: 1000; padding: 10px 16px;
-      border: 2px solid #fff; border-radius: 999px; background: #c98a6b; color: #fff;
-      font-size: 16px; font-weight: bold; box-shadow: 0 2px 8px rgba(0,0,0,.2); }
-    #help-button:focus-visible { outline: 3px solid #4a3f38; }
-    #help-dialog { max-width: min(520px, 92vw); max-height: 85vh; border: none; border-radius: 20px;
-      padding: 20px 22px; background: var(--paper); color: var(--ink); box-shadow: 0 8px 30px rgba(0,0,0,.25); }
-    #help-dialog::backdrop { background: rgba(60, 50, 44, .45); }
-    #help-dialog h2 { margin: 0 0 8px; font-size: 20px; }
-    #help-dialog .emergency { background: #f6e1d6; border-radius: 12px; padding: 10px 12px; margin: 8px 0 14px; }
-    #help-dialog ul { list-style: none; padding: 0; margin: 0; }
-    #help-dialog li { border-bottom: 1px solid #efe2d4; padding: 10px 0; }
-    #help-dialog .phone { font-size: 22px; font-weight: bold; color: #c98a6b; text-decoration: none; }
-    #help-dialog .meta { font-size: 13px; opacity: .75; }
-    #help-dialog .pending { font-size: 12px; background: #efe2b8; border-radius: 4px; padding: 1px 6px; margin-left: 6px; }
-    #help-close { margin-top: 14px; width: 100%; padding: 10px; border: none; border-radius: 12px;
-      background: var(--ink); color: #fff; font-size: 16px; }
-
-    /* 角色創建 */
-    #create { position: fixed; right: 24px; top: 50%; transform: translateY(-50%); width: min(360px, calc(100vw - 32px));
-      background: rgba(255, 250, 243, .94); border: 3px solid var(--line); border-radius: 28px; padding: 18px 20px; z-index: 10;
-      box-sizing: border-box; max-height: calc(100vh - 24px); overflow: auto; }
-    #create h1 { margin: 0 0 12px; font-size: 24px; text-align: center; }
-    .row { display: flex; align-items: center; gap: 8px; margin: 8px 0; }
-    .row .label { flex: 1; }
-    .row .value { width: 86px; text-align: center; }
-    .row button { width: 36px; height: 32px; padding: 0; }
-    .moods { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 6px; }
-    .moods button { padding: 4px 9px; font-size: 13px; }
-    #pet-say { min-height: 42px; margin: 10px 0; font-size: 14px; text-align: center; }
-    #start { width: 100%; padding: 10px; font-size: 18px; }
-    @media (max-width: 700px) {
-      #create { top: auto; bottom: 12px; right: 16px; transform: none; padding: 12px 14px; max-height: 58vh; overflow: auto; }
-      #create h1 { font-size: 18px; margin-bottom: 4px; }
-      .row { margin: 4px 0; }
+    :root {
+      --ink: #4f4038; --ink-soft: #7a6a60; --paper: #fffaf3; --paper-2: #fbf2e6; --line: #ecd8c6;
+      --accent: #c97f62; --accent-ink: #fff; --accent-soft: #f6dccf; --sage: #7e9e86; --warn: #f3e2b4; --danger: #b5523b;
+      --shadow: 0 6px 24px rgba(79, 64, 56, .16); --radius: 18px;
+      color-scheme: light;
     }
+    html { font-size: 16px; }
+    html[data-text-size="s"] { font-size: 14px; }
+    html[data-text-size="l"] { font-size: 19px; }
+    html, body { margin: 0; height: 100%; background: #f8ecdb; color: var(--ink);
+      font-family: "PingFang TC", "Microsoft JhengHei", "Noto Sans TC", system-ui, sans-serif; line-height: 1.6; }
+    body { overflow: hidden; overscroll-behavior: none; }
+    body[data-mode="text"], body.home-open { overflow: auto; }
+    button, a.btn { font: inherit; color: inherit; cursor: pointer; }
+    a { color: #9b5a40; }
+    .hidden { display: none !important; }
+    .fine { font-size: .85rem; color: var(--ink-soft); }
+    :focus-visible { outline: 3px solid #3f6f8f; outline-offset: 2px; }
 
-    /* 頭上的名牌與愛心 */
-    #labels { position: fixed; inset: 0; pointer-events: none; z-index: 5; }
-    .tag { position: absolute; transform: translate(-50%, -100%); white-space: nowrap; font-size: 13px;
-      background: var(--paper); border: 2px solid var(--line); border-radius: 999px; padding: 1px 9px; }
-    .heart { position: absolute; transform: translate(-50%, -100%); color: var(--accent); font-size: 20px;
-      animation: bob 1.2s ease-in-out infinite; }
-    .bubble { position: absolute; transform: translate(-50%, -100%); max-width: 220px; font-size: 14px;
-      background: var(--paper); border: 2px solid var(--line); border-radius: 16px; padding: 6px 12px; transition: opacity .8s; }
-    @keyframes bob { 50% { margin-top: -5px; } }
+    .btn { display: inline-flex; align-items: center; justify-content: center; gap: 6px; min-height: 44px; padding: 8px 18px;
+      border: 2px solid var(--line); border-radius: 999px; background: var(--paper); text-decoration: none; box-sizing: border-box; }
+    .btn:hover { background: var(--paper-2); }
+    .btn.primary { background: var(--accent); border-color: var(--accent); color: var(--accent-ink); font-weight: 700; }
+    .btn.primary:hover { filter: brightness(1.05); }
+    .btn.danger { border-color: var(--danger); color: var(--danger); }
+    .btn.small { min-height: 36px; padding: 4px 12px; font-size: .9rem; }
+    .btn:disabled { opacity: .45; cursor: default; }
+    .btn.on { background: var(--accent-soft); }
+    .row-actions { display: flex; flex-wrap: wrap; gap: 10px; justify-content: flex-end; margin-top: 16px; }
+    .row-actions.left { justify-content: flex-start; margin-top: 8px; }
+
+    #scene { position: fixed; inset: 0; }
+    #scene canvas { display: block; touch-action: none; }
+    body[data-mode="text"] #scene, body.home-open #scene { display: none; }
+    #labels { position: fixed; inset: 0; pointer-events: none; z-index: 5; overflow: hidden; }
+    .tag { position: absolute; transform: translate(-50%, -100%); white-space: nowrap; font-size: .85rem;
+      background: var(--paper); border: 2px solid var(--line); border-radius: 999px; padding: 0 10px; }
+    .goal-mark { position: absolute; transform: translate(-50%, -100%); width: 30px; height: 30px; border-radius: 50%;
+      background: var(--accent); color: #fff; font-weight: 700; display: grid; place-items: center; box-shadow: var(--shadow);
+      animation: bob 1.4s ease-in-out infinite; }
+    .beacon-tag { background: #fff3d6; border-color: #e8c27a; }
+    @keyframes bob { 50% { margin-top: -6px; } }
+
+    #loading { position: fixed; left: 50%; top: 50%; transform: translate(-50%, -50%); z-index: 40;
+      background: var(--paper); border: 2px solid var(--line); border-radius: 999px; padding: 8px 18px; }
+
+    /* 「找支持」按鈕：全程常駐，任何修改都不可移除（AGENTS.md 第 5 節） */
+    #support-button { position: fixed; top: max(12px, env(safe-area-inset-top)); right: 12px; z-index: 900;
+      background: var(--sage); border-color: var(--sage); color: #fff; font-weight: 700; box-shadow: var(--shadow); }
+
+    /* 首頁 */
+    #home { position: fixed; inset: 0; z-index: 50; overflow: auto; background:
+      radial-gradient(circle at 20% 10%, #fde9d2 0, transparent 50%), radial-gradient(circle at 90% 90%, #e2eedb 0, transparent 55%), #f8ecdb; }
+    .home-inner { max-width: 640px; margin: 0 auto; padding: 72px 16px 40px; }
+    .home-inner h1 { font-size: 2.6rem; margin: 0; letter-spacing: .15em; }
+    .home-inner .tagline { font-size: 1.15rem; margin: 4px 0 18px; }
+    .card-box { background: var(--paper); border: 2px solid var(--line); border-radius: var(--radius); padding: 14px 18px; margin: 14px 0; }
+    .card-box h2 { font-size: 1.05rem; margin: 0 0 6px; }
+    .card-box p { margin: 6px 0; }
+    #home-actions { display: grid; gap: 10px; margin: 20px 0; }
+    #home-actions .btn { width: 100%; font-size: 1.1rem; min-height: 52px; }
+    .notice { background: var(--warn); border-radius: 12px; padding: 10px 14px; margin: 10px 0; }
+
+    /* 遊戲中的介面 */
+    #hud { position: fixed; inset: 0; pointer-events: none; z-index: 10; }
+    #hud > * { pointer-events: auto; }
+    #goal { position: fixed; top: max(12px, env(safe-area-inset-top)); left: 12px; max-width: min(360px, calc(100vw - 150px));
+      background: rgba(255, 250, 243, .95); border: 2px solid var(--line); border-radius: var(--radius); padding: 8px 14px; box-shadow: var(--shadow); }
+    #goal .quest { font-size: .8rem; color: var(--ink-soft); }
+    #goal-text { font-weight: 700; }
+    #goal-missing { font-size: .85rem; margin-top: 4px; background: var(--warn); border-radius: 10px; padding: 4px 8px; }
+    #save-warning { font-size: .8rem; color: var(--danger); }
+    #hud-buttons { position: fixed; top: calc(max(12px, env(safe-area-inset-top)) + 54px); right: 12px; display: flex; flex-direction: column; gap: 8px; align-items: flex-end; }
+    #hud-buttons .btn { box-shadow: var(--shadow); }
+    #cardbook-count { font-size: .8rem; background: var(--accent-soft); border-radius: 999px; padding: 0 8px; }
+    .pulse { animation: pulse 1s ease-in-out infinite; }
+    @keyframes pulse { 50% { box-shadow: 0 0 0 8px rgba(201, 127, 98, .35); } }
+    #controls-tip { position: fixed; left: 12px; bottom: 12px; font-size: .8rem; color: var(--ink-soft);
+      background: rgba(255, 250, 243, .8); border-radius: 10px; padding: 4px 10px; }
+    body[data-mode="text"] #controls-tip, body[data-mode="text"] #stick, body[data-mode="text"] #interact { display: none !important; }
+    #interact { position: fixed; left: 50%; bottom: max(20px, env(safe-area-inset-bottom)); transform: translateX(-50%);
+      display: flex; align-items: center; gap: 10px; flex-wrap: wrap; justify-content: center;
+      background: rgba(255, 250, 243, .96); border: 2px solid var(--line); border-radius: 999px; padding: 8px 10px 8px 18px; box-shadow: var(--shadow); }
+    #interact-name { font-weight: 700; }
+    #stick { position: fixed; left: 24px; bottom: max(24px, env(safe-area-inset-bottom)); width: 120px; height: 120px; border-radius: 50%;
+      background: rgba(255, 250, 243, .65); border: 3px solid rgba(201, 127, 98, .6); touch-action: none; }
+    #stick-thumb { position: absolute; left: 50%; top: 50%; width: 52px; height: 52px; margin: -26px 0 0 -26px; border-radius: 50%; background: rgba(201, 127, 98, .9); }
+    @media (pointer: coarse) {
+      #interact { left: auto; right: 16px; transform: none; flex-direction: column; border-radius: var(--radius); padding: 10px; }
+      #interact .btn { min-height: 54px; min-width: 150px; font-size: 1.05rem; }
+    }
+    .in-dialogue #interact, .in-dialogue #stick { display: none !important; }
 
     /* 對話框 */
-    #dialogue { position: fixed; left: 50%; bottom: 16px; transform: translateX(-50%); width: min(760px, calc(100vw - 32px));
-      z-index: 20; }
-    #dlg-box { position: relative; background: rgba(255, 250, 243, .97); border: 3px solid var(--line); border-radius: 26px;
-      padding: 26px 26px 22px; min-height: 80px; font-size: 19px; line-height: 1.6; box-shadow: 0 5px 0 rgba(138,111,96,.12); }
-    #dlg-name { position: absolute; top: -16px; left: 22px; background: var(--accent); color: #fff; font-weight: bold;
-      border-radius: 999px; padding: 3px 16px; font-size: 16px; }
-    #dlg-more { position: absolute; right: 20px; bottom: 10px; color: var(--accent); animation: bob .9s ease-in-out infinite; }
-    #dlg-choices { display: flex; flex-direction: column; align-items: center; gap: 10px; margin-bottom: 26px; }
-    #dlg-choices button { background: #fdeee6; font-size: 17px; padding: 8px 20px; }
+    #dialogue { position: fixed; left: 50%; bottom: max(14px, env(safe-area-inset-bottom)); transform: translateX(-50%);
+      width: min(760px, calc(100vw - 32px)); z-index: 30; }
+    #dlg-box { position: relative; background: rgba(255, 250, 243, .98); border: 3px solid var(--line); border-radius: 24px;
+      padding: 24px 22px 14px; box-shadow: var(--shadow); }
+    #dlg-name { position: absolute; top: -16px; left: 20px; background: var(--accent); color: #fff; font-weight: 700; border-radius: 999px; padding: 2px 16px; }
+    #dlg-text { font-size: 1.12rem; min-height: 3.2em; cursor: pointer; }
+    #dlg-text.narration { color: var(--ink-soft); }
+    #dlg-choices { display: flex; flex-direction: column; gap: 8px; margin-top: 10px; }
+    .choice { text-align: left; background: #fdf0e8; border: 2px solid var(--line); border-radius: 14px; padding: 8px 14px; min-height: 44px; }
+    .choice:hover { background: var(--accent-soft); }
+    .choice .key { display: inline-block; width: 1.5em; color: var(--accent); font-weight: 700; }
+    .dlg-actions { display: flex; justify-content: space-between; align-items: center; margin-top: 8px; }
 
-    /* 提示、手機操作 */
-    #hint { position: fixed; left: 50%; bottom: 18px; transform: translateX(-50%); z-index: 6; font-size: 15px; }
-    #controls-tip { position: fixed; left: 12px; top: 12px; z-index: 6; font-size: 13px; opacity: .8; }
-    #talk { position: fixed; right: 24px; bottom: 36px; z-index: 6; font-size: 20px; padding: 14px 22px; }
-    #rotate { position: fixed; right: 24px; bottom: 110px; z-index: 6; display: flex; gap: 8px; }
-    #rotate button { width: 46px; height: 46px; padding: 0; font-size: 20px; }
-    #stick { position: fixed; left: 28px; bottom: 28px; width: 110px; height: 110px; border-radius: 50%; z-index: 6;
-      background: rgba(255, 250, 243, .6); border: 3px solid rgba(232, 160, 138, .7); touch-action: none; }
-    .talking #stick, .talking #rotate, .talking #talk { display: none; }
-    #stick-thumb { position: absolute; left: 50%; top: 50%; width: 48px; height: 48px; margin: -24px 0 0 -24px;
-      border-radius: 50%; background: rgba(232, 160, 138, .9); }
+    /* 面板 */
+    dialog { width: min(640px, calc(100vw - 24px)); max-height: calc(100dvh - 24px); box-sizing: border-box; border: none; border-radius: 22px;
+      padding: 0; background: var(--paper); color: var(--ink); box-shadow: 0 10px 40px rgba(0, 0, 0, .25); }
+    dialog::backdrop { background: rgba(60, 48, 40, .45); }
+    .panel-head { position: sticky; top: 0; display: flex; align-items: center; gap: 10px; padding: 14px 18px; background: var(--paper);
+      border-bottom: 2px solid var(--line); z-index: 1; }
+    .panel-head h2 { flex: 1; margin: 0; font-size: 1.2rem; }
+    .support-mini { background: var(--sage); border-color: var(--sage); color: #fff; font-weight: 700; }
+    .panel-body { padding: 8px 18px 18px; }
+    .panel-body h3 { font-size: 1.05rem; margin: 18px 0 8px; }
+    .panel-body h4 { margin: 14px 0 2px; font-size: .95rem; }
+    .panel-body p { margin: 8px 0; }
+
+    .card-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 10px; }
+    .card-tile { display: flex; flex-direction: column; align-items: flex-start; gap: 4px; text-align: left; padding: 10px;
+      background: var(--paper-2); border: 2px solid var(--line); border-radius: 16px; }
+    .card-tile:hover { border-color: var(--accent); }
+    .card-tile.locked { color: var(--ink-soft); }
+    .card-tile small { font-size: .8rem; }
+    .art { width: 100%; max-width: 120px; height: auto; }
+    .card-detail .art { max-width: 160px; }
+    .card-detail .tag, .card-detail p.tag { position: static; transform: none; display: inline-block; }
+    .key-point { font-weight: 700; background: var(--accent-soft); border-radius: 10px; padding: 8px 12px; }
+    .sources { padding-left: 18px; }
+    .use-confirm { text-align: center; }
+
+    .options { display: grid; gap: 8px; }
+    .options.row { grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); }
+    .option { display: flex; flex-direction: column; gap: 2px; text-align: left; padding: 10px 14px; min-height: 44px;
+      background: var(--paper-2); border: 2px solid var(--line); border-radius: 14px; }
+    .option.on { border-color: var(--accent); background: var(--accent-soft); }
+    .option small { color: var(--ink-soft); }
+    .bins { padding-left: 18px; font-size: .9rem; }
+    .sort-items { display: grid; gap: 10px; }
+    .sort-item { border: 2px dashed var(--line); border-radius: 14px; padding: 6px 12px; }
+    .sort-item.done { border-style: solid; border-color: var(--sage); background: #eef5ec; }
+    .bin-buttons { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 6px; }
+    .placed { color: #3f6b4b; }
+    .note-paper { background: #fffdf7; border: 1px solid var(--line); border-radius: 6px; padding: 12px 16px; margin: 10px 0;
+      font-size: 1.05rem; transform: rotate(-.6deg); box-shadow: 0 2px 6px rgba(0,0,0,.08); }
+    .mg-footer { display: flex; flex-wrap: wrap; gap: 10px; justify-content: flex-end; margin-top: 16px; }
+
+    .setting { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 10px 0; border-bottom: 1px solid var(--line); flex-wrap: wrap; }
+    .segs { display: flex; gap: 4px; }
+    .seg { min-height: 40px; padding: 4px 14px; border: 2px solid var(--line); background: var(--paper); border-radius: 999px; }
+    .seg.on { background: var(--accent); border-color: var(--accent); color: #fff; font-weight: 700; }
+    .setting-actions { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 14px; }
+
+    .emergency { background: #f8e0d6; border-radius: 14px; padding: 10px 14px; margin: 10px 0; }
+    .emergency p { margin: 4px 0; }
+    .resources { list-style: none; padding: 0; margin: 0; display: grid; gap: 10px; }
+    .resource { background: var(--paper-2); border: 2px solid var(--line); border-radius: 14px; padding: 10px 14px; }
+    .resource-head { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
+    .kind { font-size: .75rem; background: #e2eedb; border-radius: 999px; padding: 0 8px; }
+    .kind.warn { background: var(--warn); }
+    .resource dl { margin: 6px 0; display: grid; gap: 2px; }
+    .resource dl div { display: grid; grid-template-columns: 5.5em 1fr; gap: 6px; font-size: .9rem; }
+    .resource dt { color: var(--ink-soft); }
+    .resource dd { margin: 0; }
+    .resource-links { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 6px; }
+
+    /* 文字模式 */
+    #text-mode { max-width: 720px; margin: 0 auto; padding: 150px 16px 220px; box-sizing: border-box; }
+    #text-mode h2 { margin: 0 0 4px; }
+    .places { display: flex; flex-wrap: wrap; gap: 8px; margin: 12px 0 16px; }
+    .places .btn.on { background: var(--accent-soft); opacity: 1; }
+    .goal-dot { display: inline-block; font-size: .75rem; background: var(--accent); color: #fff; border-radius: 999px; padding: 0 8px; margin-left: 6px; }
+    .text-targets { list-style: none; padding: 0; display: grid; gap: 10px; }
+    .text-targets li { background: var(--paper); border: 2px solid var(--line); border-radius: 16px; padding: 10px 14px; }
+    .text-targets small { margin-left: 8px; color: var(--ink-soft); }
+
+    #toasts { position: fixed; left: 50%; top: 84px; transform: translateX(-50%); z-index: 1000; display: grid; gap: 8px; width: min(440px, calc(100vw - 32px)); pointer-events: none; }
+    .toast { display: flex; align-items: center; gap: 10px; justify-content: space-between; background: rgba(79, 64, 56, .94); color: #fff;
+      border-radius: 14px; padding: 8px 14px; box-shadow: var(--shadow); transition: opacity .5s; pointer-events: auto; }
+    .toast .btn { color: var(--ink); }
+    .toast.out { opacity: 0; }
+    .pickup-fly { position: fixed; left: 50%; top: 50%; width: 46px; height: 62px; border-radius: 8px; z-index: 1001; pointer-events: none;
+      box-shadow: 0 0 20px #fff3c8; animation: fly .9s ease-in forwards; }
+    @keyframes fly { to { left: calc(100% - 80px); top: 120px; transform: scale(.4); opacity: .2; } }
+
+    .reduce-motion *, .reduce-motion *::before { animation: none !important; transition: none !important; }
+    @media (prefers-reduced-motion: reduce) { .goal-mark, .pulse { animation: none; } }
+    @media (max-width: 560px) {
+      #goal { max-width: calc(100vw - 140px); padding: 6px 10px; font-size: .9rem; }
+      #dlg-box { padding: 22px 14px 10px; }
+      #text-mode { padding-top: 170px; }
+    }
   </style>
   <script type="importmap">
     { "imports": {
@@ -97,46 +208,125 @@
     } }
   </script>
 </head>
-<body>
+<body class="home-open">
   <div id="scene"></div>
   <div id="labels"></div>
-  <div id="loading" class="pill">小鎮載入中……</div>
+  <div id="loading">小鎮載入中……</div>
 
-  <section id="create">
-    <h1>建立你的角色</h1>
-    <div id="create-rows"></div>
-    <div>今日心情溫度計<small>（可略過，不會儲存）</small></div>
-    <div class="moods" id="moods"></div>
-    <div id="pet-say"></div>
-    <button id="start" class="pill primary" type="button">出發，去晨光廣場</button>
+  <!-- 首頁 -->
+  <section id="home" aria-labelledby="home-title">
+    <div class="home-inner">
+      <h1 id="home-title">心之間</h1>
+      <p class="tagline">在一座溫暖的小鎮裡，透過相遇、探索與練習，多理解自己與別人一點。</p>
+      <div class="card-box">
+        <h2>關於這個遊戲</h2>
+        <p>你是剛搬到晴隅小鎮的居民。和鎮上的人聊聊、完成兩個心理練習、收集「理解卡」，並在適合的時候使用它們，陪大家一起佈置花園的小角落。全程約 15～20 分鐘，沒有倒數計時，隨時可以停下來。</p>
+      </div>
+      <div class="card-box">
+        <h2>開始之前</h2>
+        <p><strong>這個遊戲不能診斷。</strong>遊戲裡的對話、選擇與收藏，不代表任何疾病、心理類型或風險判定；單一角色的經驗也不代表所有人。</p>
+        <p>遊戲不會要你輸入姓名、病史或心情，進度只存在這個瀏覽器裡。需要現實協助時，右上角的「找支持」隨時可以打開。</p>
+        <p class="fine">內容為衛教草案，尚未完成心理專業審閱。角色與故事均為虛構。</p>
+      </div>
+      <div id="home-message" class="notice hidden" role="status"></div>
+      <div id="home-actions">
+        <button type="button" id="home-continue" class="btn primary hidden">繼續遊戲</button>
+        <button type="button" id="home-new" class="btn primary">開始遊戲</button>
+        <button type="button" id="home-text" class="btn">文字模式（不需要 3D）</button>
+        <button type="button" class="btn" data-open-support>找支持</button>
+        <button type="button" class="btn" data-open-settings>設定</button>
+      </div>
+      <p class="fine">電腦：WASD／方向鍵移動，E 互動，F 使用理解卡。手機：左下角搖桿移動，右下角按鈕互動。</p>
+    </div>
   </section>
 
-  <div id="controls-tip" class="hidden">方向鍵／WASD 移動　Q、E 或拖曳畫面旋轉鏡頭</div>
-  <button id="hint" class="pill hidden" type="button"></button>
-  <button id="talk" class="pill primary hidden" type="button">對話 ♡</button>
-  <div id="rotate" class="hidden"><button class="pill" type="button" data-rot="1">⟲</button><button class="pill" type="button" data-rot="-1">⟳</button></div>
-  <div id="stick" class="hidden"><div id="stick-thumb"></div></div>
+  <!-- 遊戲中的介面 -->
+  <div id="hud" class="hidden">
+    <div id="goal" aria-live="polite">
+      <div class="quest">任務｜留一張椅子的午後</div>
+      <div id="goal-text"></div>
+      <div id="goal-missing" class="hidden"></div>
+      <div id="save-warning" class="hidden">進度暫時無法保存</div>
+    </div>
+    <div id="hud-buttons">
+      <button type="button" id="cardbook-button" class="btn">卡冊 <span id="cardbook-count">0/6</span></button>
+      <button type="button" class="btn" data-open-settings>設定</button>
+    </div>
+    <div id="controls-tip" class="hidden">WASD／方向鍵移動｜E 互動｜F 使用理解卡｜也可以點選附近的人或物件</div>
+    <div id="interact" class="hidden" role="group" aria-label="附近可以互動">
+      <span id="interact-name"></span>
+      <button type="button" id="interact-go" class="btn primary">互動</button>
+      <button type="button" id="interact-use" class="btn">使用理解卡</button>
+    </div>
+    <div id="stick" class="hidden" aria-hidden="true"><div id="stick-thumb"></div></div>
+  </div>
 
-  <section id="dialogue" class="hidden">
-    <div id="dlg-choices"></div>
-    <div id="dlg-box"><span id="dlg-name"></span><div id="dlg-text"></div><span id="dlg-more">♡</span></div>
+  <main id="text-mode" class="hidden"></main>
+
+  <section id="dialogue" class="hidden" aria-live="polite">
+    <div id="dlg-box">
+      <span id="dlg-name"></span>
+      <div id="dlg-text"></div>
+      <div id="dlg-choices"></div>
+      <div class="dlg-actions">
+        <button type="button" id="dlg-exit" class="btn small">離開對話</button>
+        <button type="button" id="dlg-next" class="btn primary small">繼續</button>
+      </div>
+    </div>
   </section>
 
-  <button id="help-button" type="button" aria-haspopup="dialog">我需要幫忙</button>
-  <dialog id="help-dialog" aria-labelledby="help-title">
-    <h2 id="help-title">你不是一個人</h2>
-    <p>想找人聊聊的時候，可以撥打以下專線。</p>
-    <div class="emergency" id="help-emergency">如果你或身邊的人有立即的生命危險，請直接撥打 119（救護）或 110（報案）。</div>
-    <!-- 備用清單：resources.json 讀取失敗時仍能顯示 -->
-    <ul id="help-list">
-      <li><a class="phone" href="tel:1925">1925</a> 安心專線</li>
-      <li><a class="phone" href="tel:1995">1995</a> 生命線協談專線</li>
-      <li><a class="phone" href="tel:1980">1980</a> 張老師專線</li>
-    </ul>
-    <button id="help-close" type="button">我知道了，回到小鎮</button>
+  <div id="toasts" aria-live="polite"></div>
+
+  <dialog id="cardbook" aria-labelledby="cardbook-title">
+    <div class="panel-head"><button type="button" id="cardbook-back" class="btn small hidden">返回</button>
+      <h2 id="cardbook-title">卡冊</h2><button type="button" class="btn small support-mini" data-open-support>找支持</button><button type="button" class="btn small" onclick="this.closest('dialog').close()">關閉</button></div>
+    <div class="panel-body" id="cardbook-body"></div>
+  </dialog>
+
+  <dialog id="usecard" aria-labelledby="usecard-title">
+    <div class="panel-head"><h2 id="usecard-title">使用理解卡</h2><button type="button" class="btn small support-mini" data-open-support>找支持</button><button type="button" class="btn small" onclick="this.closest('dialog').close()">關閉</button></div>
+    <div class="panel-body" id="usecard-body"></div>
+  </dialog>
+
+  <dialog id="minigame" aria-labelledby="minigame-title">
+    <div class="panel-head"><h2 id="minigame-title">練習</h2><button type="button" class="btn small support-mini" data-open-support>找支持</button><button type="button" class="btn small" onclick="this.closest('dialog').close()">先離開</button></div>
+    <div class="panel-body" id="minigame-body"></div>
+  </dialog>
+
+  <dialog id="arrange" aria-labelledby="arrange-title">
+    <div class="panel-head"><h2 id="arrange-title">佈置花園的小角落</h2><button type="button" class="btn small support-mini" data-open-support>找支持</button></div>
+    <div class="panel-body"><div id="arrange-body"></div>
+      <div class="row-actions"><button type="button" id="arrange-cancel" class="btn">晚點再決定</button>
+        <button type="button" id="arrange-ok" class="btn primary">就這樣佈置</button></div></div>
+  </dialog>
+
+  <dialog id="settings" aria-labelledby="settings-title">
+    <div class="panel-head"><h2 id="settings-title">設定</h2><button type="button" class="btn small support-mini" data-open-support>找支持</button><button type="button" class="btn small" onclick="this.closest('dialog').close()">關閉</button></div>
+    <div class="panel-body" id="settings-body"></div>
+  </dialog>
+
+  <dialog id="confirm" aria-labelledby="confirm-text">
+    <div class="panel-body"><p id="confirm-text"></p>
+      <div class="row-actions"><button type="button" id="confirm-cancel" class="btn">取消</button>
+        <button type="button" id="confirm-ok" class="btn primary">確定</button></div></div>
+  </dialog>
+
+  <!-- 「找支持」：獨立於遊戲程式，遊戲出錯時也能使用 -->
+  <button type="button" id="support-button" class="btn" data-open-support aria-haspopup="dialog">找支持</button>
+  <dialog id="support" aria-labelledby="support-title">
+    <div class="panel-head"><h2 id="support-title">找支持</h2><button type="button" id="support-close" class="btn small">關閉</button></div>
+    <div class="panel-body" id="support-body">
+      <!-- 備用內容：content/resources.json 讀取失敗時仍能顯示 -->
+      <div class="emergency"><strong>有立即危險時</strong>
+        <p>如果你或身邊的人有立即的生命危險，請直接撥打 119（消防救護）或 110（警察）。</p></div>
+      <p><a class="btn primary" href="tel:1925">撥打 1925 安心專線</a></p>
+      <p><a href="https://mohw.gov.tw/CH/cp-23-135-1.html" target="_blank" rel="noopener noreferrer">衛福部諮詢服務專線</a>・
+        <a href="https://topics.mohw.gov.tw/SS/cp-4621-69670-204.html" target="_blank" rel="noopener noreferrer">全國社區心理衛生中心</a></p>
+      <p class="fine">這個遊戲不能診斷，也不會監測危機或即時回應。</p>
+    </div>
   </dialog>
 
   <script type="module" src="src/help.js"></script>
-  <script type="module" src="src/three/main.js"></script>
+  <script type="module" src="src/app.js"></script>
 </body>
 </html>

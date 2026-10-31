@@ -1,0 +1,31 @@
+{
+  "_說明": "主線任務《留一張椅子的午後》。steps 依順序排列，條件中的 stepFrom 用這個順序比較。needCard 是這一步的必要卡（用來顯示缺卡指引）；guaranteed 是「走到某一步時一定已經持有」的卡，讀檔時用來補回異常存檔缺少的必要卡。",
+  "id": "chair-afternoon",
+  "title": "留一張椅子的午後",
+  "summary": "社區想在花園整理一個可以短暫休息、不必勉強聊天的小角落。協助沐雨與阿澄，先聽懂彼此的顧慮，再一起決定怎麼安排。",
+  "steps": [
+    { "id": "arrive", "goal": "到小廣場的「社區資源告示牌」看看", "target": "board" },
+    { "id": "meetMuyu", "goal": "到咖啡店外，認識沐雨", "target": "muyu" },
+    { "id": "thought", "goal": "看看咖啡店外桌上的活動便條", "target": "note" },
+    { "id": "clarify", "goal": "在沐雨旁邊使用理解卡「想法不等於事實」", "target": "muyu", "needCard": "K02" },
+    { "id": "askAcheng", "goal": "到小花園，在阿澄旁邊使用理解卡「先問，再陪伴」", "target": "acheng", "needCard": "K01" },
+    { "id": "present", "goal": "和阿澄一起進行「回到這座花園」練習，或閱讀摘要", "target": "acheng" },
+    { "id": "arrange", "goal": "在花園長椅使用理解卡「回到此刻」，一起佈置", "target": "bench", "needCard": "K03" },
+    {
+      "id": "wrap", "goal": "和沐雨、阿澄確認佈置好的角落", "target": ["muyu", "acheng"],
+      "completeWhen": { "flags": ["confirmedMuyu", "confirmedAcheng"] },
+      "onComplete": [
+        { "giveCard": "K04" },
+        { "advance": { "from": ["wrap"], "to": "done" } },
+        { "dialogue": "wrap.end" }
+      ]
+    },
+    { "id": "done", "goal": "任務完成。可以四處逛逛、回顧卡冊、補找探索卡，或查看支持資源" }
+  ],
+  "guaranteed": [
+    { "card": "K01", "fromStep": "thought" },
+    { "card": "K02", "fromStep": "clarify" },
+    { "card": "K03", "fromStep": "arrange" },
+    { "card": "K04", "fromStep": "done" }
+  ]
+}

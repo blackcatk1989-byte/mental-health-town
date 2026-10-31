@@ -1,69 +1,108 @@
 {
-  "_說明": "資源卡清單。所有資訊尚未經人類協作者核對，verification 皆為「待核對」；核對後請改為核對日期（例如 2026-11-01 已核對）並更新 source。",
+  "_說明": "「找支持」面板的現實資源。資源不是遊戲卡，不需要任何卡片即可查看。只填寫官方來源可確認的資訊，其餘寫「請洽官方確認」。checked 為最後查核日期；validYear 為政府年度方案的有效年度（西元），超過後面板會自動標示「本年度內容待更新」。連結由企劃文件於 2026-11-01 查核；正式上線前須重新確認。",
+  "checked": "2026-11-01",
+  "notice": "這個遊戲不能診斷，也不會監測危機或即時回應。以下是現實中的支持資源；外部連結由你自己決定是否開啟，不會附帶任何遊戲資料。",
   "emergency": {
-    "text": "如果你或身邊的人有立即的生命危險，請直接撥打 119（救護）或 110（報案）。",
-    "verification": "待核對"
+    "title": "有立即危險時",
+    "text": "如果你或身邊的人有立即的生命危險，請直接撥打 119（消防救護）或 110（警察）。",
+    "phones": [
+      { "number": "119", "label": "消防救護" },
+      { "number": "110", "label": "警察" }
+    ],
+    "review": "正式文案與聯絡資訊於發布前專業審閱及查核"
   },
-  "resources": [
+  "categories": [
     {
-      "id": "1925",
-      "name": "安心專線",
-      "phone": "1925",
-      "type": "政府",
-      "provider": "衛生福利部",
-      "hours": "24 小時（待核對）",
-      "cost": "免付費（待核對）",
-      "description": "心理困擾、情緒低落或有自殺念頭時，可撥打的心理諮詢專線。",
-      "source": "https://www.mohw.gov.tw/",
-      "verification": "待核對"
+      "id": "talk",
+      "title": "想先找人談談",
+      "items": [
+        {
+          "name": "1925 安心專線",
+          "kind": "電話支持",
+          "provider": "衛生福利部",
+          "purpose": "想找人談談心理困擾或情緒時，可撥打的諮詢專線。",
+          "region": "全國",
+          "phone": "1925",
+          "hours": "週一至週日 24 小時（官方列示）",
+          "cost": "請洽官方確認",
+          "url": "https://mohw.gov.tw/CH/cp-23-135-1.html",
+          "checked": "2026-11-01"
+        }
+      ]
     },
     {
-      "id": "1995",
-      "name": "生命線協談專線",
-      "phone": "1995",
-      "type": "民間",
-      "provider": "社團法人國際生命線台灣總會",
-      "hours": "24 小時（待核對）",
-      "cost": "待核對",
-      "description": "由受過訓練的志工提供電話協談與情緒支持。",
-      "source": "https://www.life1995.org.tw/",
-      "verification": "待核對"
+      "id": "counseling",
+      "title": "實體諮商與社區服務",
+      "items": [
+        {
+          "name": "各縣市社區心理諮商服務一覽表",
+          "kind": "諮商",
+          "provider": "衛生福利部心理健康司",
+          "purpose": "依縣市查詢社區心理諮商服務。請前往官方頁確認地點、預約方式、費用及條件。",
+          "region": "全國（依縣市查詢）",
+          "hours": "請洽官方確認",
+          "cost": "請洽官方確認",
+          "url": "https://dep.mohw.gov.tw/domhaoh/cp-4558-69568-107.html",
+          "checked": "2026-11-01"
+        },
+        {
+          "name": "全國社區心理衛生中心",
+          "kind": "諮商",
+          "provider": "衛生福利部",
+          "purpose": "查詢各地社區心理衛生中心的聯絡方式，可洽詢心理健康相關服務與轉介。",
+          "region": "全國（依縣市查詢）",
+          "hours": "請洽官方確認",
+          "cost": "請洽官方確認",
+          "url": "https://topics.mohw.gov.tw/SS/cp-4621-69670-204.html",
+          "checked": "2026-11-01"
+        }
+      ]
     },
     {
-      "id": "1980",
-      "name": "張老師專線",
-      "phone": "1980",
-      "type": "民間",
-      "provider": "財團法人救國團社會福利基金會（張老師）",
-      "hours": "待核對",
-      "cost": "待核對",
-      "description": "提供心理輔導與情緒支持的電話協談服務。",
-      "source": "https://www.1980.org.tw/",
-      "verification": "待核對"
+      "id": "program",
+      "title": "政府協助方案",
+      "items": [
+        {
+          "name": "115 年青壯世代心理健康支持方案",
+          "kind": "政府方案",
+          "provider": "衛生福利部",
+          "purpose": "衛福部的年度心理健康支持方案說明。適用年齡、次數與條件請以官方公告為準，並非所有成年人都符合資格。",
+          "region": "全國",
+          "hours": "請洽官方確認",
+          "cost": "請洽官方確認",
+          "eligibility": "請洽官方確認",
+          "url": "https://www.mohw.gov.tw/cp-7395-85046-1.html",
+          "validYear": 2026,
+          "note": "方案查詢網站於查核時讀取逾時，此處提供官方公告作為入口，不代表已確認即時名額。",
+          "checked": "2026-11-01"
+        }
+      ]
     },
     {
-      "id": "community-mental-health-center",
-      "name": "社區心理衛生中心",
-      "phone": null,
-      "type": "政府",
-      "provider": "各縣市政府衛生局",
-      "hours": "依各中心公告（待核對）",
-      "cost": "待核對",
-      "description": "各縣市設有社區心理衛生中心，提供心理諮詢、心理健康促進與轉介服務。可查詢居住地的中心聯絡方式。",
-      "source": "https://dep.mohw.gov.tw/DOMHAOH/",
-      "verification": "待核對"
-    },
-    {
-      "id": "public-counseling-program",
-      "name": "公費心理諮商方案",
-      "phone": null,
-      "type": "政府",
-      "provider": "衛生福利部",
-      "hours": "依合作機構（待核對）",
-      "cost": "符合資格者可獲公費補助（待核對）",
-      "description": "衛福部推動的心理健康支持方案，符合年齡等資格者可至合作機構接受免費心理諮商。適用年齡、次數與方案是否仍在進行中皆需核對。",
-      "source": "https://www.mohw.gov.tw/",
-      "verification": "待核對"
+      "id": "community",
+      "title": "民間支持與延伸認識",
+      "items": [
+        {
+          "name": "國際生命線台灣總會：求助管道",
+          "kind": "電話支持",
+          "provider": "社團法人國際生命線台灣總會",
+          "purpose": "查詢生命線提供的支持服務與求助管道。",
+          "region": "全國",
+          "hours": "請洽官方確認",
+          "cost": "請洽官方確認",
+          "url": "https://www.life1995.org.tw/?aid=2&pid=0",
+          "checked": "2026-11-01"
+        },
+        {
+          "name": "董氏基金會心理衛生中心",
+          "kind": "衛教資訊",
+          "provider": "財團法人董氏基金會",
+          "purpose": "心理健康衛教資訊與延伸閱讀。這是衛教網站，不是治療機構。",
+          "region": "全國",
+          "url": "https://www.jtf.org.tw/psyche/about/intro.asp",
+          "checked": "2026-11-01"
+        }
+      ]
     }
   ]
 }

@@ -1,0 +1,430 @@
+{
+  "_說明": "預寫對話。每一段（segment）有 lines（依序顯示的台詞）、可選的 effects（整段顯示完時觸發）、choices（選項）或 next（下一段）。speaker 為「旁白」時不顯示名牌，「你」代表玩家。effects 可用：giveCard、advance（from 列出的步驟才會前進到 to，then 是前進成功後才觸發的效果）、setFlag、minigame（thought／present，mode 為 play 或 summary）、arrangement、openResources、openCardbook、tutorial、dialogue。均為衛教草案，尚未完成心理專業審閱。",
+  "dialogues": {
+    "board.arrive": {
+      "lines": [
+        { "speaker": "旁白", "text": "社區資源告示牌上貼著幾張紙。最上面那張寫著：" },
+        { "speaker": "旁白", "text": "「花園小角落佈置中：想找一個可以短暫休息、不必勉強聊天的位置。歡迎一起想想看。——沐雨、阿澄」" },
+        { "speaker": "旁白", "text": "告示牌下方還貼著「找支持」：心理諮商、醫療與電話支持的查詢入口。不用完成任務，也可以隨時從畫面上的「找支持」打開。" }
+      ],
+      "effects": [{ "advance": { "from": ["arrive"], "to": "meetMuyu" } }],
+      "choices": [
+        { "text": "看看支持資源", "effects": [{ "openResources": true }], "next": "board.arrive.end" },
+        { "text": "先去咖啡店外找沐雨", "next": "board.arrive.end" }
+      ]
+    },
+    "board.arrive.end": {
+      "lines": [
+        { "speaker": "旁白", "text": "任務《留一張椅子的午後》開始了。目前的目標會顯示在畫面左上角。咖啡店在廣場西邊。" }
+      ]
+    },
+    "board.default": {
+      "lines": [
+        { "speaker": "旁白", "text": "「花園小角落佈置中：想找一個可以短暫休息、不必勉強聊天的位置。」下方貼著「找支持」的查詢入口。" }
+      ],
+      "choices": [
+        { "text": "看看支持資源", "effects": [{ "openResources": true }] },
+        { "text": "離開" }
+      ]
+    },
+
+    "muyu.meet": {
+      "lines": [
+        { "speaker": "沐雨", "text": "啊，你好！你是新搬來的鄰居吧？我是沐雨，在這間咖啡店工作。" },
+        { "speaker": "沐雨", "text": "我平常喜歡畫明信片，櫃檯旁邊那幾張就是我畫的。" }
+      ],
+      "choices": [
+        { "text": "告示牌上說，社區要佈置花園的角落？", "next": "muyu.meet.event" },
+        { "text": "你好，我剛搬來，請多指教。", "next": "muyu.meet.hello" }
+      ]
+    },
+    "muyu.meet.hello": {
+      "lines": [
+        { "speaker": "沐雨", "text": "歡迎！這裡的人都滿好相處的。對了，你有看到廣場的告示牌嗎？" }
+      ],
+      "next": "muyu.meet.event"
+    },
+    "muyu.meet.event": {
+      "lines": [
+        { "speaker": "沐雨", "text": "阿澄在整理花園，想留一個可以短暫休息、不用勉強聊天的小角落。" },
+        { "speaker": "沐雨", "text": "我本來說要幫忙……可是這陣子，我對這種邀約有點退縮，怕自己拖累大家。" }
+      ],
+      "choices": [
+        { "text": "你想用什麼方式參與呢？", "next": "muyu.meet.ask" },
+        { "text": "沒關係，不用勉強。", "next": "muyu.meet.noPush" },
+        { "text": "一定沒問題的啦，你想太多了！", "next": "muyu.meet.myth" }
+      ]
+    },
+    "muyu.meet.myth": {
+      "lines": [
+        { "speaker": "沐雨", "text": "……嗯，謝謝你想鼓勵我。" },
+        { "speaker": "旁白", "text": "補充：「想太多」常是好意，但可能讓人覺得自己的顧慮沒有被聽見。先問問對方的想法，通常更能幫上忙。" }
+      ],
+      "choices": [
+        { "text": "那……你想用什麼方式參與呢？", "next": "muyu.meet.ask" }
+      ]
+    },
+    "muyu.meet.noPush": {
+      "lines": [
+        { "speaker": "沐雨", "text": "謝謝。其實我還是想參與，只是想找一個不會太勉強的方式。" }
+      ],
+      "choices": [
+        { "text": "那你想怎麼參與呢？", "next": "muyu.meet.ask" }
+      ]
+    },
+    "muyu.meet.ask": {
+      "lines": [
+        { "speaker": "沐雨", "text": "被你這樣問，我好像比較能想清楚了。" },
+        { "speaker": "沐雨", "text": "我想畫告示牌上的小插圖，在家畫好再帶過去。佈置那天能待多久，我想看當天的狀況再決定。" },
+        { "speaker": "沐雨", "text": "對了，我昨天在群組問大家週末要不要一起佈置……到現在還沒有人回。桌上那張便條，是我寫下的念頭。" }
+      ],
+      "choices": [
+        { "text": "可以多說一點你最近的狀況嗎？", "next": "muyu.disclose.ask" },
+        { "text": "謝謝你告訴我。我去看看那張便條。", "next": "muyu.meet.end" }
+      ]
+    },
+    "muyu.disclose.ask": {
+      "lines": [
+        { "speaker": "沐雨", "text": "嗯……接下來有點私人。你願意聽嗎？不聽也完全沒關係。" }
+      ],
+      "choices": [
+        { "text": "我願意聽，你想說多少就說多少。", "next": "muyu.disclose" },
+        { "text": "我們先不聊這個也可以。", "next": "muyu.disclose.skip" }
+      ]
+    },
+    "muyu.disclose.skip": {
+      "lines": [
+        { "speaker": "沐雨", "text": "好，謝謝你。" }
+      ],
+      "next": "muyu.meet.end"
+    },
+    "muyu.disclose": {
+      "lines": [
+        { "speaker": "沐雨", "text": "我前年被診斷為憂鬱症。現在有固定回診，也在跟諮商心理師談。" },
+        { "speaker": "沐雨", "text": "有時候會很累，對以前喜歡的事提不起勁；也有比較好的日子。我還是喜歡畫畫、研究咖啡。" },
+        { "speaker": "沐雨", "text": "這是我自己的經驗，不代表每個人都一樣。只是能說出來，我覺得輕鬆一點。" }
+      ],
+      "choices": [
+        { "text": "謝謝你願意告訴我。", "next": "muyu.meet.end" },
+        { "text": "（點點頭，不追問）", "next": "muyu.meet.end" },
+        { "text": "我想先停在這裡。", "next": "muyu.meet.end" }
+      ]
+    },
+    "muyu.meet.end": {
+      "lines": [
+        { "speaker": "沐雨", "text": "謝謝你先問我想怎麼參與，而不是直接幫我決定。" },
+        { "speaker": "旁白", "text": "你取得理解卡「先問，再陪伴」。理解卡可以在畫面上的「卡冊」查看，之後在適合的時候「使用理解卡」。" }
+      ],
+      "effects": [
+        { "giveCard": "K01" },
+        { "advance": { "from": ["arrive", "meetMuyu"], "to": "thought" } },
+        { "tutorial": "cardbook" }
+      ]
+    },
+    "muyu.thought": {
+      "lines": [
+        { "speaker": "沐雨", "text": "便條就在旁邊的桌上。你想看看也可以。" }
+      ]
+    },
+    "muyu.clarify": {
+      "lines": [
+        { "speaker": "沐雨", "text": "還是沒有人回……我是不是不該傳那則訊息？" },
+        { "speaker": "旁白", "text": "也許可以用剛拿到的理解卡，和她聊聊這個想法。（在沐雨旁邊按「使用理解卡」）" }
+      ]
+    },
+    "muyu.later": {
+      "lines": [
+        { "speaker": "沐雨", "text": "我在畫告示牌的插圖。阿澄在花園，你可以先去找他。" }
+      ]
+    },
+    "muyu.wrap": {
+      "lines": [
+        { "speaker": "沐雨", "text": "我把插圖貼到告示牌上了。你覺得這樣可以嗎？" }
+      ],
+      "choices": [
+        { "text": "很好看。謝謝你來。", "next": "muyu.wrap.2" },
+        { "text": "你今天想待多久都可以。", "next": "muyu.wrap.2" }
+      ]
+    },
+    "muyu.wrap.2": {
+      "lines": [
+        { "speaker": "沐雨", "text": "我今天待到這裡就好，有點累了。不過我很高興有來。" },
+        { "speaker": "沐雨", "text": "之後想來的時候，我會再來這裡坐坐。" }
+      ],
+      "effects": [{ "setFlag": "confirmedMuyu" }]
+    },
+    "muyu.wrapDone": {
+      "lines": [
+        { "speaker": "沐雨", "text": "阿澄那邊也確認過了嗎？" }
+      ]
+    },
+    "muyu.done": {
+      "lines": [
+        { "speaker": "沐雨", "text": "這個角落比我想的還舒服。累的時候，能有個地方停一下真好。" }
+      ]
+    },
+
+    "acheng.early": {
+      "lines": [
+        { "speaker": "阿澄", "text": "你好，我是阿澄，在照顧這座花園。這些薄荷是上個月種的。" },
+        { "speaker": "阿澄", "text": "我在準備小角落的事。沐雨說她可能會來幫忙，有空再來聊聊吧。" }
+      ],
+      "effects": [{ "setFlag": "metAcheng" }]
+    },
+    "acheng.early2": {
+      "lines": [
+        { "speaker": "阿澄", "text": "花園的小角落還在想怎麼弄，有空再來喔。" }
+      ]
+    },
+    "acheng.ask": {
+      "lines": [
+        { "speaker": "阿澄", "text": "（一直看著手機）啊，抱歉，我剛剛在看工作訊息。" },
+        { "speaker": "旁白", "text": "阿澄看起來有點分心。也許可以用理解卡「先問，再陪伴」，問問他想怎麼參與。（在阿澄旁邊按「使用理解卡」）" }
+      ]
+    },
+    "acheng.present": {
+      "lines": [
+        { "speaker": "阿澄", "text": "要一起試試「回到這座花園」嗎？大約兩、三分鐘，隨時可以停。" }
+      ],
+      "choices": [
+        { "text": "好，一起試試看。", "effects": [{ "minigame": "present", "mode": "play" }] },
+        { "text": "我想先看看練習的摘要。", "effects": [{ "minigame": "present", "mode": "summary" }] },
+        { "text": "晚一點再來。" }
+      ]
+    },
+    "acheng.arrange": {
+      "lines": [
+        { "speaker": "阿澄", "text": "長椅就在那邊。用剛才那張卡，跟我一起想想怎麼安排吧。" }
+      ]
+    },
+    "acheng.wrap": {
+      "lines": [
+        { "speaker": "阿澄", "text": "我把手機收進包包了，至少這半小時。客戶的訊息，我明天上班時間再回。" }
+      ],
+      "choices": [
+        { "text": "這樣安排聽起來不錯。", "next": "acheng.wrap.2" },
+        { "text": "需要的時候，這裡隨時可以坐。", "next": "acheng.wrap.2" }
+      ]
+    },
+    "acheng.wrap.2": {
+      "lines": [
+        { "speaker": "阿澄", "text": "嗯。謝謝你今天幫忙，也謝謝你先問我想怎麼參與。" }
+      ],
+      "effects": [{ "setFlag": "confirmedAcheng" }]
+    },
+    "acheng.wrapDone": {
+      "lines": [
+        { "speaker": "阿澄", "text": "沐雨那邊也確認過了嗎？" }
+      ]
+    },
+    "acheng.done": {
+      "lines": [
+        { "speaker": "阿澄", "text": "風鈴響的時候，我會想起要回到眼前。雖然不一定每次都做得到。" }
+      ]
+    },
+
+    "note.early": {
+      "lines": [
+        { "speaker": "旁白", "text": "桌上有一張便條，看起來是咖啡店店員寫的。先認識她再說吧。" }
+      ]
+    },
+    "note.open": {
+      "lines": [
+        { "speaker": "旁白", "text": "便條上寫著：「邀約傳出去兩個小時了，還沒有人回。大家一定覺得我很麻煩。」" }
+      ],
+      "choices": [
+        { "text": "開始練習「想法放大鏡」（約 3～4 分鐘）", "effects": [{ "minigame": "thought", "mode": "play" }] },
+        { "text": "閱讀摘要", "effects": [{ "minigame": "thought", "mode": "summary" }] },
+        { "text": "先不要" }
+      ]
+    },
+    "note.after": {
+      "lines": [
+        { "speaker": "旁白", "text": "沐雨的便條。可以再練習一次，或重新閱讀摘要。" }
+      ],
+      "choices": [
+        { "text": "重玩「想法放大鏡」", "effects": [{ "minigame": "thought", "mode": "play" }] },
+        { "text": "閱讀摘要", "effects": [{ "minigame": "thought", "mode": "summary" }] },
+        { "text": "離開" }
+      ]
+    },
+    "thought.after": {
+      "lines": [
+        { "speaker": "旁白", "text": "回去找沐雨，在她旁邊使用「想法不等於事實」，和她聊聊吧。" }
+      ]
+    },
+
+    "chime.default": {
+      "lines": [
+        { "speaker": "旁白", "text": "一串木頭風鈴，風吹過時會輕輕碰撞。" }
+      ]
+    },
+    "chime.present": {
+      "lines": [
+        { "speaker": "旁白", "text": "風鈴輕輕地響。阿澄說，這裡可以進行「回到這座花園」練習。" }
+      ],
+      "choices": [
+        { "text": "開始練習（約 2～3 分鐘）", "effects": [{ "minigame": "present", "mode": "play" }] },
+        { "text": "閱讀摘要", "effects": [{ "minigame": "present", "mode": "summary" }] },
+        { "text": "離開" }
+      ]
+    },
+    "chime.after": {
+      "lines": [
+        { "speaker": "旁白", "text": "風鈴輕輕地響。可以再進行一次「回到這座花園」。" }
+      ],
+      "choices": [
+        { "text": "重玩練習", "effects": [{ "minigame": "present", "mode": "play" }] },
+        { "text": "閱讀摘要", "effects": [{ "minigame": "present", "mode": "summary" }] },
+        { "text": "離開" }
+      ]
+    },
+    "present.after": {
+      "lines": [
+        { "speaker": "阿澄", "text": "謝謝你陪我。訊息的事還沒解決，不過我比較能分清楚，哪些是現在要處理的。" },
+        { "speaker": "阿澄", "text": "我有個想法：在長椅那邊留一個可以停一下的位置。你要不要用剛才那張卡，跟我一起想想怎麼安排？" }
+      ]
+    },
+
+    "bench.default": {
+      "lines": [
+        { "speaker": "旁白", "text": "一張木頭長椅，旁邊有一塊空地。" }
+      ]
+    },
+    "bench.arrange": {
+      "lines": [
+        { "speaker": "旁白", "text": "一張木頭長椅，旁邊有一塊空地。可以在這裡使用「回到此刻」，提出讓人短暫停留的安排。" }
+      ]
+    },
+    "bench.after": {
+      "lines": [
+        { "speaker": "旁白", "text": "整理好的小角落。告示牌上有沐雨畫的插圖。" }
+      ],
+      "choices": [
+        { "text": "調整佈置", "effects": [{ "arrangement": "edit" }] },
+        { "text": "坐一下", "next": "bench.sit" },
+        { "text": "離開" }
+      ]
+    },
+    "bench.sit": {
+      "lines": [
+        { "speaker": "旁白", "text": "你在長椅上坐了一會兒。風吹過花圃，風鈴輕輕地響。" }
+      ]
+    },
+
+    "use.clarify": {
+      "lines": [
+        { "speaker": "你", "text": "我們要不要一起確認看看？目前知道的是「還沒有人回」，大家怎麼想，好像還不知道。" },
+        { "speaker": "沐雨", "text": "……對耶。「大家覺得我很麻煩」是我腦中的解讀，不是我真的知道的事。" },
+        { "speaker": "沐雨", "text": "不過等待的時候還是會不安，這也是真的。" }
+      ],
+      "choices": [
+        { "text": "要不要直接問問看？", "next": "use.clarify.2" },
+        { "text": "也可以先做別的事，晚點再看。", "next": "use.clarify.2" },
+        { "text": "等待的時候會不安，很正常。", "next": "use.clarify.2" }
+      ]
+    },
+    "use.clarify.2": {
+      "lines": [
+        { "speaker": "沐雨", "text": "我想再傳一句：「時間還沒確定的話，晚點回我也可以喔。」這樣我比較安心。" },
+        { "speaker": "沐雨", "text": "……啊，阿澄回了：「這週工作有點多，晚點回你！」原來他在忙。其他人還沒回，不過也許大家只是還沒看到。" },
+        { "speaker": "沐雨", "text": "阿澄在花園。你可以先去問問他想怎麼參與嗎？我把插圖畫好再過去。" }
+      ],
+      "effects": [{ "advance": { "from": ["clarify"], "to": "askAcheng" } }]
+    },
+    "use.askAcheng": {
+      "lines": [
+        { "speaker": "你", "text": "小角落的佈置，你想用什麼方式參與？照你的步調就好。" },
+        { "speaker": "阿澄", "text": "謝謝你先問。老實說，我這幾天一直在猜客戶訊息的意思：「再看看」是不是代表不滿意？" },
+        { "speaker": "阿澄", "text": "越猜越停不下來，連在花園裡，注意力也一直跑回手機上。" },
+        { "speaker": "阿澄", "text": "我想先停一下。之前在社區講座學過一個小練習，你願意陪我在花園裡留意一下身邊的東西嗎？" }
+      ],
+      "effects": [{ "advance": { "from": ["askAcheng"], "to": "present" } }],
+      "choices": [
+        { "text": "好，一起試試看。", "effects": [{ "minigame": "present", "mode": "play" }] },
+        { "text": "我想先看看練習的摘要。", "effects": [{ "minigame": "present", "mode": "summary" }] },
+        { "text": "晚一點再來。", "next": "use.askAcheng.later" }
+      ]
+    },
+    "use.askAcheng.later": {
+      "lines": [
+        { "speaker": "阿澄", "text": "好，我在這裡。想試的時候再來找我，或到風鈴那邊也可以。" }
+      ]
+    },
+    "use.bench": {
+      "lines": [
+        { "speaker": "你", "text": "也許可以在這裡留一個位置，讓人想停一下就停一下，不用勉強聊天。" },
+        { "speaker": "阿澄", "text": "好主意。我們來決定放在哪裡，還有告示牌要寫什麼吧。" }
+      ],
+      "effects": [{ "arrangement": "first" }]
+    },
+    "arrange.after": {
+      "lines": [
+        { "speaker": "阿澄", "text": "看起來很舒服。我請沐雨也過來看看。" },
+        { "speaker": "旁白", "text": "沐雨帶著畫好的插圖來到花園。去和他們兩人確認一下吧。" }
+      ]
+    },
+    "use.quietSeat": {
+      "lines": [
+        { "speaker": "你", "text": "每個人需要的空間不一樣。要不要再留一個安靜一點的座位？" },
+        { "speaker": "阿澄", "text": "好啊。有人想一個人待著，有人想有人在旁邊，兩種都留著吧。" },
+        { "speaker": "旁白", "text": "花圃旁多了一張面向花的單人椅。" }
+      ],
+      "effects": [{ "quietSeat": true }]
+    },
+    "use.k04.muyu": {
+      "lines": [
+        { "speaker": "你", "text": "如果之後覺得撐不住，你知道可以找誰嗎？" },
+        { "speaker": "沐雨", "text": "嗯，我有可以聯絡的人，也記得 1925 安心專線。謝謝你問，也謝謝你沒有要我一定要說什麼。" },
+        { "speaker": "沐雨", "text": "你自己需要的時候，也可以找人談喔。" }
+      ],
+      "choices": [
+        { "text": "看看支持資源", "effects": [{ "openResources": true }] },
+        { "text": "嗯，謝謝。" }
+      ]
+    },
+    "use.k04.acheng": {
+      "lines": [
+        { "speaker": "你", "text": "如果之後壓力一直很大，你知道可以找誰談嗎？" },
+        { "speaker": "阿澄", "text": "我之前沒想過，工作壓力也可以找人談。聽說各縣市的社區心理衛生中心可以諮詢？我回去查查看。" },
+        { "speaker": "旁白", "text": "各縣市的社區心理衛生中心，可以在「找支持」中查詢。" }
+      ],
+      "choices": [
+        { "text": "看看支持資源", "effects": [{ "openResources": true }] },
+        { "text": "好。" }
+      ]
+    },
+    "use.e02.muyu": {
+      "lines": [
+        { "speaker": "你", "text": "我在想，相似的感受可能出現在很多不同的處境，好像不能只靠感受就替別人下結論。" },
+        { "speaker": "沐雨", "text": "嗯。有時候別人聽到我說很累，就急著說「你一定是怎樣」。其實每個人的狀況都不太一樣。" },
+        { "speaker": "沐雨", "text": "我比較希望大家先問我：現在需要什麼？" }
+      ]
+    },
+    "use.e02.acheng": {
+      "lines": [
+        { "speaker": "你", "text": "常分心、一直想同一件事，很多人在不同處境都可能遇到。好像不能只靠這樣就替自己下結論。" },
+        { "speaker": "阿澄", "text": "對啊。我朋友聽我說常分心，就說我「一定是某某症」。被這樣貼標籤，感覺怪怪的。" },
+        { "speaker": "阿澄", "text": "如果真的困擾很久，我想我會去問專業的人，而不是自己對號入座。" }
+      ]
+    },
+    "wrap.end": {
+      "lines": [
+        { "speaker": "旁白", "text": "花園的小角落整理好了。沐雨和阿澄的困擾不會一下子消失，但大家找到了一個比較合適的相處方式。" },
+        { "speaker": "旁白", "text": "你取得理解卡「求助不必獨自承擔」。需要的時候，可以從「找支持」查看現實中的支持資源。" },
+        { "speaker": "旁白", "text": "任務《留一張椅子的午後》完成。你可以繼續逛逛、補找探索卡，或在沐雨、阿澄旁邊使用「求助不必獨自承擔」。" }
+      ],
+      "choices": [
+        { "text": "看看支持資源", "effects": [{ "openResources": true }] },
+        { "text": "打開卡冊", "effects": [{ "openCardbook": true }] },
+        { "text": "繼續逛逛" }
+      ]
+    },
+    "pickup": {
+      "lines": [
+        { "speaker": "旁白", "text": "你在{place}發現一張理解卡「{title}」。" },
+        { "speaker": "旁白", "text": "{useHint}" }
+      ]
+    }
+  }
+}

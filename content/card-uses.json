@@ -1,0 +1,88 @@
+{
+  "_說明": "用卡互動。玩家在角色或物件旁按「使用理解卡」並選卡後，依序找 target 與 card 相符、且任務階段符合（steps 列出可用的步驟，或 fromStep 表示從該步驟起都可用）的互動。revisit 為 false 的互動只會成功一次；卡片使用後保留，不會消耗。missing 是玩家缺少這張卡時的取得指引。",
+  "uses": [
+    {
+      "id": "clarify-invite",
+      "target": "muyu",
+      "card": "K02",
+      "steps": ["clarify"],
+      "intent": "和沐雨聊聊：「我們要不要一起確認看看？」",
+      "dialogue": "use.clarify",
+      "revisit": false
+    },
+    {
+      "id": "ask-acheng",
+      "target": "acheng",
+      "card": "K01",
+      "steps": ["askAcheng"],
+      "intent": "問問阿澄想用什麼方式參與佈置。",
+      "dialogue": "use.askAcheng",
+      "revisit": false
+    },
+    {
+      "id": "bench-arrange",
+      "target": "bench",
+      "card": "K03",
+      "steps": ["arrange"],
+      "intent": "提議在長椅這裡，留一個可以短暫停一下的位置。",
+      "dialogue": "use.bench",
+      "revisit": false
+    },
+    {
+      "id": "quiet-seat",
+      "target": "bench",
+      "card": "E01",
+      "fromStep": "wrap",
+      "intent": "提議再多留一個安靜一點的座位。",
+      "dialogue": "use.quietSeat",
+      "revisit": true
+    },
+    {
+      "id": "next-support-muyu",
+      "target": "muyu",
+      "card": "K04",
+      "steps": ["done"],
+      "intent": "和沐雨聊聊「需要的時候，可以找誰」。",
+      "dialogue": "use.k04.muyu",
+      "revisit": true
+    },
+    {
+      "id": "next-support-acheng",
+      "target": "acheng",
+      "card": "K04",
+      "steps": ["done"],
+      "intent": "和阿澄聊聊「需要的時候，可以找誰」。",
+      "dialogue": "use.k04.acheng",
+      "revisit": true
+    },
+    {
+      "id": "no-rush-muyu",
+      "target": "muyu",
+      "card": "E02",
+      "fromStep": "thought",
+      "intent": "和沐雨聊聊「不要急著替彼此下結論」。",
+      "dialogue": "use.e02.muyu",
+      "revisit": true
+    },
+    {
+      "id": "no-rush-acheng",
+      "target": "acheng",
+      "card": "E02",
+      "fromStep": "askAcheng",
+      "intent": "和阿澄聊聊「不要急著替彼此下結論」。",
+      "dialogue": "use.e02.acheng",
+      "revisit": true
+    }
+  ],
+  "tooEarly": {
+    "quiet-seat": "先用「回到此刻」開始佈置吧。佈置時就能加入安靜座位；佈置好之後，也可以回來這裡調整。",
+    "no-rush-acheng": "阿澄正忙著看手機。先問問他想怎麼參與吧。",
+    "next-support-muyu": "等花園的角落佈置好，再和沐雨聊聊下一步吧。",
+    "next-support-acheng": "等花園的角落佈置好，再和阿澄聊聊下一步吧。"
+  },
+  "missing": {
+    "K01": "你還沒有「先問，再陪伴」。可以先到咖啡店外，和沐雨聊聊。",
+    "K02": "你還沒有「想法不等於事實」。可以先到咖啡店外，看看桌上的活動便條（可以選擇只閱讀摘要）。",
+    "K03": "你還沒有「回到此刻」。可以先在花園和阿澄進行「回到這座花園」練習，或選擇閱讀摘要。"
+  }
+}

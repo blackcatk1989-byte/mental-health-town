@@ -1,0 +1,48 @@
+{
+  "_說明": "互動角色。均為虛構設計草案；涉及確診經驗與心理知識的正式文案，公開使用前須經心理專業審閱。不在頭像或名牌旁加疾病標籤。spots 依序比對，fromStep 表示從該任務步驟開始改站在這裡。",
+  "characters": [
+    {
+      "id": "muyu",
+      "name": "沐雨",
+      "role": "在咖啡店工作的居民",
+      "intro": "喜歡畫明信片、研究咖啡，也想參與社區的小型佈置。",
+      "look": { "skin": "#f0d3b8", "hair": "#5b4537", "hairStyle": "long", "outfit": "#c98f6b", "accent": "#f4e4c9" },
+      "spots": [
+        { "area": "cafe", "x": 5.6, "z": 9.6 },
+        { "fromStep": "wrap", "area": "garden", "x": 29.6, "z": 16.2 }
+      ],
+      "notApplicable": "沐雨歪著頭想了想：「嗯……這個想法很好，只是我現在好像不是在煩這件事。」",
+      "talk": [
+        { "when": { "step": ["arrive", "meetMuyu"] }, "dialogue": "muyu.meet" },
+        { "when": { "step": ["thought"] }, "dialogue": "muyu.thought" },
+        { "when": { "step": ["clarify"] }, "dialogue": "muyu.clarify" },
+        { "when": { "step": ["askAcheng", "present", "arrange"] }, "dialogue": "muyu.later" },
+        { "when": { "step": ["wrap"], "notFlag": "confirmedMuyu" }, "dialogue": "muyu.wrap" },
+        { "when": { "step": ["wrap"] }, "dialogue": "muyu.wrapDone" },
+        { "dialogue": "muyu.done" }
+      ]
+    },
+    {
+      "id": "acheng",
+      "name": "阿澄",
+      "role": "照顧社區花園的居民",
+      "intro": "喜歡植物，平常接案工作，最近在準備社區花園的小角落。",
+      "look": { "skin": "#e6c3a2", "hair": "#2f2a28", "hairStyle": "short", "outfit": "#7e9e86", "accent": "#e9dcc0" },
+      "spots": [
+        { "area": "garden", "x": 29.2, "z": 8.4 },
+        { "fromStep": "wrap", "area": "garden", "x": 34.2, "z": 13.2 }
+      ],
+      "notApplicable": "阿澄笑了笑：「謝謝你。不過我現在想的，好像不是這件事。」",
+      "talk": [
+        { "when": { "step": ["arrive", "meetMuyu", "thought", "clarify"], "notFlag": "metAcheng" }, "dialogue": "acheng.early" },
+        { "when": { "step": ["arrive", "meetMuyu", "thought", "clarify"] }, "dialogue": "acheng.early2" },
+        { "when": { "step": ["askAcheng"] }, "dialogue": "acheng.ask" },
+        { "when": { "step": ["present"] }, "dialogue": "acheng.present" },
+        { "when": { "step": ["arrange"] }, "dialogue": "acheng.arrange" },
+        { "when": { "step": ["wrap"], "notFlag": "confirmedAcheng" }, "dialogue": "acheng.wrap" },
+        { "when": { "step": ["wrap"] }, "dialogue": "acheng.wrapDone" },
+        { "dialogue": "acheng.done" }
+      ]
+    }
+  ]
+}

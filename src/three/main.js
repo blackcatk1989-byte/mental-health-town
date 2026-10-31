@@ -1,387 +1,396 @@
-// 3D 試作版主程式（Three.js）。內容讀 content/ 的 JSON；造景與人物已清空，暫用空地與標記。
+// 3D 模式：晴隅小鎮的場景、角色、移動與碰撞、互動提示、探索卡、佈置後的場景變化。
+// 遊戲規則與進度都在 src/game.js；這裡只負責呈現與輸入，和文字模式共用同一份進度。
 import * as THREE from 'three';
-import { makePetMarker, makePlayerMarker, makeResidentMarker } from './characters.js';
-import { buildWorld } from './world.js';
-import { CozyCamera } from './camera.js';
+import { makeCharacter, PLAYER_LOOK, toon } from './characters.js';
+import { buildWorld, chair, signPost } from './world.js';
+import { FollowCamera } from './camera.js';
 import { setupLighting } from './lighting.js';
 import { animateWaters, loadIsland } from './island.js';
-import {
-  Dialogue, makeLabel, setupCreatePanel, showPlayControls, setTalkHint, setupJoystick, setupRotateButtons, isTouch,
-} from './ui.js';
+import { setupControls, isTouch } from './controls.js';
+import { $ } from '../ui.js';
 
-const ZONE = '晨光廣場';
-const ISLAND_URL = 'assets/models/island.glb'; // 整座小鎮的 3D 模型；沒有這個檔案時用 world.js 的空地
-const SPEED = 3;
-const RADIUS = 0.28;
-const TALK_DISTANCE = 1.7;
-const REST_REMINDER_MS = 15 * 60 * 1000;
+const ISLAND_URL = 'assets/models/island.glb'; // 有這個檔案時改用模型當小鎮外觀
+const SPEED = 3; // 步行速度（單位／秒）
+const RADIUS = 0.28; // 角色碰撞半徑
+const REACH = 1.7; // 可互動距離
+const SAVE_EVERY = 1.5; // 位置每幾秒存一次
 
-const content = await fetch(`content/${ZONE}.json`).then((r) => r.json());
-// 陪伴小動物的台詞與心情溫度計（與 2D 版共用）
-const lines = await fetch('content/陪伴小動物.json').then((r) => r.json());
-const COMPANIONS = lines.companions;
-const greeting = () => lines.greeting.replace('{animal}', petInfo.label);
-
-// ---- 場景、光線 ----
-const container = document.getElementById('scene');
-const renderer = new THREE.WebGLRenderer({ antialias: true });
-renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
-renderer.setSize(innerWidth, innerHeight);
-container.append(renderer.domElement);
-
-const scene = new THREE.Scene();
-const CLEAR_SKY = new THREE.Color(0xfbeee0);
-const FOG_SKY = new THREE.Color(0xdcd6d0);
-scene.background = FOG_SKY.clone();
-scene.fog = new THREE.Fog(FOG_SKY.clone(), 8, 26);
-const cozy = new CozyCamera(innerWidth / innerHeight);
-const camera = cozy.camera;
-const lighting = setupLighting(renderer, scene);
-
-// 空地提供活動範圍與出生點；有 island.glb 時改用模型當外觀
-const world = buildWorld(scene, { residents: content.residents });
-const loadingEl = document.getElementById('loading');
-const island = await loadIsland(scene, ISLAND_URL, (ratio) => {
-  loadingEl.textContent = `小鎮載入中…… ${Math.round(ratio * 100)}%`;
-});
-if (island) world.visuals.visible = false;
-loadingEl.classList.add('hidden');
-
-// ---- 灰霧：去飽和（CSS filter）、霧氣距離、飄動的霧團與光點 ----
-let fogLevel = 1;
-let colorPreview = true; // 角色創建時先不去飽和，才看得清楚顏色
-const mistTex = (() => {
-  const c = document.createElement('canvas');
-  c.width = c.height = 128;
-  const ctx = c.getContext('2d');
-  const g = ctx.createRadialGradient(64, 64, 0, 64, 64, 64);
-  g.addColorStop(0, 'rgba(240,236,232,0.85)');
-  g.addColorStop(1, 'rgba(240,236,232,0)');
-  ctx.fillStyle = g;
-  ctx.fillRect(0, 0, 128, 128);
-  return new THREE.CanvasTexture(c);
-})();
-const sparkleTex = (() => {
-  const c = document.createElement('canvas');
-  c.width = c.height = 64;
-  const ctx = c.getContext('2d');
-  const g = ctx.createRadialGradient(32, 32, 0, 32, 32, 32);
-  g.addColorStop(0, 'rgba(255,255,255,1)');
-  g.addColorStop(0.25, 'rgba(255,246,214,0.8)');
-  g.addColorStop(1, 'rgba(255,240,200,0)');
-  ctx.fillStyle = g;
-  ctx.fillRect(0, 0, 64, 64);
-  return new THREE.CanvasTexture(c);
-})();
-const mists = Array.from({ length: 14 }, () => {
-  const s = new THREE.Sprite(new THREE.SpriteMaterial({ map: mistTex, depthWrite: false, transparent: true }));
-  s.position.set(Math.random() * world.width, 0.8 + Math.random() * 1.2, Math.random() * world.height);
-  s.scale.setScalar(5 + Math.random() * 4);
-  s.userData.speed = 0.15 + Math.random() * 0.2;
-  scene.add(s);
-  return s;
-});
-function makePoints(count, size) {
-  const geo = new THREE.BufferGeometry();
-  geo.setAttribute('position', new THREE.BufferAttribute(new Float32Array(count * 3), 3));
-  const mat = new THREE.PointsMaterial({
-    map: sparkleTex, size, transparent: true, depthWrite: false, blending: THREE.AdditiveBlending,
-  });
-  const pts = new THREE.Points(geo, mat);
-  pts.frustumCulled = false;
-  scene.add(pts);
-  return pts;
-}
-const motes = makePoints(160, 0.22);
-const motePos = motes.geometry.attributes.position;
-for (let i = 0; i < motePos.count; i++) {
-  motePos.setXYZ(i, Math.random() * world.width, Math.random() * 3, Math.random() * world.height);
-}
-const burst = makePoints(60, 0.3);
-const burstVel = Array.from({ length: 60 }, () => new THREE.Vector3());
-let burstTime = 0;
-burst.visible = false;
-
-function sparkleAt(p) {
-  const pos = burst.geometry.attributes.position;
-  for (let i = 0; i < pos.count; i++) {
-    pos.setXYZ(i, p.x, 1, p.z);
-    burstVel[i].set(Math.random() - 0.5, Math.random() * 0.8 + 0.4, Math.random() - 0.5).normalize().multiplyScalar(1 + Math.random() * 1.5);
+export function webglAvailable() {
+  try {
+    const c = document.createElement('canvas');
+    return !!(window.WebGLRenderingContext && (c.getContext('webgl2') || c.getContext('webgl')));
+  } catch {
+    return false;
   }
-  burstTime = 1.6;
-  burst.visible = true;
 }
 
-function applyFog() {
-  const tint = colorPreview ? 0 : fogLevel;
-  renderer.domElement.style.filter = `saturate(${1 - 0.75 * tint}) brightness(${1 + 0.04 * tint})`;
-  scene.background.copy(CLEAR_SKY).lerp(FOG_SKY, fogLevel);
-  scene.fog.color.copy(scene.background);
-  scene.fog.near = 8 + (1 - fogLevel) * 30;
-  scene.fog.far = 26 + (1 - fogLevel) * 60;
-  for (const m of mists) m.material.opacity = 0.75 * fogLevel;
-  motes.material.opacity = 0.25 + 0.75 * (1 - fogLevel);
-}
-
-let fogTween = null;
-function clearFog(amount) {
-  fogTween = { from: fogLevel, to: Math.max(0, fogLevel - amount), t: 0, duration: 3 };
-}
-applyFog();
-
-// ---- 角色 ----
-const playerPos = new THREE.Vector3(world.spawns.player.x, 0, world.spawns.player.z);
-let player = null;
-let pet = null;
-let petInfo = COMPANIONS[0];
-let yaw = 0; // 0 = 面向鏡頭（+z）
-
-function rebuildCharacters(choice) {
-  if (player) scene.remove(player);
-  if (pet) scene.remove(pet);
-  player = makePlayerMarker();
-  petInfo = COMPANIONS[choice.companion];
-  pet = makePetMarker();
-  player.position.copy(playerPos);
-  pet.position.set(playerPos.x - 0.75, 0, playerPos.z + 0.3);
-  scene.add(player, pet);
-}
-
-const residents = content.residents.map((data) => {
-  const sp = world.spawns[data.id];
-  const mesh = makeResidentMarker();
-  mesh.position.set(sp.x, 0, sp.z);
-  scene.add(mesh);
-  return {
-    data, mesh, talked: false,
-    nameTag: makeLabel('tag', data.name),
-    heart: makeLabel('heart', '♡'),
+export async function start3D(game, ui, store) {
+  if (!webglAvailable()) throw new Error('這個瀏覽器不支援 WebGL');
+  const container = $('scene');
+  const renderer = new THREE.WebGLRenderer({ antialias: true });
+  const applyQuality = () => {
+    const low = store.settings.quality === 'low';
+    renderer.setPixelRatio(low ? 1 : Math.min(devicePixelRatio, 2));
+    renderer.setSize(innerWidth, innerHeight);
+    lighting?.setQuality(store.settings.quality);
   };
-});
+  let lighting = null;
+  container.append(renderer.domElement);
 
-// ---- 介面 ----
-const dialogue = new Dialogue();
-let mode = 'create';
-let panel = null;
-panel = setupCreatePanel([
-  ['陪伴小動物', 'companion', COMPANIONS],
-], lines.moods, {
-  onChange: (choice) => {
-    rebuildCharacters(choice);
-    panel?.say(greeting());
-  },
-  onMood: (m) => panel.say(m.reply),
-  onStart: () => {
-    mode = 'play';
-    cozy.mode = 'play';
-    colorPreview = false;
-    applyFog();
-    showPlayControls();
-    dialogue.show([{ speaker: petInfo.label, text: content.intro }]);
-    setInterval(() => companionSay(lines.restReminder), REST_REMINDER_MS);
-  },
-});
-panel.say(greeting());
+  const scene = new THREE.Scene();
+  scene.background = new THREE.Color(0xf8ecdb);
+  scene.fog = new THREE.Fog(0xf8ecdb, 26, 60);
+  const follow = new FollowCamera(innerWidth / innerHeight);
+  const camera = follow.camera;
+  lighting = setupLighting(renderer, scene);
+  applyQuality();
 
-let bubble = null;
-function companionSay(text) {
-  bubble?.remove();
-  const el = makeLabel('bubble', text);
-  bubble = el;
-  setTimeout(() => { el.style.opacity = 0; }, 4000);
-  setTimeout(() => { el.remove(); if (bubble === el) bubble = null; }, 5000);
-}
+  const world = buildWorld(scene);
+  const island = await loadIsland(scene, ISLAND_URL);
+  if (island) world.visuals.visible = false;
 
-function talk(r) {
-  if (!r || !dialogue.canStart()) return;
-  const dx = r.mesh.position.x - playerPos.x;
-  const dz = r.mesh.position.z - playerPos.z;
-  yaw = Math.atan2(dx, dz);
-  r.mesh.rotation.y = Math.atan2(-dx, -dz);
-  cozy.startTalk(playerPos, r.mesh.position); // 對話時鏡頭轉到主角斜後方，把兩個人都拍進畫面
-  dialogue.show(r.data.dialogue, () => {
-    cozy.endTalk();
-    if (r.talked) return;
-    r.talked = true;
-    r.heart.remove();
-    sparkleAt(r.mesh.position);
-    clearFog(r.data.fogReduction ?? 0.3);
-    setTimeout(() => companionSay(lines.fogCleared), 1500);
+  // ---- 角色 ----
+  const labels = [];
+  const label = (cls, text) => {
+    const el = document.createElement('div');
+    el.className = cls;
+    el.textContent = text;
+    $('labels').append(el);
+    labels.push(el);
+    return el;
+  };
+  const hitMat = new THREE.MeshBasicMaterial({ transparent: true, opacity: 0, depthWrite: false, colorWrite: false });
+  const hitGeo = new THREE.BoxGeometry(1, 1.6, 1);
+  const pickables = []; // 可點選的網格，userData.targetId 指向互動目標
+
+  const actors = new Map(); // 角色 id → { mesh, tag, spot }
+  for (const ch of game.c.characters.characters) {
+    const mesh = makeCharacter(ch.look);
+    const hit = new THREE.Mesh(hitGeo, hitMat);
+    hit.position.y = 0.8;
+    hit.userData.targetId = ch.id;
+    mesh.add(hit);
+    pickables.push(hit);
+    scene.add(mesh);
+    actors.set(ch.id, { mesh, tag: label('tag', ch.name), spot: null });
+  }
+  for (const o of game.c.places.objects) {
+    const hit = new THREE.Mesh(hitGeo, hitMat);
+    hit.position.set(o.x, 0.8, o.z);
+    hit.userData.targetId = o.id;
+    scene.add(hit);
+    pickables.push(hit);
+  }
+
+  const player = makeCharacter(PLAYER_LOOK);
+  scene.add(player);
+  const s = game.s;
+  const start = s.player && !world.blocked(s.player.x, s.player.z, RADIUS) ? s.player : game.areaById[s.area]?.spawn ?? { x: 18, z: 17 };
+  const pos = new THREE.Vector3(start.x, 0, start.z);
+  let yaw = Math.PI; // 面向北方（背對鏡頭）
+  let lastArea = world.areaOf(pos.x);
+
+  // ---- 探索卡 ----
+  const glowTex = (() => {
+    const c = document.createElement('canvas');
+    c.width = c.height = 64;
+    const ctx = c.getContext('2d');
+    const g = ctx.createRadialGradient(32, 32, 0, 32, 32, 32);
+    g.addColorStop(0, 'rgba(255,248,220,1)');
+    g.addColorStop(1, 'rgba(255,240,200,0)');
+    ctx.fillStyle = g;
+    ctx.fillRect(0, 0, 64, 64);
+    return new THREE.CanvasTexture(c);
+  })();
+  const pickups = new Map(); // 點位 id → 物件
+  function syncPickups() {
+    const want = new Set(game.targets().filter((t) => t.kind === 'pickup').map((t) => t.point.id));
+    for (const [pid, g] of pickups) {
+      if (!want.has(pid)) {
+        scene.remove(g);
+        pickables.splice(pickables.indexOf(g.userData.hit), 1);
+        pickups.delete(pid);
+        if (beacon.userData.point === pid) hideBeacon();
+      }
+    }
+    for (const t of game.targets()) {
+      if (t.kind !== 'pickup' || pickups.has(t.point.id)) continue;
+      const g = new THREE.Group();
+      const card = new THREE.Mesh(new THREE.BoxGeometry(0.34, 0.46, 0.03), toon(game.card(t.card).color));
+      card.position.y = 0.9;
+      card.castShadow = true;
+      const glow = new THREE.Sprite(new THREE.SpriteMaterial({ map: glowTex, transparent: true, depthWrite: false, blending: THREE.AdditiveBlending }));
+      glow.scale.setScalar(1.3);
+      glow.position.y = 0.9;
+      const hit = new THREE.Mesh(hitGeo, hitMat);
+      hit.position.y = 0.8;
+      hit.userData.targetId = t.id;
+      pickables.push(hit);
+      g.add(card, glow, hit);
+      g.position.set(t.x, 0, t.z);
+      g.userData.card = card;
+      g.userData.hit = hit;
+      scene.add(g);
+      pickups.set(t.point.id, g);
+    }
+  }
+
+  // 卡冊「顯示位置」的標記光柱
+  const beacon = new THREE.Mesh(
+    new THREE.CylinderGeometry(0.35, 0.35, 6, 16, 1, true),
+    new THREE.MeshBasicMaterial({ color: 0xffe2a8, transparent: true, opacity: 0.35, depthWrite: false, side: THREE.DoubleSide }),
+  );
+  beacon.visible = false;
+  scene.add(beacon);
+  const beaconTag = label('tag beacon-tag hidden', '在這裡');
+  const hideBeacon = () => {
+    beacon.visible = false;
+    beacon.userData.point = null;
+    beaconTag.classList.add('hidden');
+  };
+  const onLocate = (e) => {
+    const p = e.detail;
+    beacon.position.set(p.x, 3, p.z);
+    beacon.visible = true;
+    beacon.userData.point = p.id;
+    beaconTag.classList.remove('hidden');
+  };
+  game.addEventListener('locate', onLocate);
+
+  // ---- 佈置後的場景變化 ----
+  const decor = new THREE.Group();
+  scene.add(decor);
+  function syncArrangement() {
+    decor.clear();
+    const a = game.s.arrangement;
+    if (!a) return;
+    const cfg = game.c.places.objects.find((o) => o.id === 'bench').arrangement;
+    const spot = cfg.spots.find((x) => x.id === a.spot) ?? cfg.spots[0];
+    const c = chair(0xd9b98f);
+    c.position.set(spot.x, 0, spot.z);
+    c.rotation.y = Math.PI;
+    const cushion = new THREE.Mesh(new THREE.BoxGeometry(0.42, 0.08, 0.42), toon(0xe3a48a));
+    cushion.position.set(spot.x, 0.52, spot.z);
+    const sign = signPost(0xfff3dc);
+    sign.position.set(spot.x + 0.7, 0, spot.z - 0.3);
+    const lantern = new THREE.Mesh(new THREE.SphereGeometry(0.12, 12, 8), new THREE.MeshBasicMaterial({ color: 0xffe9b8 }));
+    lantern.position.set(spot.x + 0.7, 1.4, spot.z - 0.3);
+    decor.add(c, cushion, sign, lantern);
+    if (a.quiet) {
+      const q = chair(0xb9a3c9);
+      q.position.set(31.2, 0, 18.4);
+      const plant = new THREE.Mesh(new THREE.IcosahedronGeometry(0.35, 1), toon(0x93b98a));
+      plant.position.set(31.9, 0.35, 18.6);
+      decor.add(q, plant);
+    }
+  }
+
+  // ---- 狀態同步 ----
+  const goalTags = new Map();
+  function syncActors() {
+    for (const [id, a] of actors) {
+      const t = game.target(id);
+      if (a.spot?.x !== t.x || a.spot?.z !== t.z) {
+        a.mesh.position.set(t.x, 0, t.z);
+        a.spot = { x: t.x, z: t.z };
+      }
+    }
+    const goals = new Set(game.goalTargets());
+    for (const [id, el] of goalTags) {
+      if (!goals.has(id)) {
+        el.remove();
+        goalTags.delete(id);
+      }
+    }
+    for (const id of goals) if (!goalTags.has(id)) goalTags.set(id, label('goal-mark', '！'));
+  }
+  // 互動目標在進度改變時才重算，主迴圈裡不新建物件
+  let targetList = [];
+  const targetMap = new Map();
+  const onChange = () => {
+    targetList = game.targets();
+    targetMap.clear();
+    for (const tg of targetList) targetMap.set(tg.id, tg);
+    syncActors();
+    syncPickups();
+    syncArrangement();
+  };
+  game.addEventListener('change', onChange);
+  onChange();
+
+  // ---- 輸入 ----
+  let near = null;
+  const blockedUI = () => ui.busy() || document.body.classList.contains('home-open');
+  const controls = setupControls({
+    isBlocked: blockedUI,
+    onInteract: () => { if (near && !blockedUI()) game.interact(near.id); },
+    onUse: () => { if (near?.cardTarget && !blockedUI()) ui.openUseCard(near.id); },
   });
-}
 
-// ---- 輸入 ----
-const keys = new Set();
-const helpDialog = document.getElementById('help-dialog');
-const stick = isTouch ? setupJoystick() : { x: 0, y: 0 };
-const rotateState = { rotate: 0 };
-setupRotateButtons(rotateState);
-let near = null;
+  const ray = new THREE.Raycaster();
+  const ndc = new THREE.Vector2();
+  const onPointer = (e) => {
+    if (blockedUI()) return;
+    ndc.set((e.clientX / innerWidth) * 2 - 1, -(e.clientY / innerHeight) * 2 + 1);
+    ray.setFromCamera(ndc, camera);
+    const hit = ray.intersectObjects(pickables, false)[0];
+    if (!hit) return;
+    const t = game.target(hit.object.userData.targetId);
+    if (!t) return;
+    if (Math.hypot(t.x - pos.x, t.z - pos.z) <= REACH) game.interact(t.id);
+    else ui.toast(`再靠近${t.name}一點，就可以互動。`, { ms: 2200 });
+  };
+  renderer.domElement.addEventListener('pointerup', onPointer);
 
-addEventListener('keydown', (e) => {
-  if (helpDialog.open || mode !== 'play') return;
-  keys.add(e.code);
-  if (e.code === 'Space' || e.code === 'Enter') {
-    e.preventDefault();
-    if (e.repeat) return;
-    if (dialogue.open) dialogue.advance();
-    else talk(near);
-  }
-});
-addEventListener('keyup', (e) => keys.delete(e.code));
-addEventListener('blur', () => keys.clear());
+  const onResize = () => {
+    follow.setAspect(innerWidth / innerHeight);
+    renderer.setSize(innerWidth, innerHeight);
+  };
+  addEventListener('resize', onResize);
 
-// 拖曳畫面旋轉鏡頭、滾輪縮放
-let dragId = null;
-let dragX = 0;
-renderer.domElement.addEventListener('pointerdown', (e) => { if (mode === 'play') { dragId = e.pointerId; dragX = e.clientX; } });
-addEventListener('pointermove', (e) => {
-  if (e.pointerId !== dragId) return;
-  cozy.rotate(-(e.clientX - dragX) * 0.008);
-  dragX = e.clientX;
-});
-addEventListener('pointerup', (e) => { if (e.pointerId === dragId) dragId = null; });
-renderer.domElement.addEventListener('wheel', (e) => {
-  if (mode === 'play') cozy.zoomBy(e.deltaY * 0.01);
-}, { passive: true });
+  // ---- 主迴圈 ----
+  const tmp = new THREE.Vector3();
+  const clock = new THREE.Clock();
+  let saveTimer = 0;
+  let moved = false;
+  let shownTarget;
 
-addEventListener('resize', () => {
-  cozy.setAspect(innerWidth / innerHeight);
-  renderer.setSize(innerWidth, innerHeight);
-});
+  const blocked = (x, z) => {
+    if (world.blocked(x, z, RADIUS)) return true;
+    for (const a of actors.values()) if (Math.hypot(a.mesh.position.x - x, a.mesh.position.z - z) < 0.45 + RADIUS) return true;
+    return false;
+  };
 
-// ---- 主迴圈 ----
-const tmp = new THREE.Vector3();
-const clock = new THREE.Clock();
-let lastNearName = undefined;
+  const placeLabel = (el, x, y, z) => {
+    tmp.set(x, y, z).project(camera);
+    el.style.display = tmp.z < 1 ? '' : 'none';
+    el.style.left = `${((tmp.x + 1) / 2) * innerWidth}px`;
+    el.style.top = `${((1 - tmp.y) / 2) * innerHeight}px`;
+  };
 
-function blocked(x, z) {
-  if (world.blocked(x, z, RADIUS)) return true;
-  return residents.some((r) => Math.hypot(r.mesh.position.x - x, r.mesh.position.z - z) < 0.95);
-}
-
-function placeLabel(el, obj, height) {
-  tmp.copy(obj.position).setY(obj.position.y + height).project(camera);
-  const visible = tmp.z < 1;
-  el.style.display = visible ? '' : 'none';
-  el.style.left = `${(tmp.x + 1) / 2 * innerWidth}px`;
-  el.style.top = `${(1 - tmp.y) / 2 * innerHeight}px`;
-}
-
-function frame() {
-  const dt = Math.min(clock.getDelta(), 0.05);
-  const t = clock.elapsedTime;
-
-  // 移動
-  let ix = 0, iy = 0;
-  if (mode === 'play' && !dialogue.open) {
-    ix = (keys.has('ArrowRight') || keys.has('KeyD') ? 1 : 0) - (keys.has('ArrowLeft') || keys.has('KeyA') ? 1 : 0) + stick.x;
-    iy = (keys.has('ArrowDown') || keys.has('KeyS') ? 1 : 0) - (keys.has('ArrowUp') || keys.has('KeyW') ? 1 : 0) + stick.y;
-    cozy.rotate(((keys.has('KeyQ') ? 1 : 0) - (keys.has('KeyE') ? 1 : 0) + rotateState.rotate) * dt * 1.8);
-  }
-  const len = Math.hypot(ix, iy);
-  if (len > 1) { ix /= len; iy /= len; }
-  const moving = len > 0.1;
-  if (moving) {
-    const az = cozy.azimuth;
-    const wx = ix * Math.cos(az) + iy * Math.sin(az);
-    const wz = -ix * Math.sin(az) + iy * Math.cos(az);
-    const nx = playerPos.x + wx * SPEED * dt;
-    const nz = playerPos.z + wz * SPEED * dt;
-    if (!blocked(nx, playerPos.z)) playerPos.x = nx;
-    if (!blocked(playerPos.x, nz)) playerPos.z = nz;
-    yaw = Math.atan2(wx, wz);
+  function breathe(a, t, still) {
+    const b = still ? 0 : Math.sin(t * 2.2 + a.position.x) * 0.02;
+    a.userData.body.scale.set(1 - b * 0.5, 1 + b, 1 - b * 0.5);
   }
 
-  // 角色動畫：走路時一蹦一蹦，站著時慢慢呼吸
-  if (player) {
-    player.position.copy(playerPos);
-    const dy = Math.atan2(Math.sin(yaw - player.rotation.y), Math.cos(yaw - player.rotation.y));
-    player.rotation.y += dy * Math.min(1, dt * 12);
+  function savePosition() {
+    game.setPlayer(pos.x, pos.z, world.areaOf(pos.x));
+    store.save();
+    moved = false;
+  }
+
+  function frame() {
+    const dt = Math.min(clock.getDelta(), 0.05);
+    const t = clock.elapsedTime;
+    const still = store.settings.reduceMotion;
+
+    // 移動（鏡頭在南方往北看：上＝-Z，右＝+X）
+    let { x: ix, y: iy } = controls.direction();
+    const len = Math.hypot(ix, iy);
+    if (len > 1) { ix /= len; iy /= len; }
+    const walking = len > 0.1;
+    if (walking) {
+      const nx = pos.x + ix * SPEED * dt;
+      const nz = pos.z + iy * SPEED * dt;
+      if (!blocked(nx, pos.z)) pos.x = nx;
+      if (!blocked(pos.x, nz)) pos.z = nz;
+      yaw = Math.atan2(ix, iy);
+      moved = true;
+    }
+    player.position.copy(pos);
+    player.rotation.y += Math.atan2(Math.sin(yaw - player.rotation.y), Math.cos(yaw - player.rotation.y)) * Math.min(1, dt * 12);
     const body = player.userData.body;
-    if (moving) {
-      body.position.y = Math.abs(Math.sin(t * 13)) * 0.09;
-      body.rotation.z = Math.sin(t * 13) * 0.07;
-      body.scale.set(1, 1, 1);
+    if (walking && !still) {
+      body.position.y = Math.abs(Math.sin(t * 12)) * 0.07;
+      body.rotation.z = Math.sin(t * 12) * 0.05;
     } else {
       body.position.y = 0;
       body.rotation.z *= 0.8;
-      const b = Math.sin(t * 2.4) * 0.025;
-      body.scale.set(1 - b * 0.5, 1 + b, 1 - b * 0.5);
+    }
+    breathe(player, t, still);
+    for (const a of actors.values()) breathe(a.mesh, t, still);
+    // 角色面向玩家（距離近時）
+    for (const a of actors.values()) {
+      const d = Math.hypot(pos.x - a.mesh.position.x, pos.z - a.mesh.position.z);
+      if (d < 3) a.mesh.rotation.y = Math.atan2(pos.x - a.mesh.position.x, pos.z - a.mesh.position.z);
     }
 
-    // 小動物跟在身後
-    tmp.set(playerPos.x - Math.sin(yaw) * 0.8 + Math.cos(yaw) * 0.35, 0, playerPos.z - Math.cos(yaw) * 0.8 - Math.sin(yaw) * 0.35);
-    const gap = tmp.distanceTo(pet.position);
-    if (mode === 'play' && gap > 0.05) {
-      pet.position.lerp(tmp, Math.min(1, dt * 4));
-      pet.rotation.y = Math.atan2(tmp.x - pet.position.x, tmp.z - pet.position.z) || pet.rotation.y;
+    // 區域切換提示
+    const area = world.areaOf(pos.x);
+    if (area !== lastArea) {
+      lastArea = area;
+      game.setPlayer(pos.x, pos.z, area);
+      ui.toast(game.areaById[area].name, { ms: 1600 });
     }
-    if (mode === 'create') pet.rotation.y = 0.4;
-    pet.userData.body.position.y = gap > 0.15 ? Math.abs(Math.sin(t * 16)) * 0.08 : 0;
-    const pb = Math.sin(t * 3) * 0.03;
-    pet.userData.body.scale.set(1 - pb * 0.5, 1 + pb, 1 - pb * 0.5);
-  }
-
-  // 居民輕輕呼吸
-  for (const r of residents) {
-    const b = Math.sin(t * 2 + r.mesh.position.x) * 0.025;
-    r.mesh.userData.body.scale.set(1 - b * 0.5, 1 + b, 1 - b * 0.5);
-  }
-
-  // 互動提示
-  near = mode === 'play' && !dialogue.open
-    ? residents.find((r) => Math.hypot(r.mesh.position.x - playerPos.x, r.mesh.position.z - playerPos.z) < TALK_DISTANCE)
-    : null;
-  const nearName = near?.data.name ?? null;
-  if (nearName !== lastNearName) {
-    setTalkHint(nearName, () => talk(near));
-    lastNearName = nearName;
-  }
-
-  // 灰霧與光點
-  if (fogTween) {
-    fogTween.t += dt;
-    const k = Math.min(1, fogTween.t / fogTween.duration);
-    fogLevel = fogTween.from + (fogTween.to - fogTween.from) * (1 - Math.cos(k * Math.PI)) / 2;
-    applyFog();
-    if (k >= 1) fogTween = null;
-  }
-  for (const m of mists) {
-    m.position.x += m.userData.speed * dt;
-    if (m.position.x > world.width + 4) m.position.x = -4;
-  }
-  for (let i = 0; i < motePos.count; i++) {
-    let y = motePos.getY(i) + dt * 0.25;
-    if (y > 3) y = 0;
-    motePos.setY(i, y);
-    motePos.setX(i, motePos.getX(i) + Math.sin(t + i) * dt * 0.1);
-  }
-  motePos.needsUpdate = true;
-  if (burstTime > 0) {
-    burstTime -= dt;
-    const pos = burst.geometry.attributes.position;
-    for (let i = 0; i < pos.count; i++) {
-      burstVel[i].y -= dt * 0.6;
-      pos.setXYZ(i, pos.getX(i) + burstVel[i].x * dt, pos.getY(i) + burstVel[i].y * dt, pos.getZ(i) + burstVel[i].z * dt);
+    saveTimer += dt;
+    if (moved && saveTimer > SAVE_EVERY) {
+      saveTimer = 0;
+      savePosition();
     }
-    pos.needsUpdate = true;
-    burst.material.opacity = Math.max(0, burstTime / 1.6);
-    if (burstTime <= 0) burst.visible = false;
+
+    // 附近可互動的目標
+    near = null;
+    if (!blockedUI()) {
+      let best = REACH;
+      for (const tg of targetList) {
+        const d = Math.hypot(tg.x - pos.x, tg.z - pos.z);
+        if (d <= best) { best = d; near = tg; }
+      }
+    }
+    if (near?.id !== shownTarget) {
+      shownTarget = near?.id;
+      controls.showTarget(near);
+    }
+
+    // 探索卡輕輕浮動
+    for (const g of pickups.values()) {
+      g.userData.card.rotation.y = still ? 0.4 : t * 1.2;
+      g.userData.card.position.y = 0.9 + (still ? 0 : Math.sin(t * 2) * 0.06);
+    }
+    world.anchors.chimes.rotation.z = still ? 0 : Math.sin(t * 1.3) * 0.06;
+
+    follow.update(dt, pos, { reduceMotion: still });
+    lighting.follow(follow.target);
+    if (island) animateWaters(island.waters, t);
+
+    // 名牌與目標記號
+    for (const a of actors.values()) placeLabel(a.tag, a.mesh.position.x, 1.55, a.mesh.position.z);
+    for (const [id, el] of goalTags) {
+      const tg = targetMap.get(id);
+      if (tg) placeLabel(el, tg.x, tg.kind === 'character' ? 2.0 : 2.4, tg.z);
+    }
+    if (beacon.visible) placeLabel(beaconTag, beacon.position.x, 2.2, beacon.position.z);
+
+    renderer.render(scene, camera);
   }
+  renderer.setAnimationLoop(frame);
 
-  // 鏡頭與陽光跟著角色；有島嶼模型時讓水面閃動
-  cozy.update(dt, playerPos, { wide: innerWidth > 700 });
-  lighting.follow(cozy.target);
-  if (island) animateWaters(island.waters, t);
+  const onHide = () => savePosition();
+  addEventListener('pagehide', onHide);
 
-  // 頭上的名牌、愛心、對話泡泡
-  for (const r of residents) {
-    placeLabel(r.nameTag, r.mesh, 1.55);
-    if (!r.talked) placeLabel(r.heart, r.mesh, 1.95);
-  }
-  if (bubble && pet) placeLabel(bubble, pet, 0.9);
-
-  renderer.render(scene, camera);
+  return {
+    applySettings: applyQuality,
+    stop() {
+      savePosition();
+      renderer.setAnimationLoop(null);
+      controls.stop();
+      game.removeEventListener('change', onChange);
+      game.removeEventListener('locate', onLocate);
+      removeEventListener('resize', onResize);
+      removeEventListener('pagehide', onHide);
+      renderer.domElement.removeEventListener('pointerup', onPointer);
+      for (const el of labels) el.remove();
+      for (const el of goalTags.values()) el.remove();
+      renderer.dispose();
+      renderer.domElement.remove();
+    },
+    // 測試用：直接移動到某個目標旁邊
+    teleport(x, z) {
+      pos.set(x, 0, z);
+      moved = true;
+    },
+    blockedAt: (x, z) => blocked(x, z),
+    get position() { return { x: pos.x, z: pos.z }; },
+    isTouch,
+  };
 }
-renderer.setAnimationLoop(frame);

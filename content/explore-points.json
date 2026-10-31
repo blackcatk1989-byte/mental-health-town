@@ -1,0 +1,12 @@
+{
+  "_說明": "隨機探索點。每次開新存檔，從 points 中抽兩個不同的點，分別放入 cards 裡的兩張探索卡；抽好的對照表存在玩家瀏覽器，重新整理不會重抽。點位要能走到、看得到，不可和必要互動重疊。",
+  "cards": ["E01", "E02"],
+  "points": [
+    { "id": "plaza-planter", "area": "plaza", "name": "廣場花台旁", "x": 13.4, "z": 12.2 },
+    { "id": "plaza-bench", "area": "plaza", "name": "廣場長椅旁", "x": 22.2, "z": 18.4 },
+    { "id": "cafe-window", "area": "cafe", "name": "咖啡店外窗台", "x": 3.2, "z": 5.4 },
+    { "id": "cafe-rack", "area": "cafe", "name": "咖啡店外公告架", "x": 10.4, "z": 6.0 },
+    { "id": "garden-trellis", "area": "garden", "name": "花園入口花架", "x": 25.8, "z": 9.4 },
+    { "id": "garden-path", "area": "garden", "name": "花園步道旁", "x": 33.0, "z": 18.4 }
+  ]
+}

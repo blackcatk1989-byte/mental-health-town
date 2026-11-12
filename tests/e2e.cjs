@@ -178,6 +178,18 @@ async function main() {
     check('介面、對話、程式不殘留舊名（晴隅、沐雨、阿澄、佈置）', hits.length === 0, hits.join(','));
   }
 
+  // 0b. 背景音樂：曲目檔案存在、大小合理、授權有記錄
+  {
+    const root = path.join(__dirname, '..');
+    const music = JSON.parse(fs.readFileSync(path.join(root, 'content/music.json'), 'utf8'));
+    const credits = fs.readFileSync(path.join(root, 'docs/素材來源.md'), 'utf8');
+    const tracks = Object.values(music.tracks).filter(Boolean);
+    const bad = tracks.filter((t) => !fs.existsSync(path.join(root, t.file)) || fs.statSync(path.join(root, t.file)).size > 3 * 1024 * 1024
+      || !/CC0/.test(t.license) || !t.url || !credits.includes(t.url));
+    check('背景音樂曲目存在、每首小於 3 MB、CC0 授權並記錄在素材來源', tracks.length === 3 && bad.length === 0,
+      tracks.map((t) => `${t.title} ${(fs.statSync(path.join(root, t.file)).size / 1048576).toFixed(1)}MB`).join('、'));
+  }
+
   // 1. 文字模式：完整主線（親手完成兩個練習），完全不解謎也能完成
   {
     const { browser, page, errors } = await launch();
@@ -567,6 +579,19 @@ async function main() {
     const st = await page.evaluate(() => JSON.parse(localStorage.getItem('xinzhijian.settings')));
     check('音樂開關與音量重整後記得', st.music === false && Math.abs(st.musicVolume - 0.2) < 0.001, JSON.stringify(st));
     check('音樂流程無錯誤', errors.length === 0, errors.join(' | '));
+    await browser.close();
+  }
+  {
+    // 真正的曲目：開始遊戲後實際播放
+    const { browser, page, errors } = await launch();
+    await newGame(page, '#home-text');
+    await page.waitForFunction(() => window.__xzj.music.playing, null, { timeout: 15000 }).catch(() => {});
+    const src = await page.evaluate(() => window.__xzj.music.playing);
+    await text.go(page, 'cafe');
+    await page.waitForTimeout(2500);
+    const v = await page.evaluate(() => window.__xzj.music.volume);
+    check('實際播放真正的曲目，換到咖啡店外後淡入', src && v > 0.4, `音量 ${v.toFixed(2)}`);
+    check('真正曲目播放無錯誤', errors.length === 0, errors.join(' | '));
     await browser.close();
   }
   {

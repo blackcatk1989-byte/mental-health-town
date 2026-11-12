@@ -511,6 +511,95 @@ async function main() {
     await browser.close();
   }
 
+  // 7. 第二輪：背景音樂、繪製呼叫、省電畫質、手機預設省電
+  {
+    // 測試用的 1 秒靜音 WAV，代替真正的曲目（曲目檔由 content/music.json 指定）
+    const wav = (() => {
+      const rate = 8000; const n = rate; const buf = Buffer.alloc(44 + n * 2);
+      buf.write('RIFF', 0); buf.writeUInt32LE(36 + n * 2, 4); buf.write('WAVEfmt ', 8);
+      buf.writeUInt32LE(16, 16); buf.writeUInt16LE(1, 20); buf.writeUInt16LE(1, 22); buf.writeUInt32LE(rate, 24);
+      buf.writeUInt32LE(rate * 2, 28); buf.writeUInt16LE(2, 32); buf.writeUInt16LE(16, 34); buf.write('data', 36); buf.writeUInt32LE(n * 2, 40);
+      return buf;
+    })();
+    const { browser, context, page, errors } = await launch();
+    await context.route('**/content/music.json', (route) => route.fulfill({ contentType: 'application/json', body: JSON.stringify({
+      duck: 0.3, fade: 0.2, default: null,
+      tracks: { plaza: { file: 'assets/audio/_test-plaza.wav' }, cafe: { file: 'assets/audio/_test-cafe.wav' }, garden: { file: 'assets/audio/_test-garden.wav' } },
+    }) }));
+    await context.route('**/assets/audio/_test-*.wav', (route) => route.fulfill({ contentType: 'audio/wav', body: wav }));
+    await page.goto(`${BASE}/?test=1`);
+    await page.evaluate(() => localStorage.clear());
+    await page.goto(`${BASE}/?test=1`);
+    await page.waitForSelector('#home-new');
+    check('首頁還沒播放音樂', !(await page.evaluate(() => window.__xzj.music.playing)));
+    await page.click('#home-text');
+    await page.waitForFunction(() => window.__xzj.music.playing, null, { timeout: 10000 }).catch(() => {});
+    check('按下開始後才播放音樂', await page.evaluate(() => window.__xzj.music.playing));
+    const src0 = await page.evaluate(() => [...document.querySelectorAll('audio')].length);
+    await text.go(page, 'garden');
+    await page.waitForTimeout(800);
+    const vols = await page.evaluate(() => window.__xzj.music.volume);
+    check('換區時切換曲目（淡入淡出）', vols > 0.3, `音量 ${vols.toFixed(2)}，audio 元素 ${src0}`);
+    // 「回到這座花園」降低音量
+    await page.evaluate(() => {
+      const g = window.__xzj.game;
+      g.store.mutate((s) => { s.step = 'present'; s.cards = ['K01', 'K02']; });
+      g.changed();
+    });
+    await text.act(page, 'ade');
+    await talkThrough(page, ['一起試試']);
+    await page.waitForSelector('#minigame[open]');
+    await page.waitForTimeout(800);
+    const ducked = await page.evaluate(() => window.__xzj.music.volume);
+    await page.click('#minigame .panel-head button:last-child');
+    await page.waitForTimeout(800);
+    const back = await page.evaluate(() => window.__xzj.music.volume);
+    check('進入「回到這座花園」自動降低音量，離開後恢復', ducked < 0.2 && back > 0.4, `${ducked.toFixed(2)} → ${back.toFixed(2)}`);
+    // 設定：音樂開關與音量，重整後記得
+    await page.click('#hud-buttons [data-open-settings]');
+    await page.fill('#music-volume', '0.2');
+    await page.dispatchEvent('#music-volume', 'change');
+    await page.click('#settings-body [data-key="music"][data-value="false"]');
+    await page.click('#settings .panel-head button:last-child');
+    await page.waitForTimeout(800);
+    check('關閉音樂後停止', (await page.evaluate(() => window.__xzj.music.volume)) < 0.01);
+    await page.reload();
+    const st = await page.evaluate(() => JSON.parse(localStorage.getItem('xinzhijian.settings')));
+    check('音樂開關與音量重整後記得', st.music === false && Math.abs(st.musicVolume - 0.2) < 0.001, JSON.stringify(st));
+    check('音樂流程無錯誤', errors.length === 0, errors.join(' | '));
+    await browser.close();
+  }
+  {
+    const { browser, page } = await launch();
+    await newGame(page);
+    await page.waitForFunction(() => window.__xzj?.view()?.position, null, { timeout: 30000 });
+    const calls = {};
+    for (const [n, x, z] of [['小廣場', 18, 15], ['咖啡店外', 6, 11], ['小花園', 30, 13]]) {
+      await page.evaluate(([x, z]) => window.__xzj.view().teleport(x, z), [x, z]);
+      await page.waitForTimeout(2500);
+      calls[n] = await page.evaluate(() => window.__xzj.view().drawCalls);
+      await page.screenshot({ path: `${OUT}/r2-${n}.png` });
+    }
+    check('每個區域的繪製呼叫少於 200', Object.values(calls).every((c) => c > 0 && c < 200), JSON.stringify(calls));
+    await page.click('#hud-buttons [data-open-settings]');
+    await page.click('#settings-body [data-key="quality"][data-value="low"]');
+    await page.click('#settings .panel-head button:last-child');
+    await page.waitForTimeout(1500);
+    const qy = await page.evaluate(() => window.__xzj.view().quality);
+    check('省電畫質：關陰影、隱藏小裝飾、像素比 1', !qy.shadows && !qy.details && qy.pixelRatio === 1, JSON.stringify(qy));
+    await browser.close();
+  }
+  {
+    const { browser, page } = await launch({ mobile: true });
+    await page.goto(`${BASE}/?test=1`);
+    await page.evaluate(() => localStorage.clear());
+    await page.goto(`${BASE}/?test=1`);
+    await page.waitForSelector('#home-new');
+    const q = await page.evaluate(() => JSON.parse(localStorage.getItem('xinzhijian.settings'))?.quality);
+    check('手機第一次開啟時預設省電畫質', q === 'low', q);
+    await browser.close();
+  }
+
   const failed = results.filter((r) => !r.ok);
   console.log(`\n共 ${results.length} 項，通過 ${results.length - failed.length} 項，未通過 ${failed.length} 項`);
   process.exit(failed.length ? 1 : 0);

@@ -95,12 +95,12 @@ BASE=http://localhost:8000 node tests/e2e.cjs
 | 素材 | 來源 |
 |---|---|
 | 3D 小鎮、Q 版角色、橘貓麻糬、盆栽、理解卡插圖 | 自製（程式產生的幾何造型與 SVG 線條） |
-| 背景音樂 | 待加入（見 docs/素材來源.md） |
+| 背景音樂 | OpenGameArt 的 CC0 曲子：Hot Springs Town、Bluebonnet（Kistol）、Cozy Puzzle In-Game 3（MintoDog），詳見 docs/素材來源.md |
 | 風鈴音效 | 自製（瀏覽器 Web Audio 即時合成，不使用音檔） |
 | 3D 引擎 | [Three.js](https://threejs.org/) 0.170.0（MIT 授權），由 jsDelivr CDN 載入 |
 | 字型 | 使用玩家裝置內建字型 |
 
-完整清單與授權見 [docs/素材來源.md](docs/素材來源.md)。目前沒有使用第三方圖片或模型；背景音樂預計從 Pixabay 選曲，加入時記錄在素材來源檔。
+完整清單與授權見 [docs/素材來源.md](docs/素材來源.md)。目前沒有使用第三方圖片或模型；背景音樂是 OpenGameArt 上的 CC0 曲子。
 
 ## 心理健康內容的參考來源
 

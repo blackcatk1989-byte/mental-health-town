@@ -1,12 +1,12 @@
 {
-  "_說明": "互動角色。均為虛構設計草案；涉及確診經驗與心理知識的正式文案，公開使用前須經心理專業審閱。不在頭像或名牌旁加疾病標籤。spots 依序比對，fromStep 表示從該任務步驟開始改站在這裡。小月（曉晴的朋友）、筱玉姐（阿德的客戶）只出現在訊息與對話中，不是可對話角色。",
+  "_說明": "互動角色。均為虛構設計草案；涉及確診經驗與心理知識的正式文案，公開使用前須經心理專業審閱。不在頭像或名牌旁加疾病標籤。look 是 Q 版造型的配色：hairStyle（long／short）、accessory（clip 髮夾／apron 圍裙／scarf 圍巾），只用髮型、服裝與配件區分角色，不用和疾病有關的顏色或符號。spots 依序比對，fromStep 表示從該任務步驟開始改站在這裡。小月（曉晴的朋友）、筱玉姐（阿德的客戶）只出現在訊息與對話中，不是可對話角色。",
   "characters": [
     {
       "id": "xiaoqing",
       "name": "曉晴",
       "role": "咖啡店店員",
       "intro": "喜歡畫明信片、研究咖啡。最近在群組約了朋友週末聚餐。",
-      "look": { "skin": "#f0d3b8", "hair": "#5b4537", "hairStyle": "long", "outfit": "#c98f6b", "accent": "#f4e4c9" },
+      "look": { "skin": "#f0d3b8", "hair": "#5b4537", "hairStyle": "long", "outfit": "#d99a78", "accent": "#f6e3c8", "pants": "#8b7b8f", "accessory": "clip" },
       "spots": [
         { "area": "cafe", "x": 5.6, "z": 9.6 }
       ],
@@ -27,7 +27,7 @@
       "name": "阿德",
       "role": "接案工作者、花園志工",
       "intro": "平常接設計案，下班後會來社區花園幫忙澆水。",
-      "look": { "skin": "#e6c3a2", "hair": "#2f2a28", "hairStyle": "short", "outfit": "#7e9e86", "accent": "#e9dcc0" },
+      "look": { "skin": "#e6c3a2", "hair": "#3a322e", "hairStyle": "short", "outfit": "#8fae96", "accent": "#e9d8b8", "pants": "#6f6a62", "accessory": "apron" },
       "spots": [
         { "area": "garden", "x": 29.2, "z": 8.4 },
         { "fromStep": "tonight", "area": "garden", "x": 29.6, "z": 13.8 }

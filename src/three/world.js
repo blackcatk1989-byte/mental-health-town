@@ -1,4 +1,4 @@
-// 晴隅小鎮的 3D 場景：小廣場、咖啡店外、小花園三區，用簡單幾何造型拼成（自製，不使用外部模型）。
+// 微光里的 3D 場景：小廣場、咖啡店外、小花園三區，用簡單幾何造型拼成（自製，不使用外部模型）。
 // 回傳 { width, height, blocked, areaOf, visuals, anchors }。座標：西北角在原點，+X 往東、+Z 往南，地面 y = 0。
 // 互動物件與角色的位置寫在 content/places.json、content/characters.json；這裡的擺設要和那些座標對齊。
 import * as THREE from 'three';
@@ -128,15 +128,28 @@ export function buildWorld(scene) {
   // 窗台花箱
   add(box(2.2, 0.35, 0.4, C.wood, 3.3, 0.85, 4.3), box(2.1, 0.12, 0.3, C.leaf, 3.3, 1.07, 4.3));
   boxes.push([0.4, 0.4, 10.6, 4.6]);
-  // 露臺桌椅（活動便條放在其中一張桌上）
-  add(table(3.4, 8.2), table(8.6, 12.6));
-  circles.push([3.4, 8.2, 0.6], [8.6, 12.6, 0.6]);
-  for (const [x, z, r] of [[2.6, 8.2, Math.PI / 2], [4.2, 8.2, -Math.PI / 2], [9.4, 12.6, -Math.PI / 2], [8.6, 13.4, Math.PI]]) {
+  // 露臺：曉晴的便條桌，以及謎題「還沒收的三張桌子」（靠窗、中間、門口）
+  const TABLES = [[2.4, 7.2], [5.0, 6.6], [7.8, 7.2], [8.6, 12.6]];
+  for (const [x, z] of TABLES) {
+    add(table(x, z));
+    circles.push([x, z, 0.6]);
+  }
+  for (const [x, z, r] of [[1.6, 7.2, Math.PI / 2], [5.0, 7.4, Math.PI], [8.6, 7.2, -Math.PI / 2], [9.4, 12.6, -Math.PI / 2], [8.6, 13.4, Math.PI]]) {
     const c = chair();
     c.position.set(x, 0, z);
     c.rotation.y = r;
     add(c);
   }
+  // 桌上留下的東西（線索的文字在 content/puzzles.json，這裡只是外觀）
+  add(box(0.34, 0.02, 0.26, 0xf6f0a8, 2.3, 0.78, 7.15, { shadow: false })); // 畫滿螢光筆的講義
+  for (const dx of [-0.25, 0.05, 0.3]) add(cyl(0.05, 0.04, 0.1, C.paper, 2.4 + dx, 0.82, 7.4, 10)); // 空咖啡杯
+  add(box(0.28, 0.02, 0.2, C.paper, 4.9, 0.78, 6.55, { shadow: false })); // 帳單
+  add(box(0.18, 0.02, 0.18, 0xf2ece0, 5.2, 0.78, 6.75, { shadow: false })); // 寫滿數字的餐巾紙
+  add(box(0.22, 0.02, 0.15, 0xe9d0b0, 7.7, 0.78, 7.1, { shadow: false })); // 寫一半的明信片
+  add(box(0.12, 0.02, 0.16, 0xb8cfe0, 8.0, 0.78, 7.3, { shadow: false })); // 合照
+  // 收桌托盤（謎題入口）
+  add(box(0.7, 0.75, 0.45, C.woodDark, 9.6, 0.38, 8.0), box(0.6, 0.03, 0.4, 0x9d7b5c, 9.6, 0.78, 8.0));
+  boxes.push([9.25, 7.75, 9.95, 8.25]);
   // 活動便條
   const note = box(0.3, 0.01, 0.22, C.paper, 8.6, 0.78, 12.55, { shadow: false });
   note.rotation.y = 0.3;
@@ -153,7 +166,7 @@ export function buildWorld(scene) {
   // 花台
   add(cyl(1.0, 1.05, 0.5, C.stone, 15.0, 0.25, 12.8, 20), cyl(0.9, 0.9, 0.12, C.soil, 15.0, 0.52, 12.8, 20));
   circles.push([15.0, 12.8, 1.05]);
-  // 社區資源告示牌（面向南方）
+  // 公布欄（面向南方）
   const board = new THREE.Group();
   board.add(box(1.8, 1.1, 0.1, C.wood, 0, 1.35, 0), box(0.1, 1.9, 0.1, C.woodDark, -0.85, 0.95, 0), box(0.1, 1.9, 0.1, C.woodDark, 0.85, 0.95, 0));
   board.add(box(0.5, 0.6, 0.02, C.paper, -0.45, 1.4, 0.06, { shadow: false }), box(0.45, 0.4, 0.02, 0xdfeedd, 0.15, 1.5, 0.06, { shadow: false }));
@@ -210,7 +223,7 @@ export function buildWorld(scene) {
   });
   const petal = new THREE.IcosahedronGeometry(0.13, 0);
   [C.flowerA, C.flowerB, C.flowerC].forEach((col, i) => add(instanced(petal, col, flowers[i])));
-  // 薄荷盆栽（阿澄旁邊）
+  // 薄荷盆栽（阿德旁邊）
   for (const [x, z] of [[27.4, 7.4], [28.1, 6.8], [26.8, 6.6]]) {
     add(cyl(0.22, 0.17, 0.35, C.pot, x, 0.17, z, 12));
     const m = new THREE.Mesh(new THREE.IcosahedronGeometry(0.28, 1), toon(C.mint));
@@ -233,6 +246,19 @@ export function buildWorld(scene) {
   bench.position.set(31.5, 0, 12.6);
   add(bench);
   boxes.push([30.5, 12.25, 32.5, 12.95]);
+  // 植物角落（謎題「三盆植物」）：木架左邊向陽、中間格子棚（半陰）、右邊有屋簷（遮蔭）
+  add(box(2.6, 0.08, 0.5, C.wood, 34.0, 0.6, 16.6), box(2.6, 0.08, 0.5, C.wood, 34.0, 0.05, 16.6));
+  for (const x of [32.75, 35.25]) add(box(0.08, 2.2, 0.08, C.woodDark, x, 1.1, 16.4));
+  for (let x = 33.5; x <= 34.4; x += 0.22) add(box(0.04, 0.04, 0.8, C.wood, x, 2.05, 16.6)); // 格子棚
+  add(box(0.95, 0.06, 0.95, C.roof, 34.8, 2.1, 16.6)); // 屋簷
+  add(cyl(0.16, 0.18, 0.32, 0x8fb3c9, 35.4, 0.16, 17.9, 12), box(0.3, 0.04, 0.04, 0x8fb3c9, 35.65, 0.3, 17.9)); // 澆水壺
+  boxes.push([32.7, 16.3, 35.3, 16.9]);
+  const potSpots = {
+    sun: { x: 33.2, y: 0.64, z: 16.6 },
+    half: { x: 34.0, y: 0.64, z: 16.6 },
+    shade: { x: 34.8, y: 0.64, z: 16.6 },
+    ground: { rosemary: { x: 34.6, z: 17.6 }, mint: { x: 33.2, z: 17.7 }, fern: { x: 33.9, z: 17.9 } },
+  };
 
   // ---- 樹 ----
   const trees = [
@@ -265,5 +291,5 @@ export function buildWorld(scene) {
   };
   const areaOf = (x) => (x < 11.8 ? 'cafe' : x > 24.6 ? 'garden' : 'plaza');
 
-  return { width: WIDTH, height: HEIGHT, blocked, areaOf, visuals, anchors: { chimes } };
+  return { width: WIDTH, height: HEIGHT, blocked, areaOf, visuals, anchors: { chimes, potSpots } };
 }

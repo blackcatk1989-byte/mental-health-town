@@ -1,9 +1,9 @@
 // 本機進度與設定。只存在玩家自己的瀏覽器（localStorage），不傳送到任何伺服器。
-// 不儲存姓名、病史或心情紀錄；只有任務進度、卡片、探索點位、佈置選擇、位置與操作設定。
+// 不儲存姓名、病史或心情紀錄；只有任務進度、卡片、練習與謎題紀錄、位置與操作設定。
 const SAVE_KEY = 'xinzhijian.save';
 const UNREADABLE_KEY = 'xinzhijian.save.unreadable'; // 讀不懂的舊進度先備份在這裡，不默默丟棄
 const SETTINGS_KEY = 'xinzhijian.settings';
-export const SAVE_VERSION = 1;
+export const SAVE_VERSION = 2; // v2：《今天有點卡卡的》與謎題改版，v1 進度無法沿用
 
 export const DEFAULT_SETTINGS = { sound: false, reduceMotion: false, textSize: 'm', quality: 'high' };
 
@@ -15,25 +15,7 @@ function storage() {
   }
 }
 
-function randomInt(n) {
-  const a = new Uint32Array(1);
-  crypto.getRandomValues(a);
-  return a[0] % n;
-}
-
-// 從候選點抽出不重複的點，分給每一張探索卡
-export function rollExplore(cards, points, forced) {
-  if (forced?.length === cards.length && new Set(forced).size === forced.length
-    && forced.every((id) => points.some((p) => p.id === id))) {
-    return Object.fromEntries(cards.map((c, i) => [c, forced[i]]));
-  }
-  const pool = points.map((p) => p.id);
-  const out = {};
-  for (const c of cards) out[c] = pool.splice(randomInt(pool.length), 1)[0];
-  return out;
-}
-
-export function newSave(explore) {
+export function newSave(puzzleIds) {
   return {
     version: SAVE_VERSION,
     createdAt: new Date().toISOString(),
@@ -42,10 +24,8 @@ export function newSave(explore) {
     used: [], // 已成功的用卡互動
     rewards: [], // 已發放的獎勵紀錄（卡號），避免重複發獎
     flags: {},
-    practice: { thought: { completed: 0, summary: 0 }, present: { completed: 0, summary: 0 } },
-    explore, // 探索卡 → 點位
-    picked: [], // 已拾取的點位
-    arrangement: null, // { spot, sign, quiet }
+    practice: { thought: 0, present: 0 }, // 親手完成練習的次數
+    puzzles: Object.fromEntries(puzzleIds.map((id) => [id, { place: {}, solved: false }])), // 謎題：已擺放的位置、是否解開
     area: 'plaza',
     player: null, // { x, z }
     mode: '3d',
@@ -74,6 +54,9 @@ export class Store {
     if (!raw) return { status: 'none' };
     try {
       const data = JSON.parse(raw);
+      if (data?.version === 1) {
+        return { status: 'error', reason: '遊戲已經改版：故事、角色與謎題都換新了，舊版（v1）的進度沒辦法沿用。' };
+      }
       if (data?.version !== SAVE_VERSION) {
         return { status: 'error', reason: `進度的版本（${data?.version ?? '不明'}）和目前的遊戲版本不同。` };
       }

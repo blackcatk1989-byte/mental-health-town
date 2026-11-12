@@ -56,3 +56,70 @@ export function makeCharacter(look) {
   root.userData.parts = parts;
   return root;
 }
+
+// 橘貓麻糬：提示用的動物，不能對話。腳底在原點、臉朝 +Z
+export function makeCat() {
+  const root = new THREE.Group();
+  const body = new THREE.Group();
+  root.add(body);
+  const mesh = (geo, color, x, y, z, parent = body) => {
+    const m = new THREE.Mesh(geo, toon(color));
+    m.position.set(x, y, z);
+    m.castShadow = true;
+    parent.add(m);
+    return m;
+  };
+  mesh(new THREE.SphereGeometry(0.2, 16, 12), '#e8a35a', 0, 0.2, 0).scale.set(1, 0.85, 1.35);
+  mesh(new THREE.SphereGeometry(0.15, 16, 12), '#eeb06a', 0, 0.36, 0.26);
+  for (const x of [-0.08, 0.08]) {
+    mesh(new THREE.ConeGeometry(0.05, 0.09, 8), '#e8a35a', x, 0.5, 0.25);
+    mesh(new THREE.SphereGeometry(0.018, 8, 6), '#3d322c', x * 0.7, 0.38, 0.4);
+  }
+  mesh(new THREE.SphereGeometry(0.05, 10, 8), '#fff4e6', 0, 0.32, 0.38).scale.set(1.3, 0.8, 0.6);
+  const tail = new THREE.Group();
+  tail.position.set(0, 0.24, -0.26);
+  mesh(new THREE.CapsuleGeometry(0.035, 0.22, 4, 8), '#d48b45', 0, 0.12, -0.04, tail).rotation.x = -0.6;
+  body.add(tail);
+  root.userData.body = body;
+  root.userData.tail = tail;
+  return root;
+}
+
+const POT_PLANTS = {
+  rosemary: { leaf: '#7f9d7a', shape: 'spiky' },
+  mint: { leaf: '#9fd0a0', shape: 'round' },
+  fern: { leaf: '#6fa36b', shape: 'wide' },
+};
+
+// 花園謎題的三盆植物：形狀不同（細長、圓團、寬葉），不只靠顏色區分
+export function makePot(id) {
+  const g = new THREE.Group();
+  const pot = new THREE.Mesh(new THREE.CylinderGeometry(0.2, 0.15, 0.3, 12), toon('#c98a6b'));
+  pot.position.y = 0.15;
+  pot.castShadow = true;
+  g.add(pot);
+  const p = POT_PLANTS[id];
+  const mat = toon(p.leaf);
+  if (p.shape === 'spiky') {
+    for (let i = 0; i < 5; i++) {
+      const m = new THREE.Mesh(new THREE.ConeGeometry(0.05, 0.45, 6), mat);
+      m.position.set(Math.cos(i * 1.3) * 0.08, 0.5, Math.sin(i * 1.3) * 0.08);
+      m.rotation.set(Math.sin(i) * 0.25, 0, Math.cos(i) * 0.25);
+      g.add(m);
+    }
+  } else if (p.shape === 'round') {
+    const m = new THREE.Mesh(new THREE.IcosahedronGeometry(0.24, 1), mat);
+    m.position.y = 0.45;
+    g.add(m);
+  } else {
+    for (let i = 0; i < 6; i++) {
+      const m = new THREE.Mesh(new THREE.BoxGeometry(0.08, 0.02, 0.42), mat);
+      m.position.set(0, 0.42, 0);
+      m.rotation.set(0.5, (i / 6) * Math.PI * 2, 0);
+      m.translateZ(0.16);
+      g.add(m);
+    }
+  }
+  g.traverse((o) => { if (o.isMesh) o.castShadow = true; });
+  return g;
+}

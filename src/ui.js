@@ -1,7 +1,8 @@
-// 共用的 HTML 介面：對話框、提示訊息、確認視窗、設定、佈置面板、任務目標。
+// 共用的 HTML 介面：對話框、提示訊息、確認視窗、設定、麻糬的提示、任務目標。
 // 3D 模式與文字模式都用這一套；所有文字都在 HTML 裡呈現，不畫進 3D 場景。
 import { openCardbook, openUseCard } from './cards.js';
 import { openMinigame } from './minigames.js';
+import { openPuzzle } from './puzzles.js';
 
 export const $ = (id) => document.getElementById(id);
 
@@ -194,8 +195,8 @@ export function createUI(content, store) {
         const act = b.dataset.act;
         if (act === 'home') { $('settings').close(); handlers.home(); return; }
         const ok = await confirm(act === 'clear'
-          ? '確定要清除這個瀏覽器裡的所有進度嗎？卡片、任務與探索位置都會刪除，無法復原。'
-          : '確定要重新開始嗎？目前的進度會被清除，探索卡會放到新的位置。', act === 'clear' ? '清除進度' : '重新開始');
+          ? '確定要清除這個瀏覽器裡的所有進度嗎？卡片、任務與謎題紀錄都會刪除，無法復原。'
+          : '確定要重新開始嗎？目前的進度（卡片、任務與謎題）會被清除。', act === 'clear' ? '清除進度' : '重新開始');
         if (!ok) return;
         $('settings').close();
         if (act === 'clear') handlers.clear();
@@ -204,33 +205,37 @@ export function createUI(content, store) {
     }
   }
 
-  // ---- 佈置花園角落 ----
-  function arrangement(cfg, current, hasQuiet, done) {
-    const pick = { spot: current?.spot ?? cfg.spots[0].id, sign: current?.sign ?? 0, quiet: current?.quiet ?? false };
-    const render = () => {
-      $('arrange-body').innerHTML = `
-        <h3>座位放在哪裡？</h3>
-        <div class="options">${cfg.spots.map((s) => `<button type="button" class="option ${pick.spot === s.id ? 'on' : ''}"
-          data-spot="${s.id}" aria-pressed="${pick.spot === s.id}"><strong>${esc(s.label)}</strong><small>${esc(s.note)}</small></button>`).join('')}</div>
-        <h3>告示牌寫什麼？</h3>
-        <div class="options">${cfg.signs.map((t, i) => `<button type="button" class="option ${pick.sign === i ? 'on' : ''}"
-          data-sign="${i}" aria-pressed="${pick.sign === i}">「${esc(t)}」</button>`).join('')}</div>
-        <h3>${esc(cfg.quiet.label)}</h3>
-        ${hasQuiet
-    ? `<button type="button" class="option ${pick.quiet ? 'on' : ''}" data-quiet aria-pressed="${pick.quiet}">
-            <strong>${pick.quiet ? '已加入' : '加入'}安靜座位</strong><small>${esc(cfg.quiet.note)}</small></button>`
-    : '<p class="fine">找到探索卡「每個人需要的空間不同」後，可以額外加入安靜座位（不影響完成任務）。</p>'}
-        <p class="fine">每個選項都可以完成佈置，沒有標準答案。</p>`;
-      for (const b of $('arrange-body').querySelectorAll('[data-spot]')) b.onclick = () => { pick.spot = b.dataset.spot; render(); };
-      for (const b of $('arrange-body').querySelectorAll('[data-sign]')) b.onclick = () => { pick.sign = Number(b.dataset.sign); render(); };
-      const q = $('arrange-body').querySelector('[data-quiet]');
-      if (q) q.onclick = () => { pick.quiet = !pick.quiet; render(); };
+  // ---- 麻糬的提示：先選要問什麼，再由玩家決定看到第幾層 ----
+  function hints() {
+    const h = content.hints;
+    const body = $('hints-body');
+    const topics = () => {
+      const list = game.hintTopics();
+      body.innerHTML = `<p>${esc(h.greeting)}</p>
+        ${list.length ? `<p>想問麻糬什麼？</p><div class="options">${list.map((t) => `<button type="button" class="option" data-topic="${t.id}">
+          <strong>${esc(t.label)}</strong></button>`).join('')}</div>` : `<p>${esc(h.nothing)}</p>`}`;
+      for (const b of body.querySelectorAll('[data-topic]')) b.onclick = () => layers(b.dataset.topic, 0);
     };
-    render();
-    let result = null;
-    $('arrange-ok').onclick = () => { result = { ...pick }; $('arrange').close(); };
-    $('arrange-cancel').onclick = () => $('arrange').close();
-    openPanel('arrange', () => done(result));
+    const layers = (topic, shown, text) => {
+      body.innerHTML = `<p class="fine">${esc(game.hintTopics().find((t) => t.id === topic)?.label ?? '')}</p>
+        ${text ? `<div class="notice">${esc(text)}</div>` : ''}
+        <p>${shown ? '還需要更多提示嗎？' : '想看到哪一層提示？可以一層一層來。'}</p>
+        <div class="options">${h.layers.map((l, i) => `<button type="button" class="option ${i < shown ? 'on' : ''}" data-layer="${i + 1}">
+          <strong>${i + 1}．${esc(l.label)}</strong></button>`).join('')}</div>
+        <div class="row-actions"><button type="button" class="btn" data-back>問別的</button>
+        <button type="button" class="btn primary" data-close>好，我自己找找</button></div>`;
+      for (const b of body.querySelectorAll('[data-layer]')) {
+        b.onclick = () => {
+          const n = Number(b.dataset.layer);
+          const r = game.hint(topic, n);
+          if (r) layers(topic, Math.max(shown, n), r.text);
+        };
+      }
+      body.querySelector('[data-back]').onclick = topics;
+      body.querySelector('[data-close]').onclick = () => $('hints').close();
+    };
+    topics();
+    openPanel('hints');
   }
 
   // ---- 任務目標 ----
@@ -262,26 +267,19 @@ export function createUI(content, store) {
       renderSettings(handlers);
       openPanel('settings');
     },
-    openCardbook: () => openCardbook(game, { toast, onLocate: (r) => game.dispatchEvent(new CustomEvent('located', { detail: r })) }),
+    openCardbook: () => openCardbook(game),
     openUseCard: (targetId) => openUseCard(game, targetId),
-    minigame: (id, mode, data, done) => openMinigame(id, mode, data, store.settings, done),
-    arrangement,
+    minigame: (id, data, done) => openMinigame(id, data, store.settings, done),
+    puzzle: (g, id) => openPuzzle(g, id),
+    hints,
     cardToast(card) {
-      toast(`取得理解卡「<strong>${esc(card.title)}</strong>」`, { action: { label: '查看', fn: () => openCardbook(game, { focus: card.id, toast }) } });
+      toast(`取得理解卡「<strong>${esc(card.title)}</strong>」`, { action: { label: '查看', fn: () => openCardbook(game, { focus: card.id }) } });
     },
     tutorial(kind) {
       if (kind !== 'cardbook') return;
       const b = $('cardbook-button');
       b.classList.add('pulse');
       setTimeout(() => b.classList.remove('pulse'), 8000);
-    },
-    pickupAnimation(card) {
-      if (store.settings.reduceMotion) return;
-      const el = document.createElement('div');
-      el.className = 'pickup-fly';
-      el.style.background = card.color;
-      document.body.append(el);
-      setTimeout(() => el.remove(), 900);
     },
   };
 }

@@ -6,8 +6,8 @@ import { createUI, $, esc } from './ui.js';
 import { startTextMode } from './text-mode.js';
 
 const FILES = {
-  quest: 'quest', cards: 'cards', characters: 'characters', places: 'places', explore: 'explore-points',
-  uses: 'card-uses', dialogues: 'dialogues', minigames: 'minigames',
+  quest: 'quest', cards: 'cards', characters: 'characters', places: 'places', puzzles: 'puzzles',
+  hints: 'hints', uses: 'card-uses', dialogues: 'dialogues', minigames: 'minigames',
 };
 
 const params = new URLSearchParams(location.search);
@@ -86,11 +86,10 @@ async function enter(m) {
 
 async function newGame(m) {
   if (store.hasSave() && store.data) {
-    const ok = await ui.confirm('開始新遊戲會清除目前的進度，探索卡也會放到新的位置。確定嗎？', '開始新遊戲');
+    const ok = await ui.confirm('開始新遊戲會清除目前的進度（卡片、任務與謎題）。確定嗎？', '開始新遊戲');
     if (!ok) return;
   }
-  const forced = params.get('explore')?.split(',');
-  game.newGame(forced);
+  game.newGame();
   enter(m);
 }
 

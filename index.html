@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-  <meta name="description" content="心之間：在溫暖的小鎮裡，透過相遇、探索與練習，多理解自己與別人一點。心理健康衛教 3D 網頁 RPG 原型。">
+  <meta name="description" content="心之間：在微光里平凡的一天裡，透過相遇、探索與解謎，多理解自己與別人一點。心理健康衛教日常探索解謎遊戲原型。">
   <title>心之間</title>
   <style>
     :root {
@@ -153,6 +153,24 @@
     .placed { color: #3f6b4b; }
     .note-paper { background: #fffdf7; border: 1px solid var(--line); border-radius: 6px; padding: 12px 16px; margin: 10px 0;
       font-size: 1.05rem; transform: rotate(-.6deg); box-shadow: 0 2px 6px rgba(0,0,0,.08); }
+    .boxes { display: grid; grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)); gap: 8px; margin: 12px 0; }
+    .box { background: var(--paper-2); border: 2px solid var(--line); border-radius: 14px; padding: 8px 12px; }
+    .box ul, .placed-list { margin: 4px 0; padding-left: 18px; }
+    .thought-bubble { background: #eef1f6; border: 2px dashed #b9c3d3; border-radius: 18px; padding: 8px 14px; margin: 10px 0; }
+    .thought-bubble p { margin: 2px 0; font-size: 1.05rem; }
+    .puzzle-items { display: grid; gap: 12px; }
+    .puzzle-item { border: 2px solid var(--line); border-radius: 16px; padding: 8px 12px; background: var(--paper); }
+    .puzzle-item.again { border-color: #d8a44f; background: #fff8e8; }
+    .puzzle-item h4 { margin: 4px 0; }
+    .tag-again { font-size: .75rem; background: var(--warn); border-radius: 999px; padding: 0 8px; margin-left: 8px; font-weight: 400; }
+    .clues { list-style: none; padding: 0; margin: 4px 0 8px; font-size: .92rem; }
+    .clue-kind { display: inline-block; min-width: 3.2em; font-size: .75rem; background: #e2eedb; border-radius: 999px; padding: 0 8px; margin-right: 6px; text-align: center; }
+    .slot-buttons { display: grid; grid-template-columns: repeat(auto-fill, minmax(130px, 1fr)); gap: 6px; }
+    .slot-icon { font-size: 1.2rem; }
+    .draft { margin: 0; }
+    .dlg-actions .draft { font-size: .72rem; }
+    .cat-dot { display: inline-block; font-size: .75rem; background: #f6d9b0; border-radius: 999px; padding: 0 8px; margin-left: 6px; }
+    .text-targets li.marked { border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-soft); }
     .mg-footer { display: flex; flex-wrap: wrap; gap: 10px; justify-content: flex-end; margin-top: 16px; }
 
     .setting { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 10px 0; border-bottom: 1px solid var(--line); flex-wrap: wrap; }
@@ -217,10 +235,10 @@
   <section id="home" aria-labelledby="home-title">
     <div class="home-inner">
       <h1 id="home-title">心之間</h1>
-      <p class="tagline">在一座溫暖的小鎮裡，透過相遇、探索與練習，多理解自己與別人一點。</p>
+      <p class="tagline">日常探索解謎｜在微光里平凡的一天裡，多理解自己與別人一點。</p>
       <div class="card-box">
         <h2>關於這個遊戲</h2>
-        <p>你是剛搬到晴隅小鎮的居民。和鎮上的人聊聊、完成兩個心理練習、收集「理解卡」，並在適合的時候使用它們，陪大家一起佈置花園的小角落。全程約 15～20 分鐘，沒有倒數計時，隨時可以停下來。</p>
+        <p>你是剛搬到微光里的居民。今天是很普通的一天：咖啡店的曉晴在等朋友回訊息，花園的阿德下班了還放不下手機。親手做兩個小練習、解開里內的謎題，收集「理解卡」，並在適合的時候使用它們。全程約 20 分鐘，不計時、不扣分，隨時可以停下來。卡住的時候，可以找橘貓麻糬。</p>
       </div>
       <div class="card-box">
         <h2>開始之前</h2>
@@ -243,7 +261,7 @@
   <!-- 遊戲中的介面 -->
   <div id="hud" class="hidden">
     <div id="goal" aria-live="polite">
-      <div class="quest">任務｜留一張椅子的午後</div>
+      <div class="quest">今天｜今天有點卡卡的</div>
       <div id="goal-text"></div>
       <div id="goal-missing" class="hidden"></div>
       <div id="save-warning" class="hidden">進度暫時無法保存</div>
@@ -252,7 +270,7 @@
       <button type="button" id="cardbook-button" class="btn">卡冊 <span id="cardbook-count">0/6</span></button>
       <button type="button" class="btn" data-open-settings>設定</button>
     </div>
-    <div id="controls-tip" class="hidden">WASD／方向鍵移動｜E 互動｜F 使用理解卡｜也可以點選附近的人或物件</div>
+    <div id="controls-tip" class="hidden">WASD／方向鍵移動｜E 互動｜F 使用理解卡｜也可以點選附近的人或物件｜卡住了？找橘貓麻糬</div>
     <div id="interact" class="hidden" role="group" aria-label="附近可以互動">
       <span id="interact-name"></span>
       <button type="button" id="interact-go" class="btn primary">互動</button>
@@ -270,6 +288,7 @@
       <div id="dlg-choices"></div>
       <div class="dlg-actions">
         <button type="button" id="dlg-exit" class="btn small">離開對話</button>
+        <span class="fine draft">內容草案，尚未完成專業審閱</span>
         <button type="button" id="dlg-next" class="btn primary small">繼續</button>
       </div>
     </div>
@@ -293,11 +312,14 @@
     <div class="panel-body" id="minigame-body"></div>
   </dialog>
 
-  <dialog id="arrange" aria-labelledby="arrange-title">
-    <div class="panel-head"><h2 id="arrange-title">佈置花園的小角落</h2><button type="button" class="btn small support-mini" data-open-support>找支持</button></div>
-    <div class="panel-body"><div id="arrange-body"></div>
-      <div class="row-actions"><button type="button" id="arrange-cancel" class="btn">晚點再決定</button>
-        <button type="button" id="arrange-ok" class="btn primary">就這樣佈置</button></div></div>
+  <dialog id="puzzle" aria-labelledby="puzzle-title">
+    <div class="panel-head"><h2 id="puzzle-title">謎題</h2><button type="button" class="btn small support-mini" data-open-support>找支持</button><button type="button" class="btn small" onclick="this.closest('dialog').close()">先離開</button></div>
+    <div class="panel-body" id="puzzle-body"></div>
+  </dialog>
+
+  <dialog id="hints" aria-labelledby="hints-title">
+    <div class="panel-head"><h2 id="hints-title">橘貓麻糬</h2><button type="button" class="btn small support-mini" data-open-support>找支持</button><button type="button" class="btn small" onclick="this.closest('dialog').close()">關閉</button></div>
+    <div class="panel-body" id="hints-body"></div>
   </dialog>
 
   <dialog id="settings" aria-labelledby="settings-title">

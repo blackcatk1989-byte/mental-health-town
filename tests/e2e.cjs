@@ -847,6 +847,60 @@ async function main() {
     await browser.close();
   }
 
+  // 9. 修正：音樂不重疊（模擬 iPhone 不能改 <audio> 音量）、手機搖桿推一半就是全速
+  {
+    const { browser, context, page, errors } = await launch({ mobile: true });
+    await page.addInitScript(() => {
+      // iPhone、iPad 的 Safari：<audio> 的 volume 唯讀，設定了也不會變
+      Object.defineProperty(HTMLMediaElement.prototype, 'volume', { get() { return 1; }, set() {}, configurable: true });
+    });
+    await context.route('**/content/music.json', (route) => route.fulfill({ contentType: 'application/json', body: JSON.stringify({
+      duck: 0.3, fade: 0.3, tracks: { plaza: { file: 'assets/audio/_p.wav' }, cafe: { file: 'assets/audio/_c.wav' }, garden: { file: 'assets/audio/_g.wav' } },
+    }) }));
+    const wav = Buffer.alloc(44 + 16000);
+    wav.write('RIFF', 0); wav.writeUInt32LE(36 + 16000, 4); wav.write('WAVEfmt ', 8); wav.writeUInt32LE(16, 16); wav.writeUInt16LE(1, 20);
+    wav.writeUInt16LE(1, 22); wav.writeUInt32LE(8000, 24); wav.writeUInt32LE(16000, 28); wav.writeUInt16LE(2, 32); wav.writeUInt16LE(16, 34); wav.write('data', 36); wav.writeUInt32LE(16000, 40);
+    await context.route('**/assets/audio/_*.wav', (route) => route.fulfill({ contentType: 'audio/wav', body: wav }));
+    await newGame(page, '#home-text');
+    await page.waitForFunction(() => window.__xzj.music.playing, null, { timeout: 10000 }).catch(() => {});
+    for (const a of ['cafe', 'plaza', 'garden', 'cafe', 'garden']) await text.go(page, a);
+    await page.waitForTimeout(1500);
+    const m = await page.evaluate(() => ({ audible: window.__xzj.music.audible, volume: window.__xzj.music.volume }));
+    check('連續換區後同一時間只有一首在播（模擬 iPhone 不能改音量）', m.audible === 1 && m.volume > 0.3, JSON.stringify(m));
+    await page.evaluate(() => window.__xzj.music.mute(true));
+    await page.waitForTimeout(800);
+    const silent = await page.evaluate(() => window.__xzj.music.volume);
+    await page.evaluate(() => window.__xzj.music.mute(false));
+    check('iPhone 上也能靜音與降低音量（用 Web Audio 控制）', silent < 0.01, `靜音時 ${silent.toFixed(2)}`);
+    check('音樂修正流程無錯誤', errors.length === 0, errors.join(' | '));
+    await browser.close();
+  }
+  {
+    const { browser, page } = await launch({ mobile: true });
+    await newGame(page);
+    await page.waitForFunction(() => window.__xzj?.view()?.position, null, { timeout: 30000 });
+    const speedOf = async (fn) => {
+      await page.evaluate(() => window.__xzj.view().teleport(18, 19));
+      await page.waitForTimeout(500);
+      const p0 = await page.evaluate(() => window.__xzj.view().position);
+      const t0 = Date.now();
+      await fn(true);
+      await page.waitForTimeout(3000);
+      const p1 = await page.evaluate(() => window.__xzj.view().position);
+      await fn(false);
+      return (p0.z - p1.z) / ((Date.now() - t0) / 1000);
+    };
+    const box = await page.locator('#stick').boundingBox();
+    const cx = box.x + box.width / 2;
+    const cy = box.y + box.height / 2;
+    const half = await speedOf(async (on) => {
+      if (on) { await page.mouse.move(cx, cy); await page.mouse.down(); await page.mouse.move(cx, cy - box.height * 0.28, { steps: 3 }); } else await page.mouse.up();
+    });
+    const keys = await speedOf(async (on) => (on ? page.keyboard.down('ArrowUp') : page.keyboard.up('ArrowUp')));
+    check('手機搖桿推約一半就接近全速（和鍵盤相比）', half > keys * 0.85, `搖桿 ${half.toFixed(2)}、鍵盤 ${keys.toFixed(2)} 單位／秒`);
+    await browser.close();
+  }
+
   const failed = results.filter((r) => !r.ok);
   console.log(`\n共 ${results.length} 項，通過 ${results.length - failed.length} 項，未通過 ${failed.length} 項`);
   process.exit(failed.length ? 1 : 0);

@@ -361,7 +361,7 @@ export async function start3D(game, ui, store) {
   }
 
   function frame() {
-    const dt = Math.min(clock.getDelta(), 0.05);
+    const dt = Math.min(clock.getDelta(), 0.1); // 上限放寬到 0.1 秒：手機畫面較慢時也維持正常步行速度
     const t = clock.elapsedTime;
     const still = store.settings.reduceMotion;
 

@@ -3,6 +3,8 @@ import { $ } from '../ui.js';
 
 export const isTouch = matchMedia('(pointer: coarse)').matches || 'ontouchstart' in window;
 
+const STICK_DEAD = 0.12; // 搖桿推不到這個比例時不動
+const STICK_FULL = 0.55; // 推到這個比例就是全速（不用推到最邊緣）
 const MOVE_KEYS = ['KeyW', 'KeyA', 'KeyS', 'KeyD', 'ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight'];
 
 export function setupControls({ onInteract, onUse, isBlocked }) {
@@ -37,8 +39,11 @@ export function setupControls({ onInteract, onUse, isBlocked }) {
     const len = Math.hypot(dx, dy);
     if (len > max) { dx *= max / len; dy *= max / len; }
     thumb.style.transform = `translate(${dx}px, ${dy}px)`;
-    stick.x = dx / max;
-    stick.y = dy / max;
+    // 速度曲線：中間一小段不動（避免手指微晃），之後很快加速，推到約一半就是全速
+    const d = Math.hypot(dx, dy) / max;
+    const speed = Math.min(1, Math.max(0, (d - STICK_DEAD) / (STICK_FULL - STICK_DEAD)));
+    stick.x = d > 0 ? (dx / max / d) * speed : 0;
+    stick.y = d > 0 ? (dy / max / d) * speed : 0;
   };
   const end = (e) => {
     if (e.pointerId !== id) return;

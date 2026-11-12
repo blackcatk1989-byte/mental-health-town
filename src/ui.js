@@ -164,7 +164,10 @@ export function createUI(content, store) {
     const opt = (key, value, label) => `<button type="button" class="seg ${st[key] === value ? 'on' : ''}"
       data-key="${key}" data-value="${value}" aria-pressed="${st[key] === value}">${label}</button>`;
     $('settings-body').innerHTML = `
-      <div class="setting"><span>音效</span><div class="segs">${opt('sound', false, '關閉')}${opt('sound', true, '開啟')}</div></div>
+      <div class="setting"><span>背景音樂</span><div class="segs">${opt('music', false, '關閉')}${opt('music', true, '開啟')}</div></div>
+      <div class="setting"><label for="music-volume">音樂音量</label>
+        <input type="range" id="music-volume" min="0" max="1" step="0.05" value="${st.musicVolume}" aria-valuetext="${Math.round(st.musicVolume * 100)}%"></div>
+      <div class="setting"><span>音效（風鈴聲）</span><div class="segs">${opt('sound', false, '關閉')}${opt('sound', true, '開啟')}</div></div>
       <div class="setting"><span>減少動畫</span><div class="segs">${opt('reduceMotion', false, '關閉')}${opt('reduceMotion', true, '開啟')}</div></div>
       <div class="setting"><span>文字大小</span><div class="segs">${opt('textSize', 's', '小')}${opt('textSize', 'm', '中')}${opt('textSize', 'l', '大')}</div></div>
       <div class="setting"><span>3D 畫質</span><div class="segs">${opt('quality', 'high', '標準')}${opt('quality', 'low', '省電')}</div></div>
@@ -187,6 +190,13 @@ export function createUI(content, store) {
         renderSettings(handlers);
       };
     }
+    const vol = $('music-volume');
+    vol.oninput = () => {
+      store.settings.musicVolume = Number(vol.value);
+      vol.setAttribute('aria-valuetext', `${Math.round(store.settings.musicVolume * 100)}%`);
+      handlers.onSettings();
+    };
+    vol.onchange = () => store.saveSettings();
     for (const b of $('settings-body').querySelectorAll('[data-mode]')) {
       b.onclick = () => { $('settings').close(); handlers.setMode(b.dataset.mode); };
     }

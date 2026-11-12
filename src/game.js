@@ -267,7 +267,9 @@ export class Game extends EventTarget {
 
   // 練習要親手完成才取得卡片；中途離開不記錄，下次從頭開始
   startMinigame(id) {
+    this.dispatchEvent(new CustomEvent('practice', { detail: { id, open: true } }));
     this.ui.minigame(id, this.c.minigames[id], (completed) => {
+      this.dispatchEvent(new CustomEvent('practice', { detail: { id, open: false } }));
       if (!completed) return this.flush();
       this.apply(this.c.minigames[id].onComplete, (s) => { s.practice[id] += 1; });
     });
@@ -278,7 +280,10 @@ export class Game extends EventTarget {
     const s = this.s;
     if (!s) return;
     s.player = { x, z };
-    if (area) s.area = area;
+    if (area && area !== s.area) {
+      s.area = area;
+      this.dispatchEvent(new CustomEvent('area', { detail: area }));
+    }
   }
 
   setArea(area) {
@@ -286,6 +291,7 @@ export class Game extends EventTarget {
       s.area = area;
       s.player = { ...this.areaById[area].spawn };
     });
+    this.dispatchEvent(new CustomEvent('area', { detail: area }));
     this.changed();
   }
 

@@ -5,7 +5,7 @@ const UNREADABLE_KEY = 'xinzhijian.save.unreadable'; // 讀不懂的舊進度先
 const SETTINGS_KEY = 'xinzhijian.settings';
 export const SAVE_VERSION = 2; // v2：《今天有點卡卡的》與謎題改版，v1 進度無法沿用
 
-export const DEFAULT_SETTINGS = { sound: false, reduceMotion: false, textSize: 'm', quality: 'high' };
+export const DEFAULT_SETTINGS = { sound: false, music: true, musicVolume: 0.5, reduceMotion: false, textSize: 'm', quality: 'high' };
 
 function storage() {
   try {
@@ -40,6 +40,7 @@ export class Store {
     try {
       const raw = storage()?.getItem(SETTINGS_KEY);
       if (raw) Object.assign(this.settings, JSON.parse(raw));
+      this.hasSavedSettings = !!raw;
     } catch { /* 設定讀不到就用預設值 */ }
   }
 

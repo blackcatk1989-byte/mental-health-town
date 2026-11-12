@@ -43,6 +43,13 @@ export function openMinigame(id, data, settings, done) {
   };
 
   const footer = (extra = '') => `<div class="mg-footer">${extra}</div>`;
+  // 聆聽風鈴的那一段，背景音樂完全靜音（離開這一段就恢復）
+  let listening = false;
+  const listen = (on) => {
+    if (listening === on) return;
+    listening = on;
+    document.dispatchEvent(new CustomEvent('listen-chime', { detail: on }));
+  };
 
   // ---- 想法放大鏡：把便條上的句子分成「確定知道的事」「猜測」「感受」 ----
   const thought = () => {
@@ -140,6 +147,7 @@ export function openMinigame(id, data, settings, done) {
       } else {
         main = `<p class="placed">${esc(data.returned)}</p>`;
       }
+      listen(r.sense === '聽');
       body.innerHTML = `<p class="fine">${i + 1}／${data.rounds.length}・${esc(r.sense)}</p>
         <p>${esc(r.prompt)}</p>${stage === 'notice' ? sound : ''}${main}
         ${footer(`${stop}${stage === 'returned' ? '<button type="button" class="btn primary" data-next>繼續</button>' : ''}`)}`;
@@ -152,6 +160,7 @@ export function openMinigame(id, data, settings, done) {
       bindStop();
     };
     const offscreen = () => {
+      listen(false);
       body.innerHTML = `<p>${esc(data.offscreen)}</p>
         ${footer(`${stop}<button type="button" class="btn primary" data-end>結束練習</button>`)}`;
       bindStop();
@@ -162,5 +171,8 @@ export function openMinigame(id, data, settings, done) {
 
   if (id === 'thought') thought();
   else present();
-  openPanel('minigame', () => done(completed));
+  openPanel('minigame', () => {
+    listen(false);
+    done(completed);
+  });
 }

@@ -7,6 +7,7 @@ export function createMusic(config, settings) {
   let current = null;
   let started = false;
   let ducked = false;
+  let muted = false; // 聆聽風鈴時完全靜音
   let raf = 0;
 
   const trackFor = (area) => config.tracks?.[area] ?? config.default ?? null;
@@ -22,7 +23,7 @@ export function createMusic(config, settings) {
     return players.get(track.file);
   }
 
-  const targetVolume = () => (settings.music ? settings.musicVolume * (ducked ? config.duck ?? 0.3 : 1) : 0);
+  const targetVolume = () => (settings.music && !muted ? settings.musicVolume * (ducked ? config.duck ?? 0.3 : 1) : 0);
 
   // 每一幀把音量往目標靠近；不是目前的曲目就淡出並暫停
   function step() {
@@ -69,6 +70,10 @@ export function createMusic(config, settings) {
     },
     duck(on) {
       ducked = on;
+      kick();
+    },
+    mute(on) {
+      muted = on;
       kick();
     },
     // 設定改變（開關、音量）

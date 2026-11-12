@@ -1,8 +1,9 @@
 // 共用的 HTML 介面：對話框、提示訊息、確認視窗、設定、麻糬的提示、任務目標。
 // 3D 模式與文字模式都用這一套；所有文字都在 HTML 裡呈現，不畫進 3D 場景。
-import { openCardbook, openUseCard } from './cards.js';
+import { cardArt, openCardbook, openUseCard } from './cards.js';
 import { openMinigame } from './minigames.js';
 import { openPuzzle } from './puzzles.js';
+import { play } from './sfx.js';
 
 export const $ = (id) => document.getElementById(id);
 
@@ -11,11 +12,27 @@ export function esc(s) {
 }
 
 const fill = (text, vars) => (vars ? text.replace(/\{(\w+)\}/g, (m, k) => vars[k] ?? m) : text);
+const reduceMotion = () => document.body.classList.contains('reduce-motion') || matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+// 表情圖示（不是文字）：對話時出現在說話者頭上與名牌旁
+const FACE = (inner) => `<svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="10" fill="#ffe7b8" stroke="#d9a35a"/>${inner}</svg>`;
+export const EMOTES = {
+  smile: FACE('<circle cx="8.5" cy="10" r="1.3" fill="#4f4038"/><circle cx="15.5" cy="10" r="1.3" fill="#4f4038"/><path d="M8 14 q4 4 8 0" stroke="#4f4038" stroke-width="1.6" fill="none" stroke-linecap="round"/>'),
+  worry: FACE('<path d="M7 9 l3 1.5 M17 9 l-3 1.5" stroke="#4f4038" stroke-width="1.5" stroke-linecap="round"/><circle cx="9" cy="12" r="1.2" fill="#4f4038"/><circle cx="15" cy="12" r="1.2" fill="#4f4038"/><path d="M9 17 q3 -2 6 0" stroke="#4f4038" stroke-width="1.6" fill="none" stroke-linecap="round"/><path d="M19 5 q1.5 2.5 0 4 q-1.5 -1.5 0 -4" fill="#9cc3d6"/>'),
+  think: FACE('<circle cx="8.5" cy="10" r="1.3" fill="#4f4038"/><circle cx="15.5" cy="10" r="1.3" fill="#4f4038"/><path d="M9 15.5 h6" stroke="#4f4038" stroke-width="1.6" stroke-linecap="round"/><circle cx="19" cy="4" r="1.5" fill="#c9b9a6"/><circle cx="21.5" cy="1.8" r="1" fill="#c9b9a6"/>'),
+  surprise: FACE('<circle cx="8.5" cy="10" r="1.6" fill="#4f4038"/><circle cx="15.5" cy="10" r="1.6" fill="#4f4038"/><ellipse cx="12" cy="16" rx="2" ry="2.5" fill="#4f4038"/>'),
+  relief: FACE('<path d="M6.5 10.5 q2 -2 4 0 M13.5 10.5 q2 -2 4 0" stroke="#4f4038" stroke-width="1.5" fill="none" stroke-linecap="round"/><path d="M8.5 14.5 q3.5 3 7 0" stroke="#4f4038" stroke-width="1.6" fill="none" stroke-linecap="round"/><circle cx="6.5" cy="14" r="1.6" fill="#f2a99a"/><circle cx="17.5" cy="14" r="1.6" fill="#f2a99a"/>'),
+  question: FACE('<circle cx="8.5" cy="11" r="1.3" fill="#4f4038"/><circle cx="15.5" cy="11" r="1.3" fill="#4f4038"/><path d="M10 16 h4" stroke="#4f4038" stroke-width="1.6" stroke-linecap="round"/><text x="17" y="7" font-size="8" fill="#c97f62" font-weight="700">?</text>'),
+  happy: FACE('<path d="M7 10 q1.5 -2 3 0 M14 10 q1.5 -2 3 0" stroke="#4f4038" stroke-width="1.5" fill="none" stroke-linecap="round"/><path d="M8 13.5 q4 5 8 0 Z" fill="#4f4038"/><path d="M18.5 3.5 l1 2 l2 .5 l-2 .8 l-.8 2 l-.8 -2 l-2 -.8 l2 -.5 Z" fill="#f2c46b"/>'),
+};
 
 // 開啟 <dialog> 面板；關閉（含按 Esc）時呼叫 onClose
 export function openPanel(id, onClose) {
   const d = $(id);
-  if (!d.open) d.showModal();
+  if (!d.open) {
+    d.showModal();
+    play('open');
+  }
   d.onclose = () => {
     d.onclose = null;
     onClose?.();
@@ -23,11 +40,13 @@ export function openPanel(id, onClose) {
   return d;
 }
 
+// 對話框：文字逐字出現（點一下顯示整句，再點才換下一句），說話者頭上有表情氣泡
 class DialogueBox {
   constructor(dialogues) {
     this.dialogues = dialogues;
     this.open = false;
     this.el = $('dialogue');
+    this.timer = 0;
     $('dlg-next').onclick = () => this.advance();
     $('dlg-exit').onclick = () => this.close();
     $('dlg-text').onclick = () => this.advance();
@@ -56,27 +75,60 @@ class DialogueBox {
   show() {
     const line = this.seg.lines[this.index];
     const narrator = line.speaker === '旁白';
-    $('dlg-name').textContent = narrator ? '' : line.speaker;
+    const emote = EMOTES[line.emote];
+    $('dlg-name').innerHTML = narrator ? '' : `${esc(line.speaker)}${emote ? `<span id="dlg-emote">${emote}</span>` : ''}`;
     $('dlg-name').classList.toggle('hidden', narrator);
-    $('dlg-text').textContent = fill(line.text, this.vars);
     $('dlg-text').classList.toggle('narration', narrator);
+    document.dispatchEvent(new CustomEvent('emote', { detail: { speaker: line.speaker, emote: line.emote ?? null } }));
     const last = this.index === this.seg.lines.length - 1;
+    if (last && this.seg.effects) this.onEffects(this.seg.effects);
+    this.typeText(fill(line.text, this.vars), () => this.showChoices(last));
+  }
+
+  // 逐字出現；減少動畫時一次顯示
+  typeText(text, done) {
+    clearInterval(this.timer);
+    const el = $('dlg-text');
+    this.full = text;
+    this.afterType = done;
+    $('dlg-choices').innerHTML = '';
+    $('dlg-next').classList.remove('hidden');
+    $('dlg-next').textContent = '…';
+    if (reduceMotion()) return this.finishType();
+    this.typing = true;
+    let n = 0;
+    el.textContent = '';
+    this.timer = setInterval(() => {
+      n += 1;
+      el.textContent = text.slice(0, n);
+      if (n % 3 === 1) play('type');
+      if (n >= text.length) this.finishType();
+    }, 32);
+  }
+
+  finishType() {
+    clearInterval(this.timer);
+    this.typing = false;
+    $('dlg-text').textContent = this.full;
+    const done = this.afterType;
+    this.afterType = null;
+    done?.();
+  }
+
+  showChoices(last) {
     const box = $('dlg-choices');
     box.innerHTML = '';
     this.choosing = false;
-    if (last) {
-      if (this.seg.effects) this.onEffects(this.seg.effects);
-      if (this.seg.choices) {
-        this.choosing = true;
-        this.seg.choices.forEach((c, i) => {
-          const b = document.createElement('button');
-          b.type = 'button';
-          b.className = 'choice';
-          b.innerHTML = `<span class="key">${i + 1}</span>${esc(c.text)}`;
-          b.onclick = () => this.choose(i);
-          box.append(b);
-        });
-      }
+    if (last && this.seg.choices) {
+      this.choosing = true;
+      this.seg.choices.forEach((c, i) => {
+        const b = document.createElement('button');
+        b.type = 'button';
+        b.className = 'choice';
+        b.innerHTML = `<span class="key">${i + 1}</span>${esc(c.text)}`;
+        b.onclick = () => this.choose(i);
+        box.append(b);
+      });
     }
     $('dlg-next').classList.toggle('hidden', this.choosing);
     $('dlg-next').textContent = last && !this.seg.next ? '結束' : '繼續';
@@ -84,7 +136,9 @@ class DialogueBox {
   }
 
   advance() {
-    if (!this.open || this.choosing) return;
+    if (!this.open) return;
+    if (this.typing) return this.finishType(); // 點一下：先顯示整句
+    if (this.choosing) return;
     if (this.index < this.seg.lines.length - 1) {
       this.index += 1;
       this.show();
@@ -106,9 +160,12 @@ class DialogueBox {
 
   close() {
     if (!this.open) return;
+    clearInterval(this.timer);
+    this.typing = false;
     this.open = false;
     this.el.classList.add('hidden');
     document.body.classList.remove('in-dialogue');
+    document.dispatchEvent(new CustomEvent('emote', { detail: { speaker: null, emote: null } }));
     const done = this.onClose;
     this.onClose = null;
     done?.();
@@ -147,6 +204,10 @@ export function createUI(content, store) {
     });
   }
 
+  // 按鈕的輕聲回饋；面板關上的聲音
+  document.addEventListener('click', (e) => { if (e.target.closest('button, .btn, .choice, .option')) play('click'); });
+  for (const d of document.querySelectorAll('dialog')) d.addEventListener('close', () => play('close'));
+
   function anyPanelOpen() {
     return [...document.querySelectorAll('dialog')].some((d) => d.open);
   }
@@ -167,7 +228,7 @@ export function createUI(content, store) {
       <div class="setting"><span>背景音樂</span><div class="segs">${opt('music', false, '關閉')}${opt('music', true, '開啟')}</div></div>
       <div class="setting"><label for="music-volume">音樂音量</label>
         <input type="range" id="music-volume" min="0" max="1" step="0.05" value="${st.musicVolume}" aria-valuetext="${Math.round(st.musicVolume * 100)}%"></div>
-      <div class="setting"><span>音效（風鈴聲）</span><div class="segs">${opt('sound', false, '關閉')}${opt('sound', true, '開啟')}</div></div>
+      <div class="setting"><span>音效（腳步、按鈕、風鈴）</span><div class="segs">${opt('sound', false, '關閉')}${opt('sound', true, '開啟')}</div></div>
       <div class="setting"><span>減少動畫</span><div class="segs">${opt('reduceMotion', false, '關閉')}${opt('reduceMotion', true, '開啟')}</div></div>
       <div class="setting"><span>文字大小</span><div class="segs">${opt('textSize', 's', '小')}${opt('textSize', 'm', '中')}${opt('textSize', 'l', '大')}</div></div>
       <div class="setting"><span>3D 畫質</span><div class="segs">${opt('quality', 'high', '標準')}${opt('quality', 'low', '省電')}</div></div>
@@ -248,10 +309,19 @@ export function createUI(content, store) {
     openPanel('hints');
   }
 
-  // ---- 任務目標 ----
+  // ---- 任務目標：步驟改變時有更新動畫與提示音 ----
+  let shownStep = null;
   function renderGoal() {
     if (!game?.s) return;
     const info = game.stepInfo;
+    if (shownStep && shownStep !== info.id) {
+      const g = $('goal');
+      g.classList.remove('advance');
+      void g.offsetWidth;
+      g.classList.add('advance');
+      play('quest');
+    }
+    shownStep = info.id;
     const miss = game.missingCard();
     $('goal-text').textContent = info.goal;
     $('goal-missing').classList.toggle('hidden', !miss);
@@ -270,7 +340,7 @@ export function createUI(content, store) {
       game = g;
       g.addEventListener('change', renderGoal);
     },
-    busy: () => dialogue.open || anyPanelOpen(),
+    busy: () => dialogue.open || anyPanelOpen() || !!document.querySelector('.card-fly'),
     anyPanelOpen,
     renderGoal,
     openSettings(handlers) {
@@ -282,8 +352,43 @@ export function createUI(content, store) {
     minigame: (id, data, done) => openMinigame(id, data, store.settings, done),
     puzzle: (g, id) => openPuzzle(g, id),
     hints,
+    // 取得理解卡：卡片飛入、翻面、收進卡冊；點一下可以略過
     cardToast(card) {
-      toast(`取得理解卡「<strong>${esc(card.title)}</strong>」`, { action: { label: '查看', fn: () => openCardbook(game, { focus: card.id }) } });
+      const view = () => openCardbook(game, { focus: card.id });
+      const finish = () => {
+        const b = $('cardbook-button');
+        b.classList.remove('got');
+        void b.offsetWidth;
+        b.classList.add('got');
+        toast(`取得理解卡「<strong>${esc(card.title)}</strong>」`, { action: { label: '查看', fn: view } });
+      };
+      if (reduceMotion()) {
+        play('card');
+        finish();
+        return;
+      }
+      const fly = document.createElement('div');
+      fly.className = 'card-fly';
+      fly.setAttribute('role', 'status');
+      fly.innerHTML = `<div class="flip"><div class="inner">
+          <div class="face back"></div>
+          <div class="face front">${cardArt(card)}<strong>${esc(card.title)}</strong><small>${esc(card.keyPoint)}</small></div>
+        </div></div><span class="skip">點一下略過</span>`;
+      const target = $('cardbook-button').getBoundingClientRect();
+      fly.style.setProperty('--fx', `${target.left + target.width / 2 - innerWidth / 2}px`);
+      fly.style.setProperty('--fy', `${target.top + target.height / 2 - innerHeight / 2}px`);
+      (document.querySelector('dialog[open]') ?? document.body).append(fly); // 面板開著時，飛在面板上面
+      play('card');
+      setTimeout(() => play('flip'), 650);
+      let gone = false;
+      const leave = () => {
+        if (gone) return;
+        gone = true;
+        fly.classList.add('leave');
+        setTimeout(() => { fly.remove(); finish(); }, 520);
+      };
+      fly.addEventListener('pointerdown', () => { fly.remove(); gone = true; finish(); }, { once: true });
+      setTimeout(leave, 2300);
     },
     tutorial(kind) {
       if (kind !== 'cardbook') return;

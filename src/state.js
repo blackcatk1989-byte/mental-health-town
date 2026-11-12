@@ -5,7 +5,9 @@ const UNREADABLE_KEY = 'xinzhijian.save.unreadable'; // 讀不懂的舊進度先
 const SETTINGS_KEY = 'xinzhijian.settings';
 export const SAVE_VERSION = 2; // v2：《今天有點卡卡的》與謎題改版，v1 進度無法沿用
 
-export const DEFAULT_SETTINGS = { sound: false, music: true, musicVolume: 0.5, reduceMotion: false, textSize: 'm', quality: 'high' };
+// 設定版本 2：音效改為預設開啟（舊版預設關閉時存下的設定會改成開啟一次）
+const SETTINGS_VERSION = 2;
+export const DEFAULT_SETTINGS = { v: SETTINGS_VERSION, sound: true, music: true, musicVolume: 0.5, reduceMotion: false, textSize: 'm', quality: 'high' };
 
 function storage() {
   try {
@@ -40,6 +42,11 @@ export class Store {
     try {
       const raw = storage()?.getItem(SETTINGS_KEY);
       if (raw) Object.assign(this.settings, JSON.parse(raw));
+      if (raw && (this.settings.v ?? 1) < SETTINGS_VERSION) {
+        this.settings.sound = true;
+        this.settings.v = SETTINGS_VERSION;
+        this.saveSettings();
+      }
       this.hasSavedSettings = !!raw;
     } catch { /* 設定讀不到就用預設值 */ }
   }

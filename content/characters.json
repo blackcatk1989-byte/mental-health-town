@@ -1,5 +1,5 @@
 {
-  "_說明": "互動角色。均為虛構設計草案；涉及確診經驗與心理知識的正式文案，公開使用前須經心理專業審閱。不在頭像或名牌旁加疾病標籤。look 是 Q 版造型的配色：hairStyle（long／short）、accessory（clip 髮夾／apron 圍裙／scarf 圍巾），只用髮型、服裝與配件區分角色，不用和疾病有關的顏色或符號。spots 依序比對，fromStep 表示從該任務步驟開始改站在這裡。小月（曉晴的朋友）、筱玉姐（阿德的客戶）只出現在訊息與對話中，不是可對話角色。",
+  "_說明": "互動角色。均為虛構設計草案；涉及確診經驗與心理知識的正式文案，公開使用前須經心理專業審閱。不在頭像或名牌旁加疾病標籤。look 是 Q 版造型的配色：hairStyle（long／short）、accessory（clip 髮夾／apron 圍裙／scarf 圍巾），只用髮型、服裝與配件區分角色，不用和疾病有關的顏色或符號。spots 依序比對，fromStep 表示從該任務步驟開始改站在這裡；sit 為 true 表示坐在長椅上（任務推進時的場景小變化）。小月（曉晴的朋友）、筱玉姐（阿德的客戶）只出現在訊息與對話中，不是可對話角色。",
   "characters": [
     {
       "id": "xiaoqing",
@@ -30,7 +30,8 @@
       "look": { "skin": "#e6c3a2", "hair": "#3a322e", "hairStyle": "short", "outfit": "#8fae96", "accent": "#e9d8b8", "pants": "#6f6a62", "accessory": "apron" },
       "spots": [
         { "area": "garden", "x": 29.2, "z": 8.4 },
-        { "fromStep": "tonight", "area": "garden", "x": 29.6, "z": 13.8 }
+        { "fromStep": "tonight", "area": "garden", "x": 29.6, "z": 13.8 },
+        { "fromStep": "wrap", "area": "garden", "x": 31.0, "z": 12.7, "sit": true }
       ],
       "notApplicable": "阿德笑了笑：「謝啦。不過我現在卡住的，好像不是這個。」",
       "talk": [

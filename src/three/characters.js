@@ -119,10 +119,16 @@ export function makeCharacter(look) {
 }
 
 // 待機：呼吸、偶爾眨眼、頭輕輕晃；走路：手腳擺動、身體一彈一彈。減少動畫時全部停止。
+// userData.lookYaw：頭轉向的角度（相對身體，main.js 依玩家位置設定）；userData.sitting：坐在長椅上
 export function animateCharacter(root, t, walking, still) {
   const u = root.userData;
   const k = still ? 0 : 1;
-  if (walking && !still) {
+  u.head.rotation.y += ((u.lookYaw ?? 0) - u.head.rotation.y) * (still ? 1 : 0.15);
+  if (u.sitting) {
+    u.legL.rotation.x = u.legR.rotation.x = -1.45;
+    u.armL.rotation.x = u.armR.rotation.x = -0.35;
+    u.body.position.y = 0;
+  } else if (walking && !still) {
     const w = Math.sin(t * 11);
     u.legL.rotation.x = w * 0.6;
     u.legR.rotation.x = -w * 0.6;

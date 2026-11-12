@@ -5,7 +5,12 @@
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <meta name="description" content="心之間：在微光里平凡的一天裡，透過相遇、探索與解謎，多理解自己與別人一點。心理健康衛教日常探索解謎遊戲原型。">
   <title>心之間</title>
+  <link rel="preload" href="assets/fonts/xzj-round.woff2" as="font" type="font/woff2" crossorigin>
   <style>
+    /* 字體：jf open 粉圓（內文與介面）、芫荽（便條、卡片標題、標題點綴）。都已子集化並自行載入（見 tools/subset-fonts.py）。
+       font-display: swap：字體載入前先顯示系統字體，不會空白；子集裡沒有的字自動退回系統字體。 */
+    @font-face { font-family: "XZJ Round"; src: url("assets/fonts/xzj-round.woff2") format("woff2"); font-display: swap; }
+    @font-face { font-family: "XZJ Hand"; src: url("assets/fonts/xzj-hand.woff2") format("woff2"); font-display: swap; }
     :root {
       --ink: #4f4038; --ink-soft: #7a6a60; --paper: #fffaf3; --paper-2: #fbf2e6; --line: #ecd8c6;
       --accent: #c97f62; --accent-ink: #fff; --accent-soft: #f6dccf; --sage: #7e9e86; --warn: #f3e2b4; --danger: #b5523b;
@@ -16,7 +21,8 @@
     html[data-text-size="s"] { font-size: 14px; }
     html[data-text-size="l"] { font-size: 19px; }
     html, body { margin: 0; height: 100%; background: #f8ecdb; color: var(--ink);
-      font-family: "PingFang TC", "Microsoft JhengHei", "Noto Sans TC", system-ui, sans-serif; line-height: 1.6; }
+      font-family: "XZJ Round", "PingFang TC", "Microsoft JhengHei", "Noto Sans TC", system-ui, sans-serif; line-height: 1.65; }
+    .hand { font-family: "XZJ Hand", "XZJ Round", "PingFang TC", "Microsoft JhengHei", sans-serif; letter-spacing: .02em; }
     body { overflow: hidden; overscroll-behavior: none; }
     body[data-mode="text"], body.home-open { overflow: auto; }
     button, a.btn { font: inherit; color: inherit; cursor: pointer; }
@@ -28,6 +34,9 @@
     .btn { display: inline-flex; align-items: center; justify-content: center; gap: 6px; min-height: 44px; padding: 8px 18px;
       border: 2px solid var(--line); border-radius: 999px; background: var(--paper); text-decoration: none; box-sizing: border-box; }
     .btn:hover { background: var(--paper-2); }
+    /* 按下時的彈性回饋 */
+    .btn, .option, .choice, .card-tile, .seg { transition: transform .18s cubic-bezier(.34, 1.56, .64, 1), background-color .15s; }
+    .btn:active, .option:active, .choice:active, .card-tile:active, .seg:active { transform: scale(.94); }
     .btn.primary { background: var(--accent); border-color: var(--accent); color: var(--accent-ink); font-weight: 700; }
     .btn.primary:hover { filter: brightness(1.05); }
     .btn.danger { border-color: var(--danger); color: var(--danger); }
@@ -212,7 +221,97 @@
       box-shadow: 0 0 20px #fff3c8; animation: fly .9s ease-in forwards; }
     @keyframes fly { to { left: calc(100% - 80px); top: 120px; transform: scale(.4); opacity: .2; } }
 
-    .reduce-motion *, .reduce-motion *::before { animation: none !important; transition: none !important; }
+    /* ---- v4.1：面板過場、謎題舞台、表情氣泡、卡片動畫 ---- */
+    /* 面板開關的過場：開啟時彈出、關上時淡出（不支援的瀏覽器直接開關，不影響操作） */
+    dialog { opacity: 0; transform: translateY(10px) scale(.97);
+      transition: opacity .22s ease, transform .26s cubic-bezier(.34, 1.4, .64, 1), overlay .22s allow-discrete, display .22s allow-discrete; }
+    dialog[open] { opacity: 1; transform: none; }
+    @starting-style { dialog[open] { opacity: 0; transform: translateY(14px) scale(.96); } }
+    dialog::backdrop { transition: background-color .22s, overlay .22s allow-discrete, display .22s allow-discrete; }
+    @starting-style { dialog[open]::backdrop { background-color: transparent; } }
+    @keyframes fade-in { from { opacity: 0; } }
+    .version { text-align: center; margin-top: 18px; }
+    .note-paper, .card-detail h3, .card-tile strong, .use-confirm h3, #minigame-title, #puzzle-title, #cardbook-title { font-family: "XZJ Hand", "XZJ Round", sans-serif; }
+
+    .stage-wrap { max-width: 520px; margin: 8px auto; }
+    .stage { width: 100%; height: auto; display: block; touch-action: manipulation; user-select: none; -webkit-user-select: none; }
+    .stage .zone { cursor: pointer; }
+    .stage .zone:hover .zone-hit, .stage .zone:focus .zone-hit { stroke: #c97f62; stroke-width: 3; stroke-dasharray: 6 5; }
+    .stage .zone:focus { outline: none; }
+    .stage .pot { cursor: grab; transition: transform .45s cubic-bezier(.34, 1.3, .64, 1); }
+    .stage .pot:focus { outline: none; }
+    .stage .pot.dragging { cursor: grabbing; transition: none; }
+    .stage .pot.returning { pointer-events: none; }
+    .stage .pot.selected .plant, .stage .pot.selected .thing, .stage .pot:focus .plant, .stage .pot:focus .thing { filter: drop-shadow(0 0 4px #fff) drop-shadow(0 0 6px #c97f62); }
+    .stage .pot.selected { animation: lift .8s ease-in-out infinite alternate; }
+    @keyframes lift { to { translate: 0 -4px; } }
+    .caption { min-height: 3.2em; background: var(--paper-2); border-radius: 12px; padding: 8px 12px; margin: 8px 0; }
+    /* 植物：初始姿態就是線索；反應用 class 切換 */
+    .plant .stems, .plant .extra { transform-box: fill-box; transform-origin: 50% 100%; transition: transform 1.2s cubic-bezier(.34, 1.2, .64, 1), opacity .8s; }
+    .plant .edge { transition: stroke .8s, fill .8s; }
+    .plant .extra { opacity: 0; transform: scale(.2); }
+    .plant-rosemary .stems { transform: skewX(-16deg); }
+    .plant-mint .stems { transform: skewX(24deg) scaleY(.78); }
+    .plant.r-bloom .stems { transform: none; }
+    .plant.r-bloom .extra { opacity: 1; transform: none; }
+    .plant.r-droop .stems { transform: skewX(34deg) scaleY(.62); }
+    .plant.r-lean .stems { transform: skewX(-30deg); }
+    .plant.r-curl .stems { transform: scale(.86); }
+    .plant.r-curl .edge { stroke: #b07a3a; }
+    .plant-fern.r-bloom .frond { stroke: #6fa36b; }
+    .cat .cat-head { transform-box: fill-box; transform-origin: 50% 90%; transition: transform .4s; }
+    .cat.tilt .cat-head { animation: tilt 2.2s ease-in-out; }
+    @keyframes tilt { 20%, 70% { transform: rotate(-22deg); } }
+    .moving-shade { animation: shade-move 18s ease-in-out infinite alternate; }
+    @keyframes shade-move { to { transform: translateX(90px); } }
+    .drip { animation: drip 2.4s ease-in infinite; }
+    @keyframes drip { 70% { transform: translateY(14px); opacity: 1; } 100% { transform: translateY(16px); opacity: 0; } }
+    .heat path { animation: heat 2.5s ease-in-out infinite alternate; }
+    @keyframes heat { to { transform: translateY(-4px); opacity: .5; } }
+    .stage .table-items, .stage .sigh { transform-box: fill-box; transform-origin: 50% 50%; }
+    .stage .zone.wiggle .table-items { animation: wiggle .6s ease-in-out; }
+    @keyframes wiggle { 25% { rotate: -4deg; } 75% { rotate: 4deg; } }
+    .stage .table-win, .stage .sigh-theme, .stage .sigh-dots { transition: opacity .5s; }
+    .solved { text-align: left; }
+    .notice.puzzled { display: flex; gap: 10px; align-items: flex-start; }
+    .emote-inline svg { width: 32px; height: 32px; flex: none; }
+    .text-list { padding-left: 18px; }
+
+    /* 表情氣泡（圖示，不是文字） */
+    .emote { position: absolute; transform: translate(-50%, -100%); width: 40px; height: 40px; border-radius: 50%; background: #fff;
+      border: 2px solid var(--line); box-shadow: var(--shadow); display: grid; place-items: center; animation: pop .35s cubic-bezier(.34, 1.6, .64, 1); }
+    .emote svg { width: 26px; height: 26px; }
+    #dlg-emote { display: inline-grid; vertical-align: middle; width: 30px; height: 30px; margin-left: 6px; place-items: center; }
+    #dlg-emote svg { width: 24px; height: 24px; }
+    @keyframes pop { from { transform: translate(-50%, -100%) scale(.3); opacity: 0; } }
+    #dlg-text .caret { display: inline-block; width: .5em; animation: blink 1s steps(2) infinite; }
+    @keyframes blink { 50% { opacity: 0; } }
+
+    /* 取得理解卡：飛入、翻面、收進卡冊 */
+    .card-fly { position: fixed; inset: 0; z-index: 1200; display: grid; place-items: center; background: rgba(60, 48, 40, .25); cursor: pointer; }
+    .card-fly .flip { width: 210px; height: 260px; perspective: 800px; }
+    .card-fly .inner { position: relative; width: 100%; height: 100%; transform-style: preserve-3d; animation: card-in .6s cubic-bezier(.34, 1.4, .64, 1), card-flip .7s .6s ease-in-out forwards; }
+    .card-fly .face { position: absolute; inset: 0; border-radius: 16px; backface-visibility: hidden; box-shadow: 0 10px 30px rgba(0,0,0,.25);
+      display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 8px; padding: 14px; box-sizing: border-box; text-align: center; }
+    .card-fly .back { background: repeating-linear-gradient(45deg, #c97f62 0 10px, #d99a78 10px 20px); }
+    .card-fly .front { background: var(--paper); transform: rotateY(180deg); border: 3px solid var(--line); }
+    .card-fly .front strong { font-family: "XZJ Hand", "XZJ Round", sans-serif; font-size: 1.15rem; }
+    .card-fly.leave .flip { animation: card-out .55s ease-in forwards; }
+    @keyframes card-in { from { transform: translateY(60vh) rotate(-12deg) scale(.4); } }
+    @keyframes card-flip { to { transform: rotateY(180deg); } }
+    @keyframes card-out { to { transform: translate(var(--fx), var(--fy)) scale(.15); opacity: .3; } }
+    .card-fly .skip { position: absolute; bottom: 24px; left: 50%; transform: translateX(-50%); color: #fff; font-size: .85rem; }
+    #cardbook-button.got { animation: got .6s cubic-bezier(.34, 1.6, .64, 1); }
+    @keyframes got { 40% { transform: scale(1.18); } }
+    /* 任務推進 */
+    #goal.advance { animation: goal-up .9s cubic-bezier(.34, 1.4, .64, 1); }
+    @keyframes goal-up { 0% { transform: translateY(0); } 30% { transform: translateY(-6px) scale(1.04); background: #fff3d6; } 100% { transform: none; } }
+    #goal.advance #goal-text { animation: text-swap .6s ease-out; }
+    @keyframes text-swap { from { opacity: 0; transform: translateY(8px); } }
+
+    /* 減少動畫：關掉所有動態效果（前後變化仍會顯示，並有文字描述） */
+    .reduce-motion *, .reduce-motion *::before, .reduce-motion *::after { animation: none !important; transition: none !important; }
+    .reduce-motion .card-fly .inner { transform: rotateY(180deg); }
     @media (prefers-reduced-motion: reduce) { .goal-mark, .pulse { animation: none; } }
     @media (max-width: 560px) {
       #goal { max-width: calc(100vw - 140px); padding: 6px 10px; font-size: .9rem; }
@@ -235,7 +334,7 @@
   <!-- 首頁 -->
   <section id="home" aria-labelledby="home-title">
     <div class="home-inner">
-      <h1 id="home-title">心之間</h1>
+      <h1 id="home-title" class="hand">心之間</h1>
       <p class="tagline">日常探索解謎｜在微光里平凡的一天裡，多理解自己與別人一點。</p>
       <div class="card-box">
         <h2>關於這個遊戲</h2>
@@ -256,6 +355,7 @@
         <button type="button" class="btn" data-open-settings>設定</button>
       </div>
       <p class="fine">電腦：WASD／方向鍵移動，E 互動，F 使用理解卡。手機：左下角搖桿移動，右下角按鈕互動。</p>
+      <p class="fine version">版本 v4.1（2026-11-12）</p>
     </div>
   </section>
 

@@ -1,6 +1,6 @@
 // 理解卡：卡面插圖、卡冊、使用理解卡面板。
 // 卡冊不是分數：不顯示稀有度、攻擊力或治癒力；基本說明與求助資訊在「找支持」，不受收藏限制。
-import { $, esc, openPanel } from './ui.js';
+import { $, esc, openPanel, EMOTES } from './ui.js';
 
 // 簡單的線條插圖（自製 SVG，不使用外部素材）
 const ICONS = {
@@ -117,7 +117,8 @@ export function openUseCard(game, targetId) {
       const r = game.useCard(targetId, cardId);
       if (r.ok) return;
       openPanel('usecard');
-      body.innerHTML = `<div class="notice">${esc(r.text)}</div>
+      body.innerHTML = `<div class="notice puzzled"><span class="emote-inline" aria-hidden="true">${EMOTES.question}</span>
+          <span>${esc(r.text)}</span></div>
         ${r.goal ? `<p class="fine">目前目標：${esc(r.goal)}</p>` : ''}
         <p class="fine">卡片沒有被消耗，可以換一張試試，或晚點再來。</p>
         <div class="row-actions"><button type="button" class="btn" data-close>關閉</button>

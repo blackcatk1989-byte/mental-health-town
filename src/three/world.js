@@ -371,10 +371,13 @@ export function buildWorld(scene) {
   tools.position.set(29.8, 0, 1.0);
   deco(tools);
   boxes.push([28.95, 0.9, 30.65, 1.3]);
+  // 謎題「三盆植物」的五個位置在 3D 裡的對應：木架左（曬得到）、大樹下、水龍頭旁、東邊牆邊、木架右（屋簷下）
   const potSpots = {
     sun: { x: 33.2, y: 0.64, z: 16.6 },
-    half: { x: 34.0, y: 0.64, z: 16.6 },
-    shade: { x: 34.8, y: 0.64, z: 16.6 },
+    shade: { x: 33.9, y: 0, z: 11.6 },
+    wet: { x: 26.1, y: 0, z: 6.0 },
+    wall: { x: 35.5, y: 0, z: 14.4 },
+    eaves: { x: 34.8, y: 0.64, z: 16.6 },
     ground: { rosemary: { x: 34.6, z: 17.6 }, mint: { x: 33.2, z: 17.7 }, fern: { x: 33.9, z: 17.9 } },
   };
 

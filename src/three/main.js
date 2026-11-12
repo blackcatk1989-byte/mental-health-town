@@ -1,12 +1,14 @@
 // 3D 模式：微光里的場景、角色、移動與碰撞、互動提示、謎題的盆栽、橘貓麻糬的帶路提示。
 // 遊戲規則與進度都在 src/game.js；這裡只負責呈現與輸入，和文字模式共用同一份進度。
 import * as THREE from 'three';
-import { animateCat, animateCharacter, makeCat, makeCharacter, makePot, PLAYER_LOOK } from './characters.js';
+import { animateCat, animateCharacter, makeCat, makeCharacter, makePot, PLAYER_LOOK, toon } from './characters.js';
 import { buildWorld } from './world.js';
 import { FollowCamera } from './camera.js';
 import { setupLighting } from './lighting.js';
 import { animateWaters, loadIsland } from './island.js';
 import { setupControls, isTouch } from './controls.js';
+import { createFeedback } from './feedback.js';
+import { play } from '../sfx.js';
 import { $ } from '../ui.js';
 
 const ISLAND_URL = 'assets/models/island.glb'; // 有這個檔案時改用模型當小鎮外觀
@@ -94,7 +96,7 @@ export async function start3D(game, ui, store) {
   let lastArea = world.areaOf(pos.x);
 
   // ---- 謎題：三盆植物的位置跟著存檔變動 ----
-  const potSpots = world.anchors.potSpots; // 木架上的位置（sun／half／shade）與地上的起始位置
+  const potSpots = world.anchors.potSpots; // 謎題的五個位置（sun／shade／wet／wall／eaves）與地上的起始位置
   const pots = new Map();
   for (const it of game.c.puzzles.puzzles.E01.items) {
     const pot = makePot(it.id);
@@ -173,14 +175,70 @@ export async function start3D(game, ui, store) {
   };
   game.addEventListener('hint', onHint);
 
+  // ---- 回饋：塵土、光圈、表情、跳一下 ----
+  const fx = createFeedback(scene, $('labels'));
+  const actorByName = new Map(game.c.characters.characters.map((ch) => [ch.name, actors.get(ch.id).mesh]));
+  const onEmote = (e) => {
+    for (const m of actorByName.values()) fx.emote(m, null);
+    const m = actorByName.get(e.detail.speaker);
+    if (m && e.detail.emote) fx.emote(m, e.detail.emote);
+  };
+  document.addEventListener('emote', onEmote);
+  const onReaction = (e) => {
+    const a = actors.get(e.detail.target);
+    if (!a) return;
+    if (e.detail.kind === 'happy') fx.jump(a.mesh);
+    fx.emote(a.mesh, e.detail.kind === 'happy' ? 'happy' : 'question', 2600);
+  };
+  game.addEventListener('reaction', onReaction);
+
+  // ---- 任務推進時的場景小變化 ----
+  const scenery = new THREE.Group();
+  scene.add(scenery);
+  // 想法放大鏡之後：曉晴桌上的便條變整齊（一小疊對齊的紙）
+  const neatNote = new THREE.Group();
+  for (let i = 0; i < 3; i++) {
+    const m = new THREE.Mesh(new THREE.BoxGeometry(0.28, 0.008, 0.2), toon(i === 2 ? '#fdf3c4' : '#fffaf0'));
+    m.position.set(8.45, 0.785 + i * 0.01, 12.75);
+    neatNote.add(m);
+  }
+  scenery.add(neatNote);
+  // 今天的小事告一段落：騎樓和咖啡店的小燈亮起來
+  const lights = new THREE.Group();
+  const bulbGeo = new THREE.SphereGeometry(0.07, 8, 6);
+  const bulbMat = new THREE.MeshBasicMaterial({ color: 0xffe2a0 });
+  for (let x = 12.4; x <= 24.2; x += 0.6) {
+    const b = new THREE.Mesh(bulbGeo, bulbMat);
+    b.position.set(x, 2.35 + Math.sin(x * 2.6) * 0.06, 0.45);
+    lights.add(b);
+  }
+  for (let x = 0.8; x <= 10.2; x += 0.6) {
+    const b = new THREE.Mesh(bulbGeo, bulbMat);
+    b.position.set(x, 2.3 + Math.sin(x * 2.6) * 0.05, 5.35);
+    lights.add(b);
+  }
+  scenery.add(lights);
+  let lastStep = game.step;
+  function syncScenery() {
+    neatNote.visible = game.stepIndex(game.step) >= game.stepIndex('clarify');
+    lights.visible = game.step === 'done';
+    if (game.step !== lastStep) {
+      lastStep = game.step;
+      // 場景有變化的地方冒一下光點
+      if (game.step === 'clarify') fx.step(8.6, 12.6, store.settings.reduceMotion);
+    }
+  }
+
   // ---- 狀態同步 ----
   const goalTags = new Map();
   function syncActors() {
     for (const [id, a] of actors) {
       const t = game.target(id);
-      if (a.spot?.x !== t.x || a.spot?.z !== t.z) {
-        a.mesh.position.set(t.x, 0, t.z);
-        a.spot = { x: t.x, z: t.z };
+      if (a.spot?.x !== t.x || a.spot?.z !== t.z || a.spot?.sit !== t.sit) {
+        a.mesh.position.set(t.x, t.sit ? 0.24 : 0, t.z);
+        a.mesh.rotation.y = 0;
+        a.mesh.userData.sitting = !!t.sit;
+        a.spot = { x: t.x, z: t.z, sit: t.sit };
       }
     }
     const goals = new Set(game.goalTargets());
@@ -203,6 +261,7 @@ export async function start3D(game, ui, store) {
     for (const tg of targetList) targetMap.set(tg.id, tg);
     syncActors();
     syncPots();
+    syncScenery();
   };
   game.addEventListener('change', onChange);
   onChange();
@@ -249,6 +308,7 @@ export async function start3D(game, ui, store) {
   let saveTimer = 0;
   let moved = false;
   let shownTarget;
+  let stepTimer = 0;
 
   const blocked = (x, z) => {
     if (world.blocked(x, z, RADIUS)) return true;
@@ -321,11 +381,33 @@ export async function start3D(game, ui, store) {
     player.position.copy(pos);
     player.rotation.y += Math.atan2(Math.sin(yaw - player.rotation.y), Math.cos(yaw - player.rotation.y)) * Math.min(1, dt * 12);
     animateCharacter(player, t, walking, still);
-    for (const a of actors.values()) animateCharacter(a.mesh, t, false, still);
-    // 角色面向玩家（距離近時）
+    // 腳步聲與塵土
+    if (walking) {
+      stepTimer -= dt;
+      if (stepTimer <= 0) {
+        stepTimer = 0.3;
+        play('step');
+        fx.step(pos.x, pos.z, still);
+      }
+    } else {
+      stepTimer = 0;
+    }
+    // 角色：玩家靠近時轉頭看過來（太近時身體也慢慢轉過來）；坐著的人只轉頭
     for (const a of actors.values()) {
-      const d = Math.hypot(pos.x - a.mesh.position.x, pos.z - a.mesh.position.z);
-      if (d < 3) a.mesh.rotation.y = Math.atan2(pos.x - a.mesh.position.x, pos.z - a.mesh.position.z);
+      const m = a.mesh;
+      const dx = pos.x - m.position.x;
+      const dz = pos.z - m.position.z;
+      const d = Math.hypot(dx, dz);
+      const want = Math.atan2(dx, dz);
+      if (d < 4) {
+        if (!m.userData.sitting && d < 2.6) m.rotation.y += Math.atan2(Math.sin(want - m.rotation.y), Math.cos(want - m.rotation.y)) * Math.min(1, dt * 4);
+        const rel = Math.atan2(Math.sin(want - m.rotation.y), Math.cos(want - m.rotation.y));
+        m.userData.lookYaw = Math.max(-1, Math.min(1, rel));
+      } else {
+        m.userData.lookYaw = 0;
+      }
+      animateCharacter(m, t, false, still);
+      m.position.y = (m.userData.sitting ? 0.24 : 0) + (m.userData.hop ?? 0);
     }
 
     // 區域切換提示
@@ -356,6 +438,8 @@ export async function start3D(game, ui, store) {
     if (near?.id !== shownTarget) {
       shownTarget = near?.id;
       controls.showTarget(near);
+      fx.highlight(near);
+      if (near) play('near');
     }
 
     updateCat(dt, t, still);
@@ -373,6 +457,7 @@ export async function start3D(game, ui, store) {
     }
     if (beacon.visible) placeLabel(beaconTag, beacon.position.x, 2.2, beacon.position.z);
     placeLabel(catTag, cat.position.x, 0.9, cat.position.z);
+    fx.update(dt, t, still, placeLabel);
 
     renderer.render(scene, camera);
   }
@@ -389,6 +474,9 @@ export async function start3D(game, ui, store) {
       controls.stop();
       game.removeEventListener('change', onChange);
       game.removeEventListener('hint', onHint);
+      game.removeEventListener('reaction', onReaction);
+      document.removeEventListener('emote', onEmote);
+      fx.dispose();
       removeEventListener('resize', onResize);
       removeEventListener('pagehide', onHide);
       renderer.domElement.removeEventListener('pointerup', onPointer);

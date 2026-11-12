@@ -5,6 +5,7 @@ import { Game } from './game.js';
 import { createUI, $, esc } from './ui.js';
 import { startTextMode } from './text-mode.js';
 import { createMusic } from './audio.js';
+import { setupSfx } from './sfx.js';
 
 const FILES = {
   quest: 'quest', cards: 'cards', characters: 'characters', places: 'places', puzzles: 'puzzles',
@@ -17,7 +18,7 @@ const testMode = params.has('test');
 let content;
 try {
   const entries = await Promise.all(Object.entries(FILES).map(async ([key, file]) => {
-    const r = await fetch(`content/${file}.json`);
+    const r = await fetch(`content/${file}.json`, { cache: 'no-cache' }); // 每次都向伺服器確認有沒有新版，避免看到舊內容
     if (!r.ok) throw new Error(`${file}.json 讀取失敗（${r.status}）`);
     return [key, await r.json()];
   }));
@@ -35,6 +36,7 @@ if (!store.hasSavedSettings && matchMedia('(pointer: coarse)').matches) {
   store.settings.quality = 'low';
   store.saveSettings();
 }
+setupSfx(store.settings);
 const ui = createUI(content, store);
 ui.applySettings();
 const game = new Game(content, store, ui);
@@ -43,6 +45,8 @@ const music = createMusic(content.music, store.settings);
 game.addEventListener('area', (e) => music.setArea(e.detail));
 // 「回到這座花園」練習時自動降低音量
 game.addEventListener('practice', (e) => { if (e.detail.id === 'present') music.duck(e.detail.open); });
+// 聆聽風鈴聲時，背景音樂完全靜音
+document.addEventListener('listen-chime', (e) => music.mute(e.detail));
 
 let view = null;
 let mode = null;

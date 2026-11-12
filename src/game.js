@@ -1,6 +1,7 @@
 // 遊戲規則：任務進度、對話入口、發卡、用卡、謎題、麻糬的提示、讀檔修復。
 // 3D 模式與文字模式共用這一份規則與進度，畫面只負責呈現與輸入。
 import { newSave } from './state.js';
+import { play } from './sfx.js';
 
 export class Game extends EventTarget {
   /**
@@ -50,6 +51,13 @@ export class Game extends EventTarget {
       }
       for (const id of this.puzzleIds) {
         s.puzzles[id] ??= { place: {}, solved: false };
+        // 謎題改版後，舊存檔裡已經不存在的位置清掉（植物回到托盤上）
+        const pz = this.c.puzzles.puzzles[id];
+        const slots = new Set((pz.spots ?? pz.tables).map((x) => x.id));
+        const items = new Set(pz.items.map((x) => x.id));
+        for (const [item, slot] of Object.entries(s.puzzles[id].place)) {
+          if (!items.has(item) || !slots.has(slot)) delete s.puzzles[id].place[item];
+        }
         const card = this.c.puzzles.puzzles[id].card;
         if (s.puzzles[id].solved && !s.cards.includes(card)) {
           s.cards.push(card);
@@ -85,7 +93,7 @@ export class Game extends EventTarget {
     const list = [];
     for (const ch of this.c.characters.characters) {
       const sp = this.characterSpot(ch);
-      list.push({ id: ch.id, kind: 'character', name: ch.name, area: sp.area, x: sp.x, z: sp.z, cardTarget: true, data: ch });
+      list.push({ id: ch.id, kind: 'character', name: ch.name, area: sp.area, x: sp.x, z: sp.z, sit: !!sp.sit, cardTarget: true, data: ch });
     }
     for (const o of this.c.places.objects) {
       list.push({ id: o.id, kind: o.puzzle ? 'puzzle' : 'object', name: o.name, area: o.area, x: o.x, z: o.z, cardTarget: !!o.cardTarget, data: o });
@@ -134,24 +142,28 @@ export class Game extends EventTarget {
     this.ui.puzzle(this, id);
   }
 
+  // 把一項東西放到一個位置（slot 為 null 表示拿回托盤）。回傳 { fit, reaction, solved }。
+  // 植物：放下就留在原地，用反應提示合不合適，玩家可以再拿起來；桌子：放錯會滑回托盤，不保留。
+  // 全部放對時才發卡；不計分、不記錄放錯次數。
   placePuzzle(id, item, slot) {
-    this.store.mutate((s) => {
-      const place = s.puzzles[id].place;
-      if (slot) place[item] = slot;
-      else delete place[item];
-    });
-    this.changed();
-  }
-
-  // 檢查答案：全部正確就發卡；否則回傳放錯的項目與線索方向（不說答案）
-  checkPuzzle(id) {
     const p = this.c.puzzles.puzzles[id];
-    const place = this.s.puzzles[id].place;
-    if (p.items.some((it) => !place[it.id])) return { ok: false, notAll: true, text: p.notAllPlaced };
-    const wrong = p.items.filter((it) => place[it.id] !== it.answer);
-    if (wrong.length) return { ok: false, wrong: wrong.map((it) => it.id), hints: wrong.map((it) => it.hint) };
-    this.apply([{ giveCard: p.card }], (s) => { s.puzzles[id].solved = true; });
-    return { ok: true };
+    const it = p.items.find((x) => x.id === item);
+    if (!it || this.s.puzzles[id].solved) return null;
+    const fit = slot === it.answer;
+    const reaction = p.kind === 'plants' ? it.reactions?.[slot] ?? null : null;
+    const keep = slot && (p.kind === 'plants' || fit);
+    const solvedNow = keep && p.items.every((x) => (x.id === item ? fit : this.s.puzzles[id].place[x.id] === x.answer));
+    this.apply(solvedNow ? [{ giveCard: p.card }] : [], (s) => {
+      const place = s.puzzles[id].place;
+      if (keep) {
+        for (const [other, sl] of Object.entries(place)) if (other !== item && sl === slot) delete place[other]; // 一個位置放一盆
+        place[item] = slot;
+      } else if (!slot) {
+        delete place[item];
+      }
+      if (solvedNow) s.puzzles[id].solved = true;
+    });
+    return { fit, reaction, solved: solvedNow };
   }
 
   // ---- 麻糬的提示 ----
@@ -189,13 +201,21 @@ export class Game extends EventTarget {
     if (ok) {
       this.store.mutate((s) => { if (!s.used.includes(ok.id)) s.used.push(ok.id); });
       this.changed();
+      this.react(targetId, 'happy'); // 適用：角色有明顯的反應
       this.play(ok.dialogue);
       return { ok: true };
     }
+    this.react(targetId, 'question'); // 不適用：露出疑惑的表情，卡片不消耗
     const goal = this.stepInfo?.goal;
     const early = uses.map((u) => this.c.uses.tooEarly[u.id]).find(Boolean);
     const base = early || (uses.length ? '現在好像還不是用這張卡的時候。' : t.data.notApplicable || '這張卡的觀點很好，只是現在好像不適用。');
     return { ok: false, text: base, goal };
+  }
+
+  // 角色或物件的反應（3D 會讓角色跳一下、頭上出現表情圖示）
+  react(targetId, kind) {
+    play(kind === 'happy' ? 'happy' : 'wonder');
+    this.dispatchEvent(new CustomEvent('reaction', { detail: { target: targetId, kind } }));
   }
 
   useAvailable(u) {

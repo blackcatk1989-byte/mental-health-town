@@ -1,7 +1,7 @@
 // 3D 模式：微光里的場景、角色、移動與碰撞、互動提示、謎題的盆栽、橘貓麻糬的帶路提示。
 // 遊戲規則與進度都在 src/game.js；這裡只負責呈現與輸入，和文字模式共用同一份進度。
 import * as THREE from 'three';
-import { makeCat, makeCharacter, makePot, PLAYER_LOOK } from './characters.js';
+import { animateCat, animateCharacter, makeCat, makeCharacter, makePot, PLAYER_LOOK } from './characters.js';
 import { buildWorld } from './world.js';
 import { FollowCamera } from './camera.js';
 import { setupLighting } from './lighting.js';
@@ -33,7 +33,9 @@ export async function start3D(game, ui, store) {
     renderer.setPixelRatio(low ? 1 : Math.min(devicePixelRatio, 2));
     renderer.setSize(innerWidth, innerHeight);
     lighting?.setQuality(store.settings.quality);
+    if (world) world.details.visible = !low; // 省電畫質：隱藏小裝飾
   };
+  let world = null;
   let lighting = null;
   container.append(renderer.domElement);
 
@@ -45,7 +47,8 @@ export async function start3D(game, ui, store) {
   lighting = setupLighting(renderer, scene);
   applyQuality();
 
-  const world = buildWorld(scene);
+  world = buildWorld(scene);
+  applyQuality();
   const island = await loadIsland(scene, ISLAND_URL);
   if (island) world.visuals.visible = false;
 
@@ -288,14 +291,7 @@ export async function start3D(game, ui, store) {
     } else if (catRoute.length) {
       catRoute.shift();
     }
-    const body = cat.userData.body;
-    body.position.y = walking && !still ? Math.abs(Math.sin(t * 14)) * 0.04 : 0;
-    cat.userData.tail.rotation.z = still ? 0 : Math.sin(t * (walking ? 6 : 2)) * 0.4;
-  }
-
-  function breathe(a, t, still) {
-    const b = still ? 0 : Math.sin(t * 2.2 + a.position.x) * 0.02;
-    a.userData.body.scale.set(1 - b * 0.5, 1 + b, 1 - b * 0.5);
+    animateCat(cat, t, walking, still);
   }
 
   function savePosition() {
@@ -324,16 +320,8 @@ export async function start3D(game, ui, store) {
     }
     player.position.copy(pos);
     player.rotation.y += Math.atan2(Math.sin(yaw - player.rotation.y), Math.cos(yaw - player.rotation.y)) * Math.min(1, dt * 12);
-    const body = player.userData.body;
-    if (walking && !still) {
-      body.position.y = Math.abs(Math.sin(t * 12)) * 0.07;
-      body.rotation.z = Math.sin(t * 12) * 0.05;
-    } else {
-      body.position.y = 0;
-      body.rotation.z *= 0.8;
-    }
-    breathe(player, t, still);
-    for (const a of actors.values()) breathe(a.mesh, t, still);
+    animateCharacter(player, t, walking, still);
+    for (const a of actors.values()) animateCharacter(a.mesh, t, false, still);
     // 角色面向玩家（距離近時）
     for (const a of actors.values()) {
       const d = Math.hypot(pos.x - a.mesh.position.x, pos.z - a.mesh.position.z);
@@ -418,6 +406,8 @@ export async function start3D(game, ui, store) {
     get position() { return { x: pos.x, z: pos.z }; },
     get catPosition() { return { x: cat.position.x, z: cat.position.z }; },
     get beaconTarget() { return beacon.visible ? beacon.userData.target : null; },
+    get drawCalls() { return renderer.info.render.calls; },
+    get quality() { return { shadows: renderer.shadowMap.enabled, details: world.details.visible, pixelRatio: renderer.getPixelRatio() }; },
     isTouch,
   };
 }

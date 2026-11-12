@@ -1,8 +1,8 @@
-// 3D 模式：晴隅小鎮的場景、角色、移動與碰撞、互動提示、探索卡、佈置後的場景變化。
+// 3D 模式：微光里的場景、角色、移動與碰撞、互動提示、謎題的盆栽、橘貓麻糬的帶路提示。
 // 遊戲規則與進度都在 src/game.js；這裡只負責呈現與輸入，和文字模式共用同一份進度。
 import * as THREE from 'three';
-import { makeCharacter, PLAYER_LOOK, toon } from './characters.js';
-import { buildWorld, chair, signPost } from './world.js';
+import { animateCat, animateCharacter, makeCat, makeCharacter, makePot, PLAYER_LOOK } from './characters.js';
+import { buildWorld } from './world.js';
 import { FollowCamera } from './camera.js';
 import { setupLighting } from './lighting.js';
 import { animateWaters, loadIsland } from './island.js';
@@ -33,7 +33,9 @@ export async function start3D(game, ui, store) {
     renderer.setPixelRatio(low ? 1 : Math.min(devicePixelRatio, 2));
     renderer.setSize(innerWidth, innerHeight);
     lighting?.setQuality(store.settings.quality);
+    if (world) world.details.visible = !low; // 省電畫質：隱藏小裝飾
   };
+  let world = null;
   let lighting = null;
   container.append(renderer.domElement);
 
@@ -45,7 +47,8 @@ export async function start3D(game, ui, store) {
   lighting = setupLighting(renderer, scene);
   applyQuality();
 
-  const world = buildWorld(scene);
+  world = buildWorld(scene);
+  applyQuality();
   const island = await loadIsland(scene, ISLAND_URL);
   if (island) world.visuals.visible = false;
 
@@ -90,52 +93,53 @@ export async function start3D(game, ui, store) {
   let yaw = Math.PI; // 面向北方（背對鏡頭）
   let lastArea = world.areaOf(pos.x);
 
-  // ---- 探索卡 ----
-  const glowTex = (() => {
-    const c = document.createElement('canvas');
-    c.width = c.height = 64;
-    const ctx = c.getContext('2d');
-    const g = ctx.createRadialGradient(32, 32, 0, 32, 32, 32);
-    g.addColorStop(0, 'rgba(255,248,220,1)');
-    g.addColorStop(1, 'rgba(255,240,200,0)');
-    ctx.fillStyle = g;
-    ctx.fillRect(0, 0, 64, 64);
-    return new THREE.CanvasTexture(c);
-  })();
-  const pickups = new Map(); // 點位 id → 物件
-  function syncPickups() {
-    const want = new Set(game.targets().filter((t) => t.kind === 'pickup').map((t) => t.point.id));
-    for (const [pid, g] of pickups) {
-      if (!want.has(pid)) {
-        scene.remove(g);
-        pickables.splice(pickables.indexOf(g.userData.hit), 1);
-        pickups.delete(pid);
-        if (beacon.userData.point === pid) hideBeacon();
-      }
-    }
-    for (const t of game.targets()) {
-      if (t.kind !== 'pickup' || pickups.has(t.point.id)) continue;
-      const g = new THREE.Group();
-      const card = new THREE.Mesh(new THREE.BoxGeometry(0.34, 0.46, 0.03), toon(game.card(t.card).color));
-      card.position.y = 0.9;
-      card.castShadow = true;
-      const glow = new THREE.Sprite(new THREE.SpriteMaterial({ map: glowTex, transparent: true, depthWrite: false, blending: THREE.AdditiveBlending }));
-      glow.scale.setScalar(1.3);
-      glow.position.y = 0.9;
-      const hit = new THREE.Mesh(hitGeo, hitMat);
-      hit.position.y = 0.8;
-      hit.userData.targetId = t.id;
-      pickables.push(hit);
-      g.add(card, glow, hit);
-      g.position.set(t.x, 0, t.z);
-      g.userData.card = card;
-      g.userData.hit = hit;
-      scene.add(g);
-      pickups.set(t.point.id, g);
+  // ---- 謎題：三盆植物的位置跟著存檔變動 ----
+  const potSpots = world.anchors.potSpots; // 木架上的位置（sun／half／shade）與地上的起始位置
+  const pots = new Map();
+  for (const it of game.c.puzzles.puzzles.E01.items) {
+    const pot = makePot(it.id);
+    scene.add(pot);
+    pots.set(it.id, pot);
+  }
+  function syncPots() {
+    const place = game.s.puzzles.E01.place;
+    for (const [id, pot] of pots) {
+      const p = potSpots[place[id]] ?? potSpots.ground[id];
+      pot.position.set(p.x, p.y ?? 0, p.z);
     }
   }
 
-  // 卡冊「顯示位置」的標記光柱
+  // ---- 麻糬：跟在玩家附近；提示時帶路、停在物件旁 ----
+  const cat = makeCat();
+  scene.add(cat);
+  const catHit = new THREE.Mesh(hitGeo, hitMat);
+  catHit.scale.set(0.8, 0.5, 0.8);
+  catHit.position.y = 0.3;
+  catHit.userData.targetId = 'mochi';
+  cat.add(catHit);
+  pickables.push(catHit);
+  cat.position.set(pos.x - 1.2, 0, pos.z + 0.6);
+  const catTag = label('tag cat-tag', '麻糬');
+  const catTarget = { id: 'mochi', kind: 'cat', name: '橘貓麻糬', x: 0, z: 0, cardTarget: false };
+  const catRoute = []; // 要走的路點；空的時候跟著玩家
+  let catGuide = null; // 提示中的目的地 { x, z }
+  // 三區之間的出入口，帶路時依序經過，不穿過建築與籬笆
+  const GATES = { 'cafe-plaza': { x: 11.8, z: 12.6 }, 'plaza-garden': { x: 24.6, z: 11.4 } };
+  function routeTo(dest, destArea) {
+    catRoute.length = 0;
+    const order = ['cafe', 'plaza', 'garden'];
+    let a = order.indexOf(world.areaOf(cat.position.x));
+    const b = order.indexOf(destArea);
+    while (a !== b) {
+      const next = a + Math.sign(b - a);
+      catRoute.push(GATES[[order[Math.min(a, next)], order[Math.max(a, next)]].join('-')]);
+      a = next;
+    }
+    catRoute.push(dest);
+    catGuide = dest;
+  }
+
+  // 麻糬提示第 3 層：在互動位置標出光柱
   const beacon = new THREE.Mesh(
     new THREE.CylinderGeometry(0.35, 0.35, 6, 16, 1, true),
     new THREE.MeshBasicMaterial({ color: 0xffe2a8, transparent: true, opacity: 0.35, depthWrite: false, side: THREE.DoubleSide }),
@@ -145,45 +149,29 @@ export async function start3D(game, ui, store) {
   const beaconTag = label('tag beacon-tag hidden', '在這裡');
   const hideBeacon = () => {
     beacon.visible = false;
-    beacon.userData.point = null;
+    beacon.userData.target = null;
     beaconTag.classList.add('hidden');
   };
-  const onLocate = (e) => {
-    const p = e.detail;
-    beacon.position.set(p.x, 3, p.z);
-    beacon.visible = true;
-    beacon.userData.point = p.id;
-    beaconTag.classList.remove('hidden');
-  };
-  game.addEventListener('locate', onLocate);
-
-  // ---- 佈置後的場景變化 ----
-  const decor = new THREE.Group();
-  scene.add(decor);
-  function syncArrangement() {
-    decor.clear();
-    const a = game.s.arrangement;
-    if (!a) return;
-    const cfg = game.c.places.objects.find((o) => o.id === 'bench').arrangement;
-    const spot = cfg.spots.find((x) => x.id === a.spot) ?? cfg.spots[0];
-    const c = chair(0xd9b98f);
-    c.position.set(spot.x, 0, spot.z);
-    c.rotation.y = Math.PI;
-    const cushion = new THREE.Mesh(new THREE.BoxGeometry(0.42, 0.08, 0.42), toon(0xe3a48a));
-    cushion.position.set(spot.x, 0.52, spot.z);
-    const sign = signPost(0xfff3dc);
-    sign.position.set(spot.x + 0.7, 0, spot.z - 0.3);
-    const lantern = new THREE.Mesh(new THREE.SphereGeometry(0.12, 12, 8), new THREE.MeshBasicMaterial({ color: 0xffe9b8 }));
-    lantern.position.set(spot.x + 0.7, 1.4, spot.z - 0.3);
-    decor.add(c, cushion, sign, lantern);
-    if (a.quiet) {
-      const q = chair(0xb9a3c9);
-      q.position.set(31.2, 0, 18.4);
-      const plant = new THREE.Mesh(new THREE.IcosahedronGeometry(0.35, 1), toon(0x93b98a));
-      plant.position.set(31.9, 0.35, 18.6);
-      decor.add(q, plant);
+  const onHint = (e) => {
+    const { layer, target, area } = e.detail;
+    hideBeacon();
+    if (layer === 1) {
+      // 走到該區域的入口附近；已經在同一區就往物件的方向走幾步
+      const sp = area.spawn;
+      const here = world.areaOf(cat.position.x) === area.id;
+      const dest = here ? { x: (cat.position.x + target.x) / 2, z: (cat.position.z + target.z) / 2 } : { x: sp.x, z: sp.z };
+      routeTo(dest, area.id);
+    } else {
+      routeTo({ x: target.x + 0.7, z: target.z + 0.6 }, area.id);
     }
-  }
+    if (layer === 3) {
+      beacon.position.set(target.x, 3, target.z);
+      beacon.visible = true;
+      beacon.userData.target = target.id;
+      beaconTag.classList.remove('hidden');
+    }
+  };
+  game.addEventListener('hint', onHint);
 
   // ---- 狀態同步 ----
   const goalTags = new Map();
@@ -203,6 +191,8 @@ export async function start3D(game, ui, store) {
       }
     }
     for (const id of goals) if (!goalTags.has(id)) goalTags.set(id, label('goal-mark', '！'));
+    // 提示的目標已經完成（例如謎題解開），光柱就收起來
+    if (beacon.userData.target && !game.hintTopics().some((tp) => tp.target === beacon.userData.target)) hideBeacon();
   }
   // 互動目標在進度改變時才重算，主迴圈裡不新建物件
   let targetList = [];
@@ -212,8 +202,7 @@ export async function start3D(game, ui, store) {
     targetMap.clear();
     for (const tg of targetList) targetMap.set(tg.id, tg);
     syncActors();
-    syncPickups();
-    syncArrangement();
+    syncPots();
   };
   game.addEventListener('change', onChange);
   onChange();
@@ -223,9 +212,14 @@ export async function start3D(game, ui, store) {
   const blockedUI = () => ui.busy() || document.body.classList.contains('home-open');
   const controls = setupControls({
     isBlocked: blockedUI,
-    onInteract: () => { if (near && !blockedUI()) game.interact(near.id); },
+    onInteract: () => { if (near && !blockedUI()) interact(near); },
     onUse: () => { if (near?.cardTarget && !blockedUI()) ui.openUseCard(near.id); },
   });
+
+  function interact(t) {
+    if (t.kind === 'cat') ui.hints();
+    else game.interact(t.id);
+  }
 
   const ray = new THREE.Raycaster();
   const ndc = new THREE.Vector2();
@@ -235,9 +229,10 @@ export async function start3D(game, ui, store) {
     ray.setFromCamera(ndc, camera);
     const hit = ray.intersectObjects(pickables, false)[0];
     if (!hit) return;
-    const t = game.target(hit.object.userData.targetId);
+    const id = hit.object.userData.targetId;
+    const t = id === 'mochi' ? catTarget : game.target(id);
     if (!t) return;
-    if (Math.hypot(t.x - pos.x, t.z - pos.z) <= REACH) game.interact(t.id);
+    if (Math.hypot(t.x - pos.x, t.z - pos.z) <= REACH) interact(t);
     else ui.toast(`再靠近${t.name}一點，就可以互動。`, { ms: 2200 });
   };
   renderer.domElement.addEventListener('pointerup', onPointer);
@@ -268,9 +263,35 @@ export async function start3D(game, ui, store) {
     el.style.top = `${((1 - tmp.y) / 2) * innerHeight}px`;
   };
 
-  function breathe(a, t, still) {
-    const b = still ? 0 : Math.sin(t * 2.2 + a.position.x) * 0.02;
-    a.userData.body.scale.set(1 - b * 0.5, 1 + b, 1 - b * 0.5);
+  // 麻糬：沒有提示時跟在玩家身後；有提示時沿著路點走到目的地，坐著等玩家過來
+  const CAT_SPEED = 2.6;
+  function updateCat(dt, t, still) {
+    let tx;
+    let tz;
+    if (catRoute.length) {
+      tx = catRoute[0].x;
+      tz = catRoute[0].z;
+    } else if (catGuide) {
+      tx = catGuide.x;
+      tz = catGuide.z;
+      if (Math.hypot(pos.x - tx, pos.z - tz) < 2.2) catGuide = null; // 玩家跟上了，回去跟著玩家
+    } else {
+      tx = pos.x - Math.sin(yaw) * 1.1 + Math.cos(yaw) * 0.5;
+      tz = pos.z - Math.cos(yaw) * 1.1 - Math.sin(yaw) * 0.5;
+    }
+    const dx = tx - cat.position.x;
+    const dz = tz - cat.position.z;
+    const d = Math.hypot(dx, dz);
+    const walking = d > (catRoute.length ? 0.15 : 0.4);
+    if (walking) {
+      const step = Math.min(d, CAT_SPEED * dt);
+      cat.position.x += (dx / d) * step;
+      cat.position.z += (dz / d) * step;
+      cat.rotation.y = Math.atan2(dx, dz);
+    } else if (catRoute.length) {
+      catRoute.shift();
+    }
+    animateCat(cat, t, walking, still);
   }
 
   function savePosition() {
@@ -299,16 +320,8 @@ export async function start3D(game, ui, store) {
     }
     player.position.copy(pos);
     player.rotation.y += Math.atan2(Math.sin(yaw - player.rotation.y), Math.cos(yaw - player.rotation.y)) * Math.min(1, dt * 12);
-    const body = player.userData.body;
-    if (walking && !still) {
-      body.position.y = Math.abs(Math.sin(t * 12)) * 0.07;
-      body.rotation.z = Math.sin(t * 12) * 0.05;
-    } else {
-      body.position.y = 0;
-      body.rotation.z *= 0.8;
-    }
-    breathe(player, t, still);
-    for (const a of actors.values()) breathe(a.mesh, t, still);
+    animateCharacter(player, t, walking, still);
+    for (const a of actors.values()) animateCharacter(a.mesh, t, false, still);
     // 角色面向玩家（距離近時）
     for (const a of actors.values()) {
       const d = Math.hypot(pos.x - a.mesh.position.x, pos.z - a.mesh.position.z);
@@ -336,17 +349,16 @@ export async function start3D(game, ui, store) {
         const d = Math.hypot(tg.x - pos.x, tg.z - pos.z);
         if (d <= best) { best = d; near = tg; }
       }
+      catTarget.x = cat.position.x;
+      catTarget.z = cat.position.z;
+      if (!near && Math.hypot(catTarget.x - pos.x, catTarget.z - pos.z) <= REACH) near = catTarget;
     }
     if (near?.id !== shownTarget) {
       shownTarget = near?.id;
       controls.showTarget(near);
     }
 
-    // 探索卡輕輕浮動
-    for (const g of pickups.values()) {
-      g.userData.card.rotation.y = still ? 0.4 : t * 1.2;
-      g.userData.card.position.y = 0.9 + (still ? 0 : Math.sin(t * 2) * 0.06);
-    }
+    updateCat(dt, t, still);
     world.anchors.chimes.rotation.z = still ? 0 : Math.sin(t * 1.3) * 0.06;
 
     follow.update(dt, pos, { reduceMotion: still });
@@ -360,6 +372,7 @@ export async function start3D(game, ui, store) {
       if (tg) placeLabel(el, tg.x, tg.kind === 'character' ? 2.0 : 2.4, tg.z);
     }
     if (beacon.visible) placeLabel(beaconTag, beacon.position.x, 2.2, beacon.position.z);
+    placeLabel(catTag, cat.position.x, 0.9, cat.position.z);
 
     renderer.render(scene, camera);
   }
@@ -375,7 +388,7 @@ export async function start3D(game, ui, store) {
       renderer.setAnimationLoop(null);
       controls.stop();
       game.removeEventListener('change', onChange);
-      game.removeEventListener('locate', onLocate);
+      game.removeEventListener('hint', onHint);
       removeEventListener('resize', onResize);
       removeEventListener('pagehide', onHide);
       renderer.domElement.removeEventListener('pointerup', onPointer);
@@ -391,6 +404,10 @@ export async function start3D(game, ui, store) {
     },
     blockedAt: (x, z) => blocked(x, z),
     get position() { return { x: pos.x, z: pos.z }; },
+    get catPosition() { return { x: cat.position.x, z: cat.position.z }; },
+    get beaconTarget() { return beacon.visible ? beacon.userData.target : null; },
+    get drawCalls() { return renderer.info.render.calls; },
+    get quality() { return { shadows: renderer.shadowMap.enabled, details: world.details.visible, pixelRatio: renderer.getPixelRatio() }; },
     isTouch,
   };
 }

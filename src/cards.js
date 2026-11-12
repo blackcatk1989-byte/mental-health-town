@@ -32,14 +32,12 @@ function detailHtml(game, card) {
         <small>（查核：${esc(s.checked)}）</small></li>`).join('')}</ul>`
     : '<p class="fine">本卡為遊戲內的衛教草案，尚未附外部來源（待補充）。</p>';
   if (!owned) {
-    const explore = card.kind === '探索卡';
     return `<div class="card-detail locked">
       ${cardArt(card, false)}
       <h3>${esc(card.id)}　${esc(card.title)}</h3>
       <p class="tag">${esc(card.kind)}・${esc(themeName(game, card.theme))}</p>
       <p><strong>取得線索：</strong>${esc(card.hint)}</p>
-      ${explore ? `<button type="button" class="btn primary" data-locate="${card.id}">顯示位置</button>` : ''}
-      <p class="fine">取得後就能閱讀完整內容。</p>
+      <p class="fine">取得後就能閱讀完整內容。卡住的時候，可以找橘貓麻糬。</p>
     </div>`;
   }
   return `<div class="card-detail">
@@ -60,7 +58,7 @@ function detailHtml(game, card) {
   </div>`;
 }
 
-export function openCardbook(game, { focus, toast, onLocate } = {}) {
+export function openCardbook(game, { focus } = {}) {
   const body = $('cardbook-body');
   const list = () => {
     const groups = game.c.cards.themes.map((t) => {
@@ -79,16 +77,6 @@ export function openCardbook(game, { focus, toast, onLocate } = {}) {
   const detail = (id) => {
     body.innerHTML = detailHtml(game, game.card(id));
     $('cardbook-back').classList.remove('hidden');
-    const loc = body.querySelector('[data-locate]');
-    if (loc) {
-      loc.onclick = () => {
-        const r = game.locate(loc.dataset.locate);
-        if (!r) return;
-        $('cardbook').close();
-        toast?.(`已標記位置：${esc(r.area.name)}・${esc(r.point.name)}`, { ms: 6000 });
-        onLocate?.(r);
-      };
-    }
   };
   $('cardbook-back').onclick = list;
   if (focus) detail(focus);

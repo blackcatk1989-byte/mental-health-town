@@ -4,10 +4,11 @@ import { Store } from './state.js';
 import { Game } from './game.js';
 import { createUI, $, esc } from './ui.js';
 import { startTextMode } from './text-mode.js';
+import { createMusic } from './audio.js';
 
 const FILES = {
-  quest: 'quest', cards: 'cards', characters: 'characters', places: 'places', explore: 'explore-points',
-  uses: 'card-uses', dialogues: 'dialogues', minigames: 'minigames',
+  quest: 'quest', cards: 'cards', characters: 'characters', places: 'places', puzzles: 'puzzles',
+  hints: 'hints', uses: 'card-uses', dialogues: 'dialogues', minigames: 'minigames', music: 'music',
 };
 
 const params = new URLSearchParams(location.search);
@@ -29,16 +30,26 @@ try {
 }
 
 const store = new Store();
+// 第一次在手機上玩：預設省電畫質（玩家可以在設定改回來）
+if (!store.hasSavedSettings && matchMedia('(pointer: coarse)').matches) {
+  store.settings.quality = 'low';
+  store.saveSettings();
+}
 const ui = createUI(content, store);
 ui.applySettings();
 const game = new Game(content, store, ui);
 ui.attach(game);
+const music = createMusic(content.music, store.settings);
+game.addEventListener('area', (e) => music.setArea(e.detail));
+// 「回到這座花園」練習時自動降低音量
+game.addEventListener('practice', (e) => { if (e.detail.id === 'present') music.duck(e.detail.open); });
 
 let view = null;
 let mode = null;
 let pendingNotes = [];
 
 function showHome(message) {
+  music.stop();
   view?.stop();
   view = null;
   mode = null;
@@ -61,6 +72,7 @@ async function enter(m) {
   store.mutate((s) => { s.mode = m; });
   document.body.classList.remove('home-open');
   document.body.dataset.mode = m;
+  music.start(store.data.area);
   $('home').classList.add('hidden');
   $('hud').classList.remove('hidden');
   if (m === '3d') {
@@ -86,11 +98,10 @@ async function enter(m) {
 
 async function newGame(m) {
   if (store.hasSave() && store.data) {
-    const ok = await ui.confirm('開始新遊戲會清除目前的進度，探索卡也會放到新的位置。確定嗎？', '開始新遊戲');
+    const ok = await ui.confirm('開始新遊戲會清除目前的進度（卡片、任務與謎題）。確定嗎？', '開始新遊戲');
     if (!ok) return;
   }
-  const forced = params.get('explore')?.split(',');
-  game.newGame(forced);
+  game.newGame();
   enter(m);
 }
 
@@ -101,7 +112,10 @@ const settingsHandlers = {
   home: () => showHome(),
   restart: () => { game.newGame(); enter(mode ?? '3d'); },
   clear: () => { store.clear(); showHome('進度已清除。'); },
-  onSettings: () => view?.applySettings?.(),
+  onSettings: () => {
+    view?.applySettings?.();
+    music.refresh(store.data?.area);
+  },
 };
 
 $('home-new').onclick = () => newGame('3d');
@@ -127,4 +141,4 @@ if (loaded.status === 'ok') {
 showHome(homeMessage);
 $('loading').classList.add('hidden');
 
-if (testMode) window.__xzj = { game, store, ui, enter, view: () => view };
+if (testMode) window.__xzj = { game, store, ui, enter, music, view: () => view };

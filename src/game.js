@@ -1,6 +1,6 @@
-// 遊戲規則：任務進度、對話入口、發卡、用卡、探索卡拾取、讀檔修復。
+// 遊戲規則：任務進度、對話入口、發卡、用卡、謎題、麻糬的提示、讀檔修復。
 // 3D 模式與文字模式共用這一份規則與進度，畫面只負責呈現與輸入。
-import { newSave, rollExplore } from './state.js';
+import { newSave } from './state.js';
 
 export class Game extends EventTarget {
   /**
@@ -16,7 +16,7 @@ export class Game extends EventTarget {
     this.deferred = [];
     this.stepIds = content.quest.steps.map((s) => s.id);
     this.cardById = Object.fromEntries(content.cards.cards.map((k) => [k.id, k]));
-    this.pointById = Object.fromEntries(content.explore.points.map((p) => [p.id, p]));
+    this.puzzleIds = Object.keys(content.puzzles.puzzles);
     this.areaById = Object.fromEntries(content.places.areas.map((a) => [a.id, a]));
   }
 
@@ -28,13 +28,12 @@ export class Game extends EventTarget {
   card(id) { return this.cardById[id]; }
 
   // ---- 開局、讀檔 ----
-  newGame(forcedExplore) {
-    const { cards, points } = this.c.explore;
-    this.store.start(newSave(rollExplore(cards, points, forcedExplore)));
+  newGame() {
+    this.store.start(newSave(this.puzzleIds));
     this.changed();
   }
 
-  // 讀檔後檢查：已走過發卡步驟卻缺卡就補回；探索對照表壞掉才重抽。回傳要告訴玩家的訊息。
+  // 讀檔後檢查：已走過發卡步驟卻缺卡就補回；解開的謎題卻缺卡也補回。回傳要告訴玩家的訊息。
   repair() {
     const notes = [];
     this.store.mutate((s) => {
@@ -49,14 +48,13 @@ export class Game extends EventTarget {
           notes.push(`依任務紀錄補回理解卡「${this.card(g.card).title}」。`);
         }
       }
-      const { cards, points } = this.c.explore;
-      const ex = s.explore || {};
-      const ids = cards.map((c) => ex[c]);
-      const valid = ids.every((id) => this.pointById[id]) && new Set(ids).size === ids.length;
-      if (!valid) {
-        s.explore = rollExplore(cards, points);
-        s.picked = [];
-        notes.push('探索卡的位置紀錄無法讀取，已重新放置。');
+      for (const id of this.puzzleIds) {
+        s.puzzles[id] ??= { place: {}, solved: false };
+        const card = this.c.puzzles.puzzles[id].card;
+        if (s.puzzles[id].solved && !s.cards.includes(card)) {
+          s.cards.push(card);
+          notes.push(`依謎題紀錄補回理解卡「${this.card(card).title}」。`);
+        }
       }
       s.cards = s.cards.filter((id, i, a) => this.cardById[id] && a.indexOf(id) === i);
     });
@@ -82,7 +80,7 @@ export class Game extends EventTarget {
     return spot;
   }
 
-  // 目前場景上所有可互動的目標（角色、物件、還沒拾取的探索卡）
+  // 目前場景上所有可互動的目標（角色、物件、謎題入口）
   targets() {
     const list = [];
     for (const ch of this.c.characters.characters) {
@@ -90,12 +88,7 @@ export class Game extends EventTarget {
       list.push({ id: ch.id, kind: 'character', name: ch.name, area: sp.area, x: sp.x, z: sp.z, cardTarget: true, data: ch });
     }
     for (const o of this.c.places.objects) {
-      list.push({ id: o.id, kind: 'object', name: o.name, area: o.area, x: o.x, z: o.z, cardTarget: !!o.cardTarget, data: o });
-    }
-    for (const [card, pid] of Object.entries(this.s.explore)) {
-      if (this.s.picked.includes(pid)) continue;
-      const p = this.pointById[pid];
-      list.push({ id: `pickup:${pid}`, kind: 'pickup', name: `${p.name}的理解卡`, area: p.area, x: p.x, z: p.z, card, point: p });
+      list.push({ id: o.id, kind: o.puzzle ? 'puzzle' : 'object', name: o.name, area: o.area, x: o.x, z: o.z, cardTarget: !!o.cardTarget, data: o });
     }
     return list;
   }
@@ -107,10 +100,8 @@ export class Game extends EventTarget {
     const t = this.stepInfo?.target;
     if (!t) return [];
     const ids = Array.isArray(t) ? t : [t];
-    if (this.step === 'wrap') {
-      return ids.filter((id) => !this.s.flags[id === 'muyu' ? 'confirmedMuyu' : 'confirmedAcheng']);
-    }
-    return ids;
+    const done = this.stepInfo.targetFlags ?? {};
+    return ids.filter((id) => !this.s.flags[done[id]]);
   }
 
   // 目前目標需要、但玩家還沒有的卡，與取得方式
@@ -124,7 +115,7 @@ export class Game extends EventTarget {
   interact(id) {
     const t = this.target(id);
     if (!t || this.ui.busy()) return;
-    if (t.kind === 'pickup') return this.pickup(t.point.id);
+    if (t.kind === 'puzzle') return this.openPuzzle(t.data.puzzle);
     const entry = t.data.talk.find((e) => this.check(e.when));
     if (entry) this.play(entry.dialogue);
   }
@@ -137,14 +128,56 @@ export class Game extends EventTarget {
     });
   }
 
-  pickup(pointId) {
-    const card = Object.keys(this.s.explore).find((c) => this.s.explore[c] === pointId);
-    if (!card || this.s.picked.includes(pointId)) return;
-    const p = this.pointById[pointId];
-    this.apply([{ giveCard: card }], (s) => { s.picked.push(pointId); });
-    const k = this.card(card);
-    this.ui.pickupAnimation?.(k);
-    this.play('pickup', { place: p.name, title: k.title, useHint: `使用提示：${k.useHint}` });
+  // ---- 謎題 ----
+  // 不計時、不扣分、可無限重試；已擺好的位置會存起來，中途離開再回來仍保留
+  openPuzzle(id) {
+    this.ui.puzzle(this, id);
+  }
+
+  placePuzzle(id, item, slot) {
+    this.store.mutate((s) => {
+      const place = s.puzzles[id].place;
+      if (slot) place[item] = slot;
+      else delete place[item];
+    });
+    this.changed();
+  }
+
+  // 檢查答案：全部正確就發卡；否則回傳放錯的項目與線索方向（不說答案）
+  checkPuzzle(id) {
+    const p = this.c.puzzles.puzzles[id];
+    const place = this.s.puzzles[id].place;
+    if (p.items.some((it) => !place[it.id])) return { ok: false, notAll: true, text: p.notAllPlaced };
+    const wrong = p.items.filter((it) => place[it.id] !== it.answer);
+    if (wrong.length) return { ok: false, wrong: wrong.map((it) => it.id), hints: wrong.map((it) => it.hint) };
+    this.apply([{ giveCard: p.card }], (s) => { s.puzzles[id].solved = true; });
+    return { ok: true };
+  }
+
+  // ---- 麻糬的提示 ----
+  // 可以問的題目：目前的主線目標，以及還沒解開的謎題
+  hintTopics() {
+    const topics = [];
+    const goal = this.goalTargets()[0];
+    if (goal) topics.push({ id: 'goal', label: this.c.hints.topics.goal, target: goal });
+    for (const id of this.puzzleIds) {
+      if (!this.s.puzzles[id].solved) topics.push({ id, label: this.c.hints.topics[id], target: this.c.puzzles.puzzles[id].entry });
+    }
+    return topics;
+  }
+
+  // layer 1：往區域走、2：停在物件旁、3：標出互動位置
+  hint(topicId, layer) {
+    const topic = this.hintTopics().find((t) => t.id === topicId);
+    if (!topic) return null;
+    const t = this.target(topic.target);
+    const area = this.areaById[t.area];
+    const fill = (str) => str.replace('{area}', area.name).replace('{name}', t.name);
+    const detail = { layer, target: t, area };
+    this.dispatchEvent(new CustomEvent('hint', { detail }));
+    let text = fill(this.c.hints.layers[layer - 1].text);
+    if (layer === 1 && this.s.area === t.area) text += fill(this.c.hints.hereAlready);
+    return { ...detail, text };
   }
 
   // 用卡：找出符合目標、卡號與任務階段的互動
@@ -208,13 +241,11 @@ export class Game extends EventTarget {
         this.applyInto(s, e.advance.then, after);
       }
       if (e.setFlag) s.flags[e.setFlag] = true;
-      if (e.quietSeat && s.arrangement) s.arrangement.quiet = true;
       if (e.openResources) after.push(() => window.openSupport?.());
       if (e.openCardbook) this.deferred.push(() => this.ui.openCardbook());
       if (e.tutorial) after.push(() => this.ui.tutorial(e.tutorial));
       if (e.dialogue) this.deferred.push(() => this.play(e.dialogue));
-      if (e.minigame) this.deferred.push(() => this.startMinigame(e.minigame, e.mode));
-      if (e.arrangement) this.deferred.push(() => this.openArrangement(e.arrangement === 'first'));
+      if (e.minigame) this.deferred.push(() => this.startMinigame(e.minigame));
     }
   }
 
@@ -228,25 +259,19 @@ export class Game extends EventTarget {
     }
   }
 
-  // 對話結束後依序執行延後的動作（開練習、開佈置、接下一段對話）
+  // 對話結束後依序執行延後的動作（開練習、接下一段對話）
   flush() {
     const next = this.deferred.shift();
     if (next) next();
   }
 
-  startMinigame(id, mode) {
-    this.ui.minigame(id, mode, this.c.minigames[id], (result) => {
-      if (!result) return this.flush(); // 中途離開：不記錄，可再次進入
-      this.apply(this.c.minigames[id].onComplete, (s) => { s.practice[id][result] += 1; });
-    });
-  }
-
-  openArrangement(first) {
-    const bench = this.c.places.objects.find((o) => o.id === 'bench');
-    const cfg = bench.arrangement;
-    this.ui.arrangement(cfg, this.s.arrangement, this.hasCard(cfg.quiet.card), (choice) => {
-      if (!choice) return this.flush();
-      this.apply(first ? cfg.onFirstComplete : [], (s) => { s.arrangement = choice; });
+  // 練習要親手完成才取得卡片；中途離開不記錄，下次從頭開始
+  startMinigame(id) {
+    this.dispatchEvent(new CustomEvent('practice', { detail: { id, open: true } }));
+    this.ui.minigame(id, this.c.minigames[id], (completed) => {
+      this.dispatchEvent(new CustomEvent('practice', { detail: { id, open: false } }));
+      if (!completed) return this.flush();
+      this.apply(this.c.minigames[id].onComplete, (s) => { s.practice[id] += 1; });
     });
   }
 
@@ -255,7 +280,10 @@ export class Game extends EventTarget {
     const s = this.s;
     if (!s) return;
     s.player = { x, z };
-    if (area) s.area = area;
+    if (area && area !== s.area) {
+      s.area = area;
+      this.dispatchEvent(new CustomEvent('area', { detail: area }));
+    }
   }
 
   setArea(area) {
@@ -263,15 +291,8 @@ export class Game extends EventTarget {
       s.area = area;
       s.player = { ...this.areaById[area].spawn };
     });
+    this.dispatchEvent(new CustomEvent('area', { detail: area }));
     this.changed();
-  }
-
-  locate(cardId) {
-    const pid = this.s.explore[cardId];
-    if (!pid) return null;
-    const p = this.pointById[pid];
-    this.dispatchEvent(new CustomEvent('locate', { detail: p }));
-    return { point: p, area: this.areaById[p.area] };
   }
 
   changed() {

@@ -1,0 +1,32 @@
+{
+  "_說明": "背景音樂。tracks 依區域（plaza 小廣場、cafe 咖啡店外、garden 小花園）指定曲目，沒有指定的區域用 default。每首曲目要填 file（assets/audio/ 下的檔案）、title、author、url（來源頁面）、license（授權名稱）、licenseUrl（授權條款）。只使用 CC0 或授權明確允許免費使用的音樂，並同步記錄在 docs/素材來源.md。duck 是進入「回到這座花園」時的音量比例；fade 是淡入淡出秒數。",
+  "duck": 0.3,
+  "fade": 1.5,
+  "default": null,
+  "tracks": {
+    "plaza": {
+      "file": "assets/audio/plaza.mp3",
+      "title": "Hot Springs Town",
+      "author": "Kistol",
+      "url": "https://opengameart.org/content/hot-springs-town",
+      "license": "CC0 1.0（公眾領域）",
+      "licenseUrl": "https://creativecommons.org/publicdomain/zero/1.0/"
+    },
+    "cafe": {
+      "file": "assets/audio/cafe.mp3",
+      "title": "Catmint（looped 版）",
+      "author": "Kistol",
+      "url": "https://opengameart.org/content/catmint",
+      "license": "CC0 1.0（公眾領域）",
+      "licenseUrl": "https://creativecommons.org/publicdomain/zero/1.0/"
+    },
+    "garden": {
+      "file": "assets/audio/garden.mp3",
+      "title": "Bluebonnet（looped 版）",
+      "author": "Kistol",
+      "url": "https://opengameart.org/content/bluebonnet",
+      "license": "CC0 1.0（公眾領域）",
+      "licenseUrl": "https://creativecommons.org/publicdomain/zero/1.0/"
+    }
+  }
+}

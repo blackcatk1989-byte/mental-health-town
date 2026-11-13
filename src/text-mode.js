@@ -1,11 +1,11 @@
-// 文字模式：用地點清單、角色與物件按鈕取代走路；「問問麻糬」提供和 3D 相同的三層提示。
+// 文字模式：用地點清單、角色與物件按鈕取代走路；「問問麻糬」會告訴你牠走去哪裡坐下（和 3D 相同）。
 // 和 3D 模式共用同一份進度、對話、練習、謎題、卡片與任務。
 import { $, esc } from './ui.js';
 
 export function startTextMode(game, ui) {
   const root = $('text-mode');
   root.classList.remove('hidden');
-  let mark = null; // 麻糬的提示：{ layer, targetId, areaId }
+  let mark = null; // 麻糬坐在哪裡：{ targetId, areaId }
 
   const verb = (t) => (t.kind === 'character' ? '對話' : t.kind === 'puzzle' ? '仔細看看' : '查看');
 
@@ -24,12 +24,11 @@ export function startTextMode(game, ui) {
         data-area="${a.id}" ${a.id === here.id ? 'aria-current="true" disabled' : ''}>${esc(a.name)}
         ${game.targets().some((t) => t.area === a.id && goals.includes(t.id)) ? '<span class="goal-dot" aria-label="目前目標">！</span>' : ''}
         ${mark?.areaId === a.id && a.id !== here.id ? '<span class="cat-dot">麻糬往這裡走了</span>' : ''}</button>`).join('')}</nav>
-      <ul class="text-targets">${targets.map((t) => `<li class="${mark?.layer === 3 && mark.targetId === t.id ? 'marked' : ''}">
+      <ul class="text-targets">${targets.map((t) => `<li class="${mark?.targetId === t.id ? 'marked' : ''}">
         <div><strong>${esc(t.name)}</strong>
           ${t.kind === 'character' ? `<small>${esc(t.data.role)}</small>` : ''}
           ${goals.includes(t.id) ? '<span class="goal-dot">目前目標</span>' : ''}
-          ${mark && mark.layer >= 2 && mark.targetId === t.id ? '<span class="cat-dot">麻糬坐在旁邊</span>' : ''}
-          ${mark?.layer === 3 && mark.targetId === t.id ? '<span class="goal-dot">就是這裡</span>' : ''}</div>
+          ${mark?.targetId === t.id ? '<span class="cat-dot">麻糬坐在旁邊</span>' : ''}</div>
         <div class="row-actions left">
           <button type="button" class="btn primary" data-act="${t.id}">${verb(t)}</button>
           ${t.cardTarget ? `<button type="button" class="btn" data-use="${t.id}">使用理解卡</button>` : ''}
@@ -44,8 +43,8 @@ export function startTextMode(game, ui) {
   }
 
   const onHint = (e) => {
-    const { layer, target, area } = e.detail;
-    mark = { layer, targetId: target.id, areaId: area.id };
+    const { target, area } = e.detail;
+    mark = { targetId: target.id, areaId: area.id };
     render();
   };
   game.addEventListener('change', render);

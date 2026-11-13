@@ -251,18 +251,14 @@ async function main() {
     check('文字模式解開 E02，說明「相似的表現，背後的處境不同」', /相似的表現，背後的處境不同/.test(solvedText) && (await state(page)).cards.includes('E02'));
     await page.click('#puzzle-body [data-close]');
 
-    // 文字模式的麻糬：三層提示
+    // 文字模式的麻糬：按一下就說明牠走去哪裡坐下，沒有選單
     await page.click('#text-mode [data-hint]');
-    await page.click('#hints-body [data-topic="E01"]');
-    await page.click('#hints-body [data-layer="1"]');
-    const l1 = await page.innerText('#hints-body .notice');
-    await page.click('#hints-body [data-layer="2"]');
-    await page.click('#hints-body [data-layer="3"]');
-    const l3 = await page.innerText('#hints-body .notice');
-    await page.click('#hints-body [data-close]');
+    await page.waitForFunction(() => [...document.querySelectorAll('.toast')].some((t) => /麻糬/.test(t.textContent)));
+    const said = await page.evaluate(() => [...document.querySelectorAll('.toast')].map((t) => t.textContent).filter((t) => /麻糬/.test(t)).pop());
+    const noMenu = !(await page.$('dialog[open]'));
     await text.go(page, 'garden');
     const marked = await page.innerText('#text-mode li.marked').catch(() => '');
-    check('文字模式「問問麻糬」三層提示', /往小花園/.test(l1) && /標出來/.test(l3) && /三盆植物/.test(marked) && /就是這裡/.test(marked), `${l1}｜${marked.split('\n')[0]}`);
+    check('文字模式「問問麻糬」：沒有選單，麻糬自己走到還沒解開的謎題旁坐下', noMenu && /往小花園/.test(said) && /三盆植物/.test(said) && /麻糬坐在旁邊/.test(marked), `${said}｜${marked.split('\n')[0]}`);
     await text.go(page, 'garden');
     await text.act(page, 'pots');
     const plantWrongs = [];
@@ -387,23 +383,24 @@ async function main() {
     s = await state(page);
     check('結尾後重整可恢復、無重複獎勵', s.step === 'done' && s.rewards.length === 4 && new Set(s.cards).size === s.cards.length);
 
-    // 麻糬：3D 的三層提示
+    // 麻糬：3D 裡靠近牠互動，牠就自己走到該去的地方（不跳選單）
     await page.waitForFunction(() => {
       const v = window.__xzj.view();
       return v && document.querySelector('.cat-tag');
     });
     const catPos0 = await page.evaluate(() => window.__xzj.view().catPosition);
     await page.evaluate(() => window.__xzj.ui.hints());
-    await page.click('#hints-body [data-topic="E01"]');
-    await page.click('#hints-body [data-layer="1"]');
-    await page.click('#hints-body [data-layer="2"]');
-    await page.click('#hints-body [data-layer="3"]');
-    await page.click('#hints-body [data-close]');
+    const guide = await page.evaluate(() => window.__xzj.view().catGuide);
+    const noPanel = !(await page.$('dialog[open]'));
     await page.waitForTimeout(4000);
     const catPos1 = await page.evaluate(() => window.__xzj.view().catPosition);
-    const beacon = await page.evaluate(() => window.__xzj.view().beaconTarget);
-    check('3D 麻糬提示：帶路走向花園謎題，第 3 層標出互動位置', Math.hypot(catPos1.x - catPos0.x, catPos1.z - catPos0.z) > 0.3 && beacon === 'pots',
-      `麻糬 (${catPos0.x.toFixed(1)},${catPos0.z.toFixed(1)}) → (${catPos1.x.toFixed(1)},${catPos1.z.toFixed(1)})；標記 ${beacon}`);
+    const pots = await page.evaluate(() => window.__xzj.game.target('pots'));
+    check('3D 問麻糬：沒有選單，牠自己往花園謎題走去', noPanel && guide && Math.hypot(guide.x - pots.x, guide.z - pots.z) < 1.2 && Math.hypot(catPos1.x - catPos0.x, catPos1.z - catPos0.z) > 0.3,
+      `麻糬 (${catPos0.x.toFixed(1)},${catPos0.z.toFixed(1)}) → (${catPos1.x.toFixed(1)},${catPos1.z.toFixed(1)})，目的地在三盆植物旁`);
+    await page.evaluate(() => window.__xzj.ui.hints());
+    const next = await page.evaluate(() => window.__xzj.view().catGuide);
+    const tables = await page.evaluate(() => window.__xzj.game.target('tables'));
+    check('再問一次麻糬：換到下一個地方（咖啡店外的謎題）', next && Math.hypot(next.x - tables.x, next.z - tables.z) < 1.2);
 
     // 謎題 E01（插畫版）：故意放錯三次（一次用拖曳），中途離開、重整後位置仍在，再全部放對
     await go('pots', 0, 0.6);
@@ -436,7 +433,6 @@ async function main() {
     const e01 = await page.innerText('#puzzle-body');
     await page.click('#puzzle-body [data-close]');
     check('E01 重新打開時植物仍保留反應；三盆都合適才取得卡片，說明「需要不同，沒有哪個比較好」', /r-droop/.test(restored) && bloomed && /需要不同，沒有哪個比較好/.test(e01) && (await state(page)).cards.includes('E01'));
-    check('解開後提示光柱收起', (await page.evaluate(() => window.__xzj.view().beaconTarget)) === null);
     await page.screenshot({ path: `${OUT}/3d-pots-solved.png` });
 
     // 謎題 E02（插畫版）：故意放錯三次再完成
@@ -480,10 +476,8 @@ async function main() {
     await talkThrough(page, ['好。']);
     check('K04：主線後聊「需要的時候可以找誰」', (await state(page)).used.includes('next-support-ade'));
 
-    await page.evaluate(() => window.__xzj.ui.hints());
-    const nothing = await page.innerText('#hints-body');
-    await page.click('#hints-body [data-close]').catch(() => page.click('#hints .panel-head button:last-child'));
-    check('全部完成後麻糬不再給題目', /呵欠/.test(nothing));
+    const nothing = await page.evaluate(() => window.__xzj.ui.hints().text);
+    check('全部完成後麻糬只打呵欠', /呵欠/.test(nothing));
 
     await page.click('#hud-buttons [data-open-settings]');
     await page.click('#settings-body [data-mode="text"]');
@@ -741,7 +735,7 @@ async function main() {
     check('說話者有表情圖示氣泡（名牌旁與頭上）', !!emote && !!bubble);
     // 取得 K01：卡片飛入動畫，點一下可略過
     await talkThrough(page, ['想聊聊嗎', '一直想']);
-    const flew = await page.evaluate(() => window.__sfx.some((x) => x.name === 'card'));
+    const flew = await page.evaluate(() => window.__sfx.some((x) => x.name === 'spin'));
     check('取得理解卡有動畫與音效，可略過', flew && (await state(page)).cards.includes('K01'));
     check('任務推進有提示音', await page.evaluate(() => window.__sfx.some((x) => x.name === 'quest')));
     // 用不適用的卡：疑惑表情，卡片不消耗
@@ -842,8 +836,47 @@ async function main() {
       if (over || m.wide || m.tel < m.body) sizes[size] = `破版 ${JSON.stringify(m)}`;
     }
     check('文字大小小、中、大在手機上都不破版；找支持的電話號碼字級不小於內文', Object.values(sizes).every((v) => typeof v === 'number') && sizes.s < sizes.l, JSON.stringify(sizes));
-    check('版本號顯示在首頁', /v4\.1/.test(await page.innerText('#home')));
+    check('版本號顯示在首頁', /v4\.2/.test(await page.innerText('#home')));
     check('字體與版面流程無錯誤', errors.length === 0, errors.join(' | '));
+    await browser.close();
+  }
+
+  // 10. 走路的移動感、收集卡片的特效
+  {
+    const { browser, page, errors } = await launch();
+    await page.addInitScript(() => {
+      window.__sfx = [];
+      document.addEventListener('sfx', (e) => window.__sfx.push(e.detail.name));
+    });
+    await newGame(page);
+    await page.waitForFunction(() => window.__xzj?.view()?.position, null, { timeout: 30000 });
+    await page.keyboard.down('ArrowUp');
+    await page.waitForFunction(() => window.__sfx.filter((n) => n.startsWith('step')).length >= 4, null, { timeout: 40000 }).catch(() => {});
+    // 連續取樣幾次，取最大的擺動與彈跳（單一瞬間可能剛好在擺動的中點）
+    const pose = { lean: 0, sway: 0, bounce: 0 };
+    for (let i = 0; i < 6; i++) {
+      const p = await page.evaluate(() => window.__xzj.view().playerPose);
+      pose.lean = Math.max(pose.lean, p.lean);
+      pose.sway = Math.max(pose.sway, Math.abs(p.sway));
+      pose.bounce = Math.max(pose.bounce, p.bounce);
+      await page.waitForTimeout(170);
+    }
+    await page.keyboard.up('ArrowUp');
+    const steps = await page.evaluate(() => window.__sfx.filter((n) => n.startsWith('step')));
+    check('走路時左右腳交替落地（腳步聲一高一低）', steps.includes('step') && steps.includes('step2'), steps.slice(0, 6).join(','));
+    check('走路時身體前傾、擺臀、上下彈跳', pose.lean > 0.05 && pose.sway > 0.03 && pose.bounce > 0.02, JSON.stringify(pose));
+    // 收集卡片：由小變大、旋轉、發光、光點散開
+    await page.evaluate(() => window.__xzj.game.apply([{ giveCard: 'K01' }]));
+    await page.waitForSelector('.card-fly');
+    const fx = await page.evaluate(() => {
+      const f = document.querySelector('.card-fly');
+      return { rays: !!f.querySelector('.rays'), halo: !!f.querySelector('.halo'), sparks: f.querySelectorAll('.sparks i').length,
+        flash: !!f.querySelector('.flash'), anim: getComputedStyle(f.querySelector('.inner')).animationName };
+    });
+    check('收集卡片：由小變大旋轉、光芒、光暈、閃光與光點散開', fx.rays && fx.halo && fx.flash && fx.sparks >= 10 && /card-grow/.test(fx.anim), JSON.stringify(fx));
+    await page.waitForFunction(() => !document.querySelector('.card-fly'), null, { timeout: 15000 });
+    check('收集卡片後收進卡冊、播放音效', (await state(page)).cards.includes('K01') && (await page.evaluate(() => window.__sfx.includes('spin') && window.__sfx.includes('card'))));
+    check('走路與卡片特效無錯誤', errors.length === 0, errors.join(' | '));
     await browser.close();
   }
 

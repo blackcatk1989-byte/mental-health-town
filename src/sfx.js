@@ -54,7 +54,9 @@ function noise(a, { dur = 0.06, vol = 0.05, freq = 900, q = 0.8, at = 0 } = {}) 
 }
 
 const SOUNDS = {
-  step: (a) => noise(a, { dur: 0.05, vol: 0.035, freq: 500 + Math.random() * 300 }),
+  // 腳步：左右腳一高一低，再加一點隨機，聽起來比較像在走路
+  step: (a) => { noise(a, { dur: 0.06, vol: 0.045, freq: 420 + Math.random() * 120 }); tone(a, 140, { dur: 0.05, vol: 0.02, type: 'triangle' }); },
+  step2: (a) => { noise(a, { dur: 0.06, vol: 0.04, freq: 620 + Math.random() * 120 }); tone(a, 170, { dur: 0.05, vol: 0.018, type: 'triangle' }); },
   click: (a) => tone(a, 880, { dur: 0.06, vol: 0.03, type: 'triangle' }),
   open: (a) => { tone(a, 523, { dur: 0.12, vol: 0.025 }); tone(a, 784, { dur: 0.16, vol: 0.02, at: 0.05 }); },
   close: (a) => { tone(a, 659, { dur: 0.1, vol: 0.02 }); tone(a, 494, { dur: 0.12, vol: 0.02, at: 0.04 }); },
@@ -67,10 +69,13 @@ const SOUNDS = {
   slide: (a) => noise(a, { dur: 0.25, vol: 0.03, freq: 1200, q: 0.5 }),
   // 合適：植物舒展、桌上的小變化
   good: (a) => [523, 659, 784].forEach((f, i) => tone(a, f, { dur: 0.5, vol: 0.035, at: i * 0.08 })),
+  // 卡片旋轉放大：一串往上爬的輕柔音
+  spin: (a) => [392, 440, 523, 587, 659, 784].forEach((f, i) => tone(a, f, { dur: 0.18, vol: 0.02, type: 'triangle', at: i * 0.17 })),
   card: (a) => [784, 988, 1175, 1568].forEach((f, i) => tone(a, f, { dur: 0.6, vol: 0.03, at: i * 0.07 })),
   flip: (a) => noise(a, { dur: 0.12, vol: 0.03, freq: 2400, q: 0.6 }),
   quest: (a) => { tone(a, 659, { dur: 0.25, vol: 0.03 }); tone(a, 988, { dur: 0.4, vol: 0.03, at: 0.1 }); },
   wonder: (a) => tone(a, 523, { dur: 0.3, vol: 0.025, type: 'triangle', slide: 1.25 }),
+  meow: (a) => { tone(a, 700, { dur: 0.25, vol: 0.025, type: 'triangle', slide: 1.35 }); tone(a, 900, { dur: 0.2, vol: 0.02, type: 'triangle', at: 0.22, slide: 0.75 }); },
   happy: (a) => { tone(a, 784, { dur: 0.15, vol: 0.025 }); tone(a, 1047, { dur: 0.25, vol: 0.025, at: 0.08 }); },
 };
 

@@ -287,18 +287,46 @@
     #dlg-text .caret { display: inline-block; width: .5em; animation: blink 1s steps(2) infinite; }
     @keyframes blink { 50% { opacity: 0; } }
 
-    /* 取得理解卡：飛入、翻面、收進卡冊 */
-    .card-fly { position: fixed; inset: 0; z-index: 1200; display: grid; place-items: center; background: rgba(60, 48, 40, .25); cursor: pointer; }
-    .card-fly .flip { width: 210px; height: 260px; perspective: 800px; }
-    .card-fly .inner { position: relative; width: 100%; height: 100%; transform-style: preserve-3d; animation: card-in .6s cubic-bezier(.34, 1.4, .64, 1), card-flip .7s .6s ease-in-out forwards; }
+    /* 取得理解卡：由小變大、邊轉邊發光，轉到正面時閃一下、光點散開，最後收進卡冊 */
+    .card-fly { position: fixed; inset: 0; z-index: 1200; display: grid; place-items: center; background: rgba(60, 48, 40, .35); cursor: pointer;
+      animation: fade-in .3s ease-out; }
+    .card-fly > * { grid-area: 1 / 1; }
+    .card-fly .rays { width: 520px; height: 520px; max-width: 140vw; max-height: 140vw; border-radius: 50%; opacity: 0;
+      background: repeating-conic-gradient(from 0deg, rgba(255, 236, 180, .55) 0deg 9deg, rgba(255, 236, 180, 0) 9deg 22deg);
+      -webkit-mask: radial-gradient(circle, #000 18%, transparent 68%); mask: radial-gradient(circle, #000 18%, transparent 68%);
+      animation: rays-in .9s .15s ease-out forwards, rays-spin 9s linear infinite; }
+    .card-fly .halo { width: 300px; height: 300px; border-radius: 50%; opacity: 0;
+      background: radial-gradient(circle, rgba(255, 246, 214, .95) 0%, rgba(255, 220, 150, .55) 35%, rgba(255, 220, 150, 0) 70%);
+      animation: halo-in 1.2s ease-out forwards, halo-pulse 1.6s 1.2s ease-in-out infinite; }
+    .card-fly .flash { width: 80px; height: 80px; border-radius: 50%; background: #fff; opacity: 0; animation: flash .7s 1.15s ease-out; }
+    .card-fly .sparks { width: 0; height: 0; position: relative; }
+    .card-fly .sparks i { position: absolute; left: -5px; top: -5px; width: 10px; height: 10px; border-radius: 50%; opacity: 0;
+      background: radial-gradient(circle, #fff 0 30%, #ffd98a 60%, transparent 70%);
+      animation: spark .9s 1.15s ease-out forwards; }
+    .card-fly .flip { width: 210px; height: 260px; perspective: 900px; }
+    .card-fly .inner { position: relative; width: 100%; height: 100%; transform-style: preserve-3d;
+      animation: card-grow 1.25s cubic-bezier(.2, .8, .3, 1) forwards, card-bob 1.6s 1.3s ease-in-out infinite alternate; }
     .card-fly .face { position: absolute; inset: 0; border-radius: 16px; backface-visibility: hidden; box-shadow: 0 10px 30px rgba(0,0,0,.25);
       display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 8px; padding: 14px; box-sizing: border-box; text-align: center; }
-    .card-fly .back { background: repeating-linear-gradient(45deg, #c97f62 0 10px, #d99a78 10px 20px); }
-    .card-fly .front { background: var(--paper); transform: rotateY(180deg); border: 3px solid var(--line); }
+    .card-fly .back { background: repeating-linear-gradient(45deg, #c97f62 0 10px, #d99a78 10px 20px); box-shadow: 0 0 24px 6px rgba(255, 226, 160, .8); }
+    .card-fly .front { background: var(--paper); transform: rotateY(180deg); border: 3px solid #f2d18a;
+      animation: front-glow 1.6s 1.2s ease-in-out infinite alternate; }
     .card-fly .front strong { font-family: "XZJ Hand", "XZJ Round", sans-serif; font-size: 1.15rem; }
+    .card-fly .got-label { align-self: end; margin-bottom: 18vh; color: #fff; font-weight: 700; font-size: 1.1rem; opacity: 0;
+      text-shadow: 0 2px 8px rgba(0,0,0,.4); animation: appear .4s 1.2s ease-out forwards; }
     .card-fly.leave .flip { animation: card-out .55s ease-in forwards; }
-    @keyframes card-in { from { transform: translateY(60vh) rotate(-12deg) scale(.4); } }
-    @keyframes card-flip { to { transform: rotateY(180deg); } }
+    .card-fly.leave .rays, .card-fly.leave .halo, .card-fly.leave .got-label { animation: fade-out .4s ease-in forwards; }
+    @keyframes card-grow { 0% { transform: scale(.05) rotateY(0deg); } 70% { transform: scale(1.12) rotateY(820deg); } 100% { transform: scale(1) rotateY(900deg); } }
+    @keyframes card-bob { to { translate: 0 -8px; } }
+    @keyframes rays-in { to { opacity: 1; } }
+    @keyframes rays-spin { to { rotate: 360deg; } }
+    @keyframes halo-in { 0% { opacity: 0; transform: scale(.2); } 100% { opacity: 1; transform: scale(1); } }
+    @keyframes halo-pulse { 50% { opacity: .7; transform: scale(1.08); } }
+    @keyframes flash { 0% { opacity: .95; transform: scale(.4); } 100% { opacity: 0; transform: scale(5); } }
+    @keyframes spark { 0% { opacity: 1; transform: rotate(var(--a)) translateX(30px) scale(.6); } 100% { opacity: 0; transform: rotate(var(--a)) translateX(var(--d)) scale(1.2); } }
+    @keyframes front-glow { from { box-shadow: 0 0 18px 4px rgba(255, 220, 150, .6); } to { box-shadow: 0 0 36px 12px rgba(255, 220, 150, .95); } }
+    @keyframes fade-out { to { opacity: 0; } }
+    @keyframes appear { to { opacity: 1; } }
     @keyframes card-out { to { transform: translate(var(--fx), var(--fy)) scale(.15); opacity: .3; } }
     .card-fly .skip { position: absolute; bottom: 24px; left: 50%; transform: translateX(-50%); color: #fff; font-size: .85rem; }
     #cardbook-button.got { animation: got .6s cubic-bezier(.34, 1.6, .64, 1); }
@@ -311,7 +339,6 @@
 
     /* 減少動畫：關掉所有動態效果（前後變化仍會顯示，並有文字描述） */
     .reduce-motion *, .reduce-motion *::before, .reduce-motion *::after { animation: none !important; transition: none !important; }
-    .reduce-motion .card-fly .inner { transform: rotateY(180deg); }
     @media (prefers-reduced-motion: reduce) { .goal-mark, .pulse { animation: none; } }
     @media (max-width: 560px) {
       #goal { max-width: calc(100vw - 140px); padding: 6px 10px; font-size: .9rem; }
@@ -355,7 +382,7 @@
         <button type="button" class="btn" data-open-settings>設定</button>
       </div>
       <p class="fine">電腦：WASD／方向鍵移動，E 互動，F 使用理解卡。手機：左下角搖桿移動，右下角按鈕互動。</p>
-      <p class="fine version">版本 v4.1（2026-11-12）</p>
+      <p class="fine version">版本 v4.2（2026-11-13）</p>
     </div>
   </section>
 
@@ -418,10 +445,6 @@
     <div class="panel-body" id="puzzle-body"></div>
   </dialog>
 
-  <dialog id="hints" aria-labelledby="hints-title">
-    <div class="panel-head"><h2 id="hints-title">橘貓麻糬</h2><button type="button" class="btn small support-mini" data-open-support>找支持</button><button type="button" class="btn small" onclick="this.closest('dialog').close()">關閉</button></div>
-    <div class="panel-body" id="hints-body"></div>
-  </dialog>
 
   <dialog id="settings" aria-labelledby="settings-title">
     <div class="panel-head"><h2 id="settings-title">設定</h2><button type="button" class="btn small support-mini" data-open-support>找支持</button><button type="button" class="btn small" onclick="this.closest('dialog').close()">關閉</button></div>

@@ -141,37 +141,10 @@ export async function start3D(game, ui, store) {
     catGuide = dest;
   }
 
-  // 麻糬提示第 3 層：在互動位置標出光柱
-  const beacon = new THREE.Mesh(
-    new THREE.CylinderGeometry(0.35, 0.35, 6, 16, 1, true),
-    new THREE.MeshBasicMaterial({ color: 0xffe2a8, transparent: true, opacity: 0.35, depthWrite: false, side: THREE.DoubleSide }),
-  );
-  beacon.visible = false;
-  scene.add(beacon);
-  const beaconTag = label('tag beacon-tag hidden', '在這裡');
-  const hideBeacon = () => {
-    beacon.visible = false;
-    beacon.userData.target = null;
-    beaconTag.classList.add('hidden');
-  };
+  // 問麻糬：牠自己走到可以提示的地方，在物件旁坐下等玩家
   const onHint = (e) => {
-    const { layer, target, area } = e.detail;
-    hideBeacon();
-    if (layer === 1) {
-      // 走到該區域的入口附近；已經在同一區就往物件的方向走幾步
-      const sp = area.spawn;
-      const here = world.areaOf(cat.position.x) === area.id;
-      const dest = here ? { x: (cat.position.x + target.x) / 2, z: (cat.position.z + target.z) / 2 } : { x: sp.x, z: sp.z };
-      routeTo(dest, area.id);
-    } else {
-      routeTo({ x: target.x + 0.7, z: target.z + 0.6 }, area.id);
-    }
-    if (layer === 3) {
-      beacon.position.set(target.x, 3, target.z);
-      beacon.visible = true;
-      beacon.userData.target = target.id;
-      beaconTag.classList.remove('hidden');
-    }
+    const { target, area } = e.detail;
+    routeTo({ x: target.x + 0.7, z: target.z + 0.6 }, area.id);
   };
   game.addEventListener('hint', onHint);
 
@@ -249,8 +222,6 @@ export async function start3D(game, ui, store) {
       }
     }
     for (const id of goals) if (!goalTags.has(id)) goalTags.set(id, label('goal-mark', '！'));
-    // 提示的目標已經完成（例如謎題解開），光柱就收起來
-    if (beacon.userData.target && !game.hintTopics().some((tp) => tp.target === beacon.userData.target)) hideBeacon();
   }
   // 互動目標在進度改變時才重算，主迴圈裡不新建物件
   let targetList = [];
@@ -381,16 +352,16 @@ export async function start3D(game, ui, store) {
     player.position.copy(pos);
     player.rotation.y += Math.atan2(Math.sin(yaw - player.rotation.y), Math.cos(yaw - player.rotation.y)) * Math.min(1, dt * 12);
     animateCharacter(player, t, walking, still);
-    // 腳步聲與塵土
-    if (walking) {
-      stepTimer -= dt;
-      if (stepTimer <= 0) {
-        stepTimer = 0.3;
-        play('step');
-        fx.step(pos.x, pos.z, still);
-      }
-    } else {
-      stepTimer = 0;
+    // 腳步聲與塵土：跟著左右腳落地；左右腳的聲音高低略有不同，塵土揚在落地那隻腳旁邊
+    const foot = player.userData.footDown;
+    if (walking && foot) {
+      player.userData.footDown = null;
+      play(foot === 'L' ? 'step' : 'step2');
+      const side = foot === 'L' ? -0.1 : 0.1;
+      fx.step(pos.x + Math.cos(yaw) * side, pos.z - Math.sin(yaw) * side, still);
+    } else if (walking && still && (stepTimer -= dt) <= 0) {
+      stepTimer = 0.28; // 減少動畫時沒有擺動，仍保留腳步聲
+      play('step');
     }
     // 角色：玩家靠近時轉頭看過來（太近時身體也慢慢轉過來）；坐著的人只轉頭
     for (const a of actors.values()) {
@@ -455,7 +426,6 @@ export async function start3D(game, ui, store) {
       const tg = targetMap.get(id);
       if (tg) placeLabel(el, tg.x, tg.kind === 'character' ? 2.0 : 2.4, tg.z);
     }
-    if (beacon.visible) placeLabel(beaconTag, beacon.position.x, 2.2, beacon.position.z);
     placeLabel(catTag, cat.position.x, 0.9, cat.position.z);
     fx.update(dt, t, still, placeLabel);
 
@@ -493,7 +463,8 @@ export async function start3D(game, ui, store) {
     blockedAt: (x, z) => blocked(x, z),
     get position() { return { x: pos.x, z: pos.z }; },
     get catPosition() { return { x: cat.position.x, z: cat.position.z }; },
-    get beaconTarget() { return beacon.visible ? beacon.userData.target : null; },
+    get catGuide() { return catGuide ? { ...catGuide } : null; },
+    get playerPose() { const u = player.userData; return { lean: u.body.rotation.x, sway: u.body.rotation.y, bounce: u.body.position.y }; },
     get drawCalls() { return renderer.info.render.calls; },
     get quality() { return { shadows: renderer.shadowMap.enabled, details: world.details.visible, pixelRatio: renderer.getPixelRatio() }; },
     isTouch,

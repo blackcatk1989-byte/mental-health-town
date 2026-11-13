@@ -119,6 +119,9 @@ export function makeCharacter(look) {
 }
 
 // 待機：呼吸、偶爾眨眼、頭輕輕晃；走路：手腳擺動、身體一彈一彈。減少動畫時全部停止。
+const WALK_RATE = 11; // 走路擺動的速度（弧度／秒），一步約 0.28 秒，配合步行速度 3 單位／秒
+
+// userData.footDown：走路時左（L）或右（R）腳剛落地，main.js 讀取後清掉，用來播腳步聲與揚起塵土
 // userData.lookYaw：頭轉向的角度（相對身體，main.js 依玩家位置設定）；userData.sitting：坐在長椅上
 export function animateCharacter(root, t, walking, still) {
   const u = root.userData;
@@ -129,23 +132,45 @@ export function animateCharacter(root, t, walking, still) {
     u.armL.rotation.x = u.armR.rotation.x = -0.35;
     u.body.position.y = 0;
   } else if (walking && !still) {
-    const w = Math.sin(t * 11);
-    u.legL.rotation.x = w * 0.6;
-    u.legR.rotation.x = -w * 0.6;
-    u.armL.rotation.x = -w * 0.55;
-    u.armR.rotation.x = w * 0.55;
-    u.body.position.y = Math.abs(Math.sin(t * 11)) * 0.045;
-    u.head.rotation.z = Math.sin(t * 11) * 0.04;
+    // 走路：一步約 0.28 秒。手腳大幅擺動、身體前傾、左右擺臀、落地時擠壓、彈起時伸展、頭反向輕點
+    const ph = t * WALK_RATE;
+    const w = Math.sin(ph);
+    const bounce = Math.abs(Math.sin(ph)); // 每一步彈一下
+    u.legL.rotation.x = w * 0.8;
+    u.legR.rotation.x = -w * 0.8;
+    u.armL.rotation.x = -w * 0.85;
+    u.armR.rotation.x = w * 0.85;
+    u.body.position.y = bounce * 0.075;
+    u.body.rotation.x += (0.14 - u.body.rotation.x) * 0.2; // 前傾
+    u.body.rotation.y = w * 0.13; // 擺臀
+    u.body.rotation.z = Math.sin(ph) * 0.05;
+    u.head.rotation.x = -Math.cos(ph * 2) * 0.06; // 頭反向輕點
+    u.head.rotation.z = -Math.sin(ph) * 0.05;
+    const squash = Math.cos(ph * 2) * 0.06; // 落地擠壓（矮胖）、彈起伸展（瘦高）
+    u.torso.scale.set(1 + squash * 0.6, 1 - squash, 1 + squash * 0.6);
+    // 左右腳落地的時機（給腳步聲與塵土用）
+    const half = Math.floor(ph / Math.PI);
+    if (half !== u.lastHalf) {
+      u.lastHalf = half;
+      u.footDown = half % 2 ? 'R' : 'L';
+    }
   } else {
     u.legL.rotation.x *= 0.8;
     u.legR.rotation.x *= 0.8;
     u.armL.rotation.x *= 0.8;
     u.armR.rotation.x *= 0.8;
     u.body.position.y *= 0.8;
+    u.body.rotation.x *= 0.8;
+    u.body.rotation.y *= 0.8;
+    u.body.rotation.z *= 0.8;
+    u.head.rotation.x *= 0.8;
     u.head.rotation.z = Math.sin(t * 0.9 + u.phase) * 0.05 * k;
   }
-  const b = Math.sin(t * 2.2 + u.phase) * 0.02 * k;
-  u.torso.scale.set(1 - b * 0.5, 1 + b, 1 - b * 0.5);
+  if (!walking || still) {
+    const b = Math.sin(t * 2.2 + u.phase) * 0.02 * k;
+    u.torso.scale.set(1 - b * 0.5, 1 + b, 1 - b * 0.5);
+  }
+  const b = walking ? 0 : Math.sin(t * 2.2 + u.phase) * 0.02 * k;
   u.armL.rotation.z = -0.12 - b;
   u.armR.rotation.z = 0.12 + b;
   u.eyes.scale.y = k && ((t + u.phase) % 4.2) < 0.13 ? 0.12 : 1;

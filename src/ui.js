@@ -276,37 +276,11 @@ export function createUI(content, store) {
     }
   }
 
-  // ---- 麻糬的提示：先選要問什麼，再由玩家決定看到第幾層 ----
+  // ---- 麻糬的提示：不跳選單，牠自己走過去；畫面上用一行字說明牠去了哪裡 ----
   function hints() {
-    const h = content.hints;
-    const body = $('hints-body');
-    const topics = () => {
-      const list = game.hintTopics();
-      body.innerHTML = `<p>${esc(h.greeting)}</p>
-        ${list.length ? `<p>想問麻糬什麼？</p><div class="options">${list.map((t) => `<button type="button" class="option" data-topic="${t.id}">
-          <strong>${esc(t.label)}</strong></button>`).join('')}</div>` : `<p>${esc(h.nothing)}</p>`}`;
-      for (const b of body.querySelectorAll('[data-topic]')) b.onclick = () => layers(b.dataset.topic, 0);
-    };
-    const layers = (topic, shown, text) => {
-      body.innerHTML = `<p class="fine">${esc(game.hintTopics().find((t) => t.id === topic)?.label ?? '')}</p>
-        ${text ? `<div class="notice">${esc(text)}</div>` : ''}
-        <p>${shown ? '還需要更多提示嗎？' : '想看到哪一層提示？可以一層一層來。'}</p>
-        <div class="options">${h.layers.map((l, i) => `<button type="button" class="option ${i < shown ? 'on' : ''}" data-layer="${i + 1}">
-          <strong>${i + 1}．${esc(l.label)}</strong></button>`).join('')}</div>
-        <div class="row-actions"><button type="button" class="btn" data-back>問別的</button>
-        <button type="button" class="btn primary" data-close>好，我自己找找</button></div>`;
-      for (const b of body.querySelectorAll('[data-layer]')) {
-        b.onclick = () => {
-          const n = Number(b.dataset.layer);
-          const r = game.hint(topic, n);
-          if (r) layers(topic, Math.max(shown, n), r.text);
-        };
-      }
-      body.querySelector('[data-back]').onclick = topics;
-      body.querySelector('[data-close]').onclick = () => $('hints').close();
-    };
-    topics();
-    openPanel('hints');
+    const r = game.catHint();
+    toast(esc(r.text), { ms: 5000 });
+    return r;
   }
 
   // ---- 任務目標：步驟改變時有更新動畫與提示音 ----
@@ -370,16 +344,21 @@ export function createUI(content, store) {
       const fly = document.createElement('div');
       fly.className = 'card-fly';
       fly.setAttribute('role', 'status');
-      fly.innerHTML = `<div class="flip"><div class="inner">
+      const sparks = Array.from({ length: 12 }, (_, i) => `<i style="--a:${i * 30}deg;--d:${130 + (i % 3) * 30}px"></i>`).join('');
+      fly.innerHTML = `<div class="rays"></div><div class="halo"></div>
+        <div class="flip"><div class="inner">
           <div class="face back"></div>
           <div class="face front">${cardArt(card)}<strong>${esc(card.title)}</strong><small>${esc(card.keyPoint)}</small></div>
-        </div></div><span class="skip">點一下略過</span>`;
+        </div></div>
+        <div class="flash"></div><div class="sparks">${sparks}</div>
+        <span class="got-label">收集到理解卡！</span><span class="skip">點一下略過</span>`;
       const target = $('cardbook-button').getBoundingClientRect();
       fly.style.setProperty('--fx', `${target.left + target.width / 2 - innerWidth / 2}px`);
       fly.style.setProperty('--fy', `${target.top + target.height / 2 - innerHeight / 2}px`);
       (document.querySelector('dialog[open]') ?? document.body).append(fly); // 面板開著時，飛在面板上面
-      play('card');
-      setTimeout(() => play('flip'), 650);
+      play('spin');
+      const shine = setTimeout(() => play('card'), 1150); // 轉到正面、閃光時
+      fly.addEventListener('pointerdown', () => clearTimeout(shine), { once: true });
       let gone = false;
       const leave = () => {
         if (gone) return;
@@ -388,7 +367,7 @@ export function createUI(content, store) {
         setTimeout(() => { fly.remove(); finish(); }, 520);
       };
       fly.addEventListener('pointerdown', () => { fly.remove(); gone = true; finish(); }, { once: true });
-      setTimeout(leave, 2300);
+      setTimeout(leave, 3000);
     },
     tutorial(kind) {
       if (kind !== 'cardbook') return;

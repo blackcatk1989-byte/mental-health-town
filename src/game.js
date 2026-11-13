@@ -15,6 +15,7 @@ export class Game extends EventTarget {
     this.store = store;
     this.ui = ui;
     this.deferred = [];
+    this.hintTurn = 0; // 麻糬這次要帶去第幾個地方
     this.stepIds = content.quest.steps.map((s) => s.id);
     this.cardById = Object.fromEntries(content.cards.cards.map((k) => [k.id, k]));
     this.puzzleIds = Object.keys(content.puzzles.puzzles);
@@ -167,29 +168,30 @@ export class Game extends EventTarget {
   }
 
   // ---- 麻糬的提示 ----
-  // 可以問的題目：目前的主線目標，以及還沒解開的謎題
+  // 可以帶去的地方：目前的主線目標，以及還沒解開的謎題
   hintTopics() {
     const topics = [];
     const goal = this.goalTargets()[0];
-    if (goal) topics.push({ id: 'goal', label: this.c.hints.topics.goal, target: goal });
+    if (goal) topics.push({ id: 'goal', target: goal });
     for (const id of this.puzzleIds) {
-      if (!this.s.puzzles[id].solved) topics.push({ id, label: this.c.hints.topics[id], target: this.c.puzzles.puzzles[id].entry });
+      if (!this.s.puzzles[id].solved) topics.push({ id, target: this.c.puzzles.puzzles[id].entry });
     }
     return topics;
   }
 
-  // layer 1：往區域走、2：停在物件旁、3：標出互動位置
-  hint(topicId, layer) {
-    const topic = this.hintTopics().find((t) => t.id === topicId);
-    if (!topic) return null;
+  // 問麻糬：牠自己走到該去的地方坐下（主線目標優先；再問一次換下一個地方）
+  catHint() {
+    const topics = this.hintTopics();
+    if (!topics.length) return { text: this.c.hints.nothing };
+    const topic = topics[this.hintTurn % topics.length];
+    this.hintTurn += 1;
     const t = this.target(topic.target);
     const area = this.areaById[t.area];
     const fill = (str) => str.replace('{area}', area.name).replace('{name}', t.name);
-    const detail = { layer, target: t, area };
+    const detail = { target: t, area };
     this.dispatchEvent(new CustomEvent('hint', { detail }));
-    let text = fill(this.c.hints.layers[layer - 1].text);
-    if (layer === 1 && this.s.area === t.area) text += fill(this.c.hints.hereAlready);
-    return { ...detail, text };
+    play('meow');
+    return { ...detail, text: fill(this.s.area === t.area ? this.c.hints.here : this.c.hints.go) };
   }
 
   // 用卡：找出符合目標、卡號與任務階段的互動

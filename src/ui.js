@@ -12,7 +12,8 @@ export function esc(s) {
 }
 
 const fill = (text, vars) => (vars ? text.replace(/\{(\w+)\}/g, (m, k) => vars[k] ?? m) : text);
-const reduceMotion = () => document.body.classList.contains('reduce-motion') || matchMedia('(prefers-reduced-motion: reduce)').matches;
+// 動畫預設開啟；只看遊戲裡的「動畫」設定，不跟著系統的「減少動態效果」
+const reduceMotion = () => document.body.classList.contains('reduce-motion');
 
 // 表情圖示（不是文字）：對話時出現在說話者頭上與名牌旁
 const FACE = (inner) => `<svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="10" fill="#ffe7b8" stroke="#d9a35a"/>${inner}</svg>`;
@@ -229,7 +230,7 @@ export function createUI(content, store) {
       <div class="setting"><label for="music-volume">音樂音量</label>
         <input type="range" id="music-volume" min="0" max="1" step="0.05" value="${st.musicVolume}" aria-valuetext="${Math.round(st.musicVolume * 100)}%"></div>
       <div class="setting"><span>音效（腳步、按鈕、風鈴）</span><div class="segs">${opt('sound', false, '關閉')}${opt('sound', true, '開啟')}</div></div>
-      <div class="setting"><span>減少動畫</span><div class="segs">${opt('reduceMotion', false, '關閉')}${opt('reduceMotion', true, '開啟')}</div></div>
+      <div class="setting"><span>動畫</span><div class="segs">${opt('reduceMotion', false, '開啟')}${opt('reduceMotion', true, '關閉')}</div></div>
       <div class="setting"><span>文字大小</span><div class="segs">${opt('textSize', 's', '小')}${opt('textSize', 'm', '中')}${opt('textSize', 'l', '大')}</div></div>
       <div class="setting"><span>3D 畫質</span><div class="segs">${opt('quality', 'high', '標準')}${opt('quality', 'low', '省電')}</div></div>
       ${inGame ? `<div class="setting"><span>遊玩模式</span><div class="segs">
@@ -300,8 +301,9 @@ export function createUI(content, store) {
     $('goal-text').textContent = info.goal;
     $('goal-missing').classList.toggle('hidden', !miss);
     if (miss) $('goal-missing').textContent = miss.text;
-    const n = game.s.cards.length;
-    $('cardbook-count').textContent = `${n}/${content.cards.cards.length}`;
+    const countable = content.cards.cards.filter((k) => !k.hidden).map((k) => k.id); // 隱藏卡不計入進度
+    const n = game.s.cards.filter((id) => countable.includes(id)).length;
+    $('cardbook-count').textContent = `${n}/${countable.length}`;
     $('save-warning').classList.toggle('hidden', !store.saveFailed);
   }
 

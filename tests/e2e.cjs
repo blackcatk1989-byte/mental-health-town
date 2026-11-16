@@ -109,7 +109,7 @@ async function playPresent(page) {
 
 // 謎題：直接操作。插畫版「點東西 → 點位置」；drag 為 true 時用滑鼠拖曳；文字模式按「放到……」
 const E01 = { rosemary: 'sun', mint: 'wet', fern: 'shade' };
-const E02 = { ticket: 't1', bill: 't2', stamp: 't3' };
+const E02 = { bookmark: 't1', receipt: 't2', timenote: 't3' };
 async function place(page, item, slot, { drag = false, tap = false } = {}) {
   await page.waitForSelector('#puzzle[open]');
   if (await page.$('#puzzle-body .text-list')) {
@@ -155,7 +155,12 @@ const NO_JUDGE = /錯|對了|失敗|扣分|分數|答案是|正確/;
 
 const text = {
   go: (page, area) => page.click(`#text-mode [data-area="${area}"]:not([disabled])`).catch(() => {}),
-  act: (page, id) => page.click(`#text-mode [data-act="${id}"]`),
+  act: async (page, id) => {
+    // 取得卡片的動畫還在播時先略過（玩家點一下也是略過）
+    const fly = await page.$('.card-fly');
+    if (fly) { await fly.dispatchEvent('pointerdown').catch(() => {}); await page.waitForTimeout(60); }
+    await page.click(`#text-mode [data-act="${id}"]`);
+  },
   use: (page, id, card) => useCard(page, () => page.click(`#text-mode [data-use="${id}"]`), card),
 };
 
@@ -201,8 +206,256 @@ async function textMainline(page) {
   await talkThrough(page, ['繼續逛逛']);
 }
 
+// 11. v4.3：動畫預設開啟、桌子謎題加難、隱藏角色小安與隱藏卡 H01
+async function sectionV43() {
+  // 動畫預設開啟：系統開了「減少動態效果」也照樣有動畫（只看遊戲裡的設定）
+  {
+    const { browser, page } = await launch();
+    await page.emulateMedia({ reducedMotion: 'reduce' });
+    await newGame(page, '#home-text');
+    await text.act(page, 'board');
+    await page.waitForSelector('#dialogue:not(.hidden)');
+    await page.waitForTimeout(60);
+    const partial = (await page.innerText('#dlg-text')).length;
+    await page.click('#dlg-text');
+    const full = (await page.innerText('#dlg-text')).length;
+    const cls = await page.evaluate(() => document.body.classList.contains('reduce-motion'));
+    check('動畫預設開啟（系統設定「減少動態效果」時也是）', !cls && partial < full, `${partial} → ${full} 字`);
+    await talkThrough(page, ['先去咖啡店']);
+    // 桌子謎題：六樣東西、順序與桌子位置每次打亂、混淆物會滑回托盤
+    const orders = new Set();
+    const seats = new Set();
+    let count = 0;
+    await page.evaluate(() => { document.body.dataset.mode = '3d'; }); // 用插畫版看位置
+    for (let i = 0; i < 6; i++) {
+      await page.evaluate(() => window.__xzj.game.openPuzzle('E02'));
+      await page.waitForSelector('#puzzle[open] svg.stage');
+      const o = await page.evaluate(() => ({
+        items: [...document.querySelectorAll('#puzzle .pot')].map((g) => [g.dataset.item, parseFloat(g.style.transform.match(/translate\(([-\d.]+)px/)[1])]).sort((a, b) => a[1] - b[1]).map((x) => x[0]),
+        tables: [...document.querySelectorAll('#puzzle .zone.table')].map((z) => [z.dataset.slot, z.querySelector('.zone-hit').getAttribute('cx')]).sort((a, b) => a[1] - b[1]).map((x) => x[0]),
+      }));
+      count = o.items.length;
+      orders.add(o.items.join());
+      seats.add(o.tables.join());
+      await page.click('#puzzle .panel-head button:last-child');
+      await settle(page);
+    }
+    check('桌子謎題：托盤上有六樣東西（三樣是混淆物）', count === 6);
+    check('桌子謎題：每次打開，東西的順序和桌子的位置都會打亂', orders.size >= 3 && seats.size >= 2, `6 次打開出現 ${orders.size} 種順序、${seats.size} 種桌子排法`);
+    await page.evaluate(() => window.__xzj.game.openPuzzle('E02'));
+    await page.waitForSelector('#puzzle[open] svg.stage');
+    let cap = await caption(page);
+    const decoy = [];
+    for (const t of ['t1', 't2', 't3']) {
+      await place(page, 'invoice', t);
+      cap = await reaction(page, cap);
+      decoy.push(cap);
+      await page.waitForFunction(() => !document.querySelector('#puzzle .pot.returning'), null, { timeout: 10000 });
+    }
+    check('混淆物放到任何一桌都滑回托盤，不出現對錯字樣', decoy.every((w) => /滑回托盤/.test(w) && !NO_JUDGE.test(w)) && !(await state(page)).puzzles.E02.place.invoice, decoy[0]);
+    for (const [item, slot] of Object.entries(E02)) { cap = await caption(page); await place(page, item, slot); await reaction(page, cap); }
+    await page.waitForSelector('#puzzle-body .solved', { timeout: 15000 });
+    check('只放對三樣真正的線索就解開（混淆物不用放）', (await state(page)).puzzles.E02.solved);
+    await browser.close();
+  }
+
+  // 小安（文字模式走完整段）
+  {
+    const { browser, page, errors } = await launch();
+    await page.goto(`${BASE}/?test=1`);
+    await page.evaluate(() => localStorage.clear());
+    await page.goto(`${BASE}/?test=1`);
+    await page.click('#home .btn[data-open-support]');
+    const sup = await page.innerText('#support-body');
+    check('找支持：新增「校園霸凌」類別與 1953，不用找到小安就看得到', /校園霸凌/.test(sup) && /1953/.test(sup) && /請洽官方確認/.test(sup));
+    await page.click('#support-close');
+    await page.click('#home-text');
+    const lines = async () => { const out = []; for (let i = 0; i < 12 && await page.isVisible('#dialogue'); i++) { out.push(await lineText(page)); if ((await page.$$('#dlg-choices button')).length) break; await page.click('#dlg-next'); await page.waitForTimeout(40); } return out.join('｜'); };
+    const options = () => page.$$eval('#dlg-choices button', (bs) => bs.map((b) => b.innerText.replace(/^\d/, '').trim()));
+    const pick = async (t) => { const bs = await page.$$('#dlg-choices button'); for (const b of bs) if ((await b.innerText()).includes(t)) { await b.click(); await page.waitForTimeout(60); return; } throw new Error(`沒有選項：${t}`); };
+    const side = async () => (await state(page)).side.xiaoan ?? 'closed';
+    const useOn = async (card) => { await text.use(page, 'xiaoan', card); await settle(page); };
+    const quietText = async () => { const t = await page.innerText('#usecard-body'); await page.click('#usecard-body [data-close]'); await settle(page); return t; };
+
+    const nav = await page.innerText('#text-mode nav.places');
+    const alleyBtn = await page.innerHTML('#text-mode [data-area="alley"]');
+    check('文字模式地點清單有「咖啡店旁的小巷」，沒有任何特殊標記', /咖啡店旁的小巷/.test(nav) && !/goal-dot|cat-dot/.test(alleyBtn));
+    const hintTargets = await page.evaluate(() => window.__xzj.game.hintTopics().map((t) => t.target));
+    const book0 = await page.evaluate(() => { window.__xzj.ui.openCardbook(); return document.getElementById('cardbook-body').innerText; });
+    const secretTile = await page.$('#cardbook-body .card-tile.secret');
+    await page.click('#cardbook .panel-head button:last-child');
+    check('完全不提示：麻糬、任務欄、卡冊都沒有小安的線索；隱藏卡只顯示「？」', !hintTargets.includes('xiaoan') && !/小安|小巷|不是你的錯/.test(book0 + await page.innerText('#goal')) && !!secretTile && /0\/6/.test(await page.innerText('#cardbook-count')));
+
+    // 沒有 E02 時
+    await text.go(page, 'alley');
+    await text.act(page, 'xiaoan');
+    const closed = await lines();
+    const closedOpts = await options();
+    await pick('嗨');
+    await talkThrough(page);
+    check('沒有 E02 時：只說「沒事，我在等人」，選項只有打招呼與離開，不顯示缺卡提示', /沒事，我在等人/.test(closed) && closedOpts.join() === '嗨。,離開' && !(await page.isVisible('#goal-missing')), closedOpts.join('、'));
+
+    // 用錯卡（有 K01，沒有 E02）
+    await page.evaluate(() => { const g = window.__xzj.game; g.store.mutate((s) => { s.cards = ['K01']; }); g.changed(); });
+    await useOn('K01');
+    const wrong1 = await quietText();
+    check('用其他卡：只有簡短的情境描述，沒有表情、目標或缺卡說明，卡片不消耗', /低頭看著鞋尖/.test(wrong1) && !/目前目標|你還沒有/.test(wrong1) && (await state(page)).cards.includes('K01') && await side() === 'closed', wrong1.split('\n')[0]);
+
+    // 拿到全部六張卡（主線完成）之後：順序不對也沒有反應
+    await page.evaluate(() => { const g = window.__xzj.game; g.store.mutate((s) => { s.step = 'done'; s.cards = ['K01', 'K02', 'K03', 'K04', 'E01', 'E02']; }); g.changed(); });
+    await useOn('K02');
+    const early = await quietText();
+    await page.click('#text-mode [data-use="xiaoan"]');
+    await page.click('#usecard-body [data-card="E02"]');
+    const intent = await page.innerText('#usecard-body');
+    check('選卡時不預覽意圖（不洩漏哪張卡才對）；順序不對時沒有反應', /試著用/.test(intent) && !/亂猜/.test(intent) && /鞋尖/.test(early));
+    await page.click('#usecard-body [data-go]');
+    await settle(page);
+    const open = await lines();
+    await pick('慢慢來');
+    const beat1 = await lines();
+    check('使用 E02：玩家不亂猜，小安才慢慢開口', /不想亂猜/.test(open) && /踢出班群/.test(beat1) && /想太多/.test(beat1) && await side() === 'talk');
+
+    // 三種不合適的回應各選一次（每次都可以離開再回來）
+    const bad = {};
+    for (const [key, opt] of [['label', '憂鬱症'], ['ignore', '不要理他們'], ['joke', '開玩笑']]) {
+      await pick(opt);
+      bad[key] = await lines();
+      bad[`${key}Opts`] = (await options()).join('、');
+      await pick('先聊到這裡');
+      await settle(page);
+      await text.act(page, 'xiaoan');
+      await lines();
+    }
+    check('「你是不是憂鬱症？」：小安縮回去，補充說明相似的感受不能判定疾病', /我只是很累/.test(bad.label) && /不能用來判定疾病/.test(bad.label));
+    check('「不要理他們就好了。」：小安說試過了，補充說明', /我試過了/.test(bad.ignore) && /沒被看見/.test(bad.ignore));
+    check('「他們只是開玩笑吧？」：小安沉默，補充說明', /沒有回答/.test(bad.joke) && /更難開口/.test(bad.joke));
+    check('不合適的回應後可以重新回應，不扣分、不羞辱玩家；中途離開再回來從同一段繼續', /抱歉，我剛剛說太快了/.test(bad.labelOpts) && !NO_JUDGE.test(bad.label + bad.ignore + bad.joke) && await side() === 'talk');
+    await pick('陪他坐一下');
+    const sit = await lines();
+    await talkThrough(page);
+    check('先不說話陪他坐一下：小安過一會兒自己開口', /忍一下就過了/.test(sit) && await side() === 'waitK02');
+
+    // 第二張卡：K02
+    await text.act(page, 'xiaoan');
+    const wait2 = await lines();
+    await talkThrough(page);
+    await useOn('K04');
+    const wrongOrder = await quietText();
+    await useOn('K02');
+    const k02 = await lines();
+    await pick('你覺得呢');
+    await lines();
+    await pick('不是你的錯');
+    const notFault = await lines();
+    await talkThrough(page);
+    check('要接著用 K02 才繼續（沒有提示，先用 K04 沒反應）；釐清責任：「被這樣對待不是你的錯」', /沒有再說話/.test(wait2) && /鞋尖/.test(wrongOrder) && /不是事實/.test(k02) && /是不是我有問題/.test(k02) && /真的嗎/.test(notFault) && await side() === 'waitK04');
+
+    // 重新整理後的存檔
+    await reloadContinue(page);
+    check('重新整理後保留小安的對話進度', await side() === 'waitK04');
+    await text.go(page, 'cafe');
+    await text.go(page, 'alley');
+
+    // 第三張卡：K04
+    await useOn('K04');
+    const adults = await lines();
+    await pick('今天就去跟老師說');
+    const push = await lines();
+    await pick('好，不急');
+    await talkThrough(page);
+    const afterPush = await side();
+    await text.act(page, 'xiaoan');
+    await lines();
+    await pick('我不會跟任何人說');
+    const secret = await lines();
+    check('找可信任的大人：小安提到輔導老師和姊姊；他說「今天不想講了」時，尊重後對話結束、下次從這段繼續', /輔導老師/.test(adults) && /我姊/.test(adults) && /今天不想講了/.test(push) && afterPush === 'adults');
+    check('「我不會跟任何人說」：補充說明不必承諾永遠保密', /不必承諾永遠保密/.test(secret) && /陪你想想可以跟誰說/.test(secret));
+    await pick('也許就很好了');
+    let end = await lineText(page);
+    await page.click('#dlg-next');
+    await page.waitForSelector('.card-fly', { timeout: 5000 }); // 最後一句出現時發卡
+    const fly = !!(await page.$('.card-fly .rays'));
+    end += await lineText(page);
+    await talkThrough(page);
+    let st = await state(page);
+    check('收尾：也許會去輔導室看看，不寫成事情已解決；取得 H01（有取得動畫）', /也許會去輔導室/.test(secret + end) && /沒有因此解決/.test(end) && fly && st.cards.includes('H01') && st.side.xiaoan === 'done');
+    const book = await page.evaluate(() => { window.__xzj.ui.openCardbook(); return document.getElementById('cardbook-body').innerText; });
+    await page.click('#cardbook-body [data-card="H01"]');
+    const detail = await page.innerText('#cardbook-body');
+    await page.click('#cardbook .panel-head button:last-child');
+    check('H01 取得後正常顯示詳情、例子、來源與審閱狀態；不計入 6/6', /不是你的錯/.test(book) && /故事裡的例子/.test(detail) && /來源/.test(detail) && /尚未完成專業審閱/.test(detail) && /6\/6/.test(await page.innerText('#cardbook-count')));
+
+    // 之後再訪：有時在、有時不在
+    const gone = !(await page.$('#text-mode [data-act="xiaoan"]'));
+    await text.act(page, 'steps');
+    const empty = await lines();
+    await talkThrough(page);
+    const visit = async () => { await text.go(page, 'cafe'); await text.go(page, 'alley'); return !!(await page.$('#text-mode [data-act="xiaoan"]')); };
+    const v1 = await visit();
+    await text.act(page, 'xiaoan');
+    const again0 = await lines();
+    await talkThrough(page);
+    await useOn('E02');
+    const remember = await lines();
+    await talkThrough(page);
+    const v2 = await visit();
+    const v3 = await visit();
+    await text.act(page, 'xiaoan');
+    const again1 = await lines();
+    await talkThrough(page);
+    check('取得後再訪：小安有時在、有時不在；在的時候有一句新對話', gone && /階梯上沒有人/.test(empty) && v1 && !v2 && v3 && /輔導室/.test(again0) && /我姊/.test(again1) && again0 !== again1 && /沒有亂猜/.test(remember));
+    await reloadContinue(page);
+    st = await state(page);
+    check('重新整理後保留 H01 與再訪紀錄', st.cards.includes('H01') && st.side.xiaoan === 'done' && st.side.xiaoanVisits === 3);
+    const led = await page.evaluate(() => [1, 2, 3].map(() => window.__xzj.ui.hints().target?.id ?? '沒有'));
+    check('小安的故事結束後，麻糬仍不會帶去小巷', !led.includes('xiaoan') && !led.includes('steps'), led.join('、'));
+    const all = [closed, open, beat1, bad.label, bad.ignore, bad.joke, sit, k02, notFault, adults, push, secret, end, again0, again1].join('');
+    check('小安的對話裡，旁白與角色都不說他有憂鬱症（只有玩家的那個選項提到），也沒有「霸凌」標籤', !/霸凌/.test(all) && !/他有憂鬱|你有憂鬱|得了憂鬱/.test(all));
+    check('小安流程無錯誤', errors.length === 0, errors.join(' | '));
+    await browser.close();
+  }
+
+  // 舊存檔可直接沿用；3D 裡要走進巷子才會遇到小安
+  {
+    const { browser, page, errors } = await launch();
+    await newGame(page, '#home-text');
+    // 模擬 v4.2 以前的存檔：沒有支線紀錄
+    await page.evaluate(() => { const s = JSON.parse(localStorage.getItem('xinzhijian.save')); delete s.side; s.step = 'thought'; s.cards = ['K01']; s.mode = '3d'; localStorage.setItem('xinzhijian.save', JSON.stringify(s)); });
+    await page.reload();
+    await page.waitForSelector('#home-continue:not(.hidden)');
+    const msg = await page.isVisible('#home-message');
+    await page.click('#home-continue');
+    await page.waitForFunction(() => window.__xzj?.view()?.position, null, { timeout: 30000 });
+    const st = await state(page);
+    check('舊存檔（沒有支線紀錄）可直接沿用，不需重新開始', !msg && st.step === 'thought' && st.cards.includes('K01') && typeof st.side === 'object');
+    // 主要步道上：互動提示不會出現小安，也沒有目標記號
+    await page.evaluate(() => window.__xzj.view().teleport(11.3, 12.6));
+    await page.waitForTimeout(1500);
+    const onLane = await page.evaluate(() => document.getElementById('interact-name').textContent);
+    await page.evaluate(() => window.__xzj.view().teleport(11.3, 3.2));
+    await page.waitForFunction(() => document.getElementById('interact-name').textContent === '小安' && !document.getElementById('interact').classList.contains('hidden'), null, { timeout: 30000 });
+    const marks = await page.evaluate(() => document.querySelectorAll('.goal-mark').length);
+    const goals = await page.evaluate(() => window.__xzj.game.goalTargets());
+    await page.waitForFunction(() => JSON.parse(localStorage.getItem('xinzhijian.save')).area === 'alley', null, { timeout: 15000 }).catch(() => {});
+    check('3D：在主要步道上遇不到小安，走進巷子才會出現互動；沒有目標記號', onLane !== '小安' && !goals.includes('xiaoan') && marks === goals.length && (await state(page)).area === 'alley');
+    await page.screenshot({ path: `${process.env.OUT || '.'}/alley.png` });
+    await page.keyboard.press('KeyE');
+    await page.waitForSelector('#dialogue:not(.hidden)');
+    check('3D：和小安對話', /制服的學生/.test(await lineText(page)));
+    check('3D 小巷流程無錯誤', errors.length === 0, errors.join(' | '));
+    await browser.close();
+  }
+}
+
 async function main() {
   const OUT = process.env.OUT || '.';
+  if (process.env.ONLY === 'v43') {
+    await sectionV43();
+    const bad = results.filter((r) => !r.ok);
+    console.log(`\n共 ${results.length} 項，通過 ${results.length - bad.length} 項，未通過 ${bad.length} 項`);
+    process.exit(bad.length ? 1 : 0);
+  }
 
   // 0. 舊名稱不得殘留
   {
@@ -218,7 +471,7 @@ async function main() {
     const root = path.join(__dirname, '..');
     const music = JSON.parse(fs.readFileSync(path.join(root, 'content/music.json'), 'utf8'));
     const credits = fs.readFileSync(path.join(root, 'docs/素材來源.md'), 'utf8');
-    const tracks = Object.values(music.tracks).filter(Boolean);
+    const tracks = [...new Map(Object.values(music.tracks).filter(Boolean).map((t) => [t.file, t])).values()]; // 小巷沿用咖啡店的曲子，同一個檔案只算一次
     const bad = tracks.filter((t) => !fs.existsSync(path.join(root, t.file)) || fs.statSync(path.join(root, t.file)).size > 3 * 1024 * 1024
       || !/CC0/.test(t.license) || !t.url || !credits.includes(t.url));
     check('背景音樂曲目存在、每首小於 3 MB、CC0 授權並記錄在素材來源', tracks.length === 3 && bad.length === 0,
@@ -240,7 +493,7 @@ async function main() {
     await text.go(page, 'cafe');
     await text.act(page, 'tables');
     const wrongs = [];
-    for (const [item, slot] of [['ticket', 't2'], ['bill', 't3'], ['stamp', 't1']]) {
+    for (const [item, slot] of [['bookmark', 't2'], ['receipt', 't3'], ['points', 't1']]) {
       await place(page, item, slot);
       wrongs.push(await caption(page));
     }
@@ -439,7 +692,7 @@ async function main() {
     await go('tables', 0, 0.6);
     await pressE();
     const e02w = [];
-    for (const [item, slot] of [['ticket', 't3'], ['bill', 't1'], ['stamp', 't2']]) {
+    for (const [item, slot] of [['bookmark', 't3'], ['receipt', 't1'], ['invoice', 't2']]) {
       cap = await caption(page);
       await place(page, item, slot);
       e02w.push(await reaction(page, cap));
@@ -586,7 +839,7 @@ async function main() {
     await page.waitForFunction(() => document.getElementById('interact-name').textContent === '還沒收的三張桌子', null, { timeout: 30000 });
     await page.tap('#interact-go');
     await page.waitForSelector('#puzzle[open]');
-    await place(page, 'ticket', 't1', { tap: true });
+    await place(page, 'bookmark', 't1', { tap: true });
     await page.screenshot({ path: `${OUT}/mobile-puzzle.png` });
     const p2 = await page.evaluate(() => window.__xzj.view().position);
     await page.mouse.move(cx, cy);
@@ -595,7 +848,7 @@ async function main() {
     await page.waitForTimeout(800);
     await page.mouse.up();
     const p3 = await page.evaluate(() => window.__xzj.view().position);
-    check('手機用點選操作謎題；面板開啟時角色不會誤走動', (await state(page)).puzzles.E02.place.ticket === 't1' && Math.abs(p3.z - p2.z) < 0.01);
+    check('手機用點選操作謎題；面板開啟時角色不會誤走動', (await state(page)).puzzles.E02.place.bookmark === 't1' && Math.abs(p3.z - p2.z) < 0.01);
     check('手機流程無錯誤', errors.length === 0, errors.join(' | '));
     await browser.close();
   }
@@ -836,7 +1089,7 @@ async function main() {
       if (over || m.wide || m.tel < m.body) sizes[size] = `破版 ${JSON.stringify(m)}`;
     }
     check('文字大小小、中、大在手機上都不破版；找支持的電話號碼字級不小於內文', Object.values(sizes).every((v) => typeof v === 'number') && sizes.s < sizes.l, JSON.stringify(sizes));
-    check('版本號顯示在首頁', /v4\.2/.test(await page.innerText('#home')));
+    check('版本號顯示在首頁', /v4\.3/.test(await page.innerText('#home')));
     check('字體與版面流程無錯誤', errors.length === 0, errors.join(' | '));
     await browser.close();
   }
@@ -933,6 +1186,8 @@ async function main() {
     check('手機搖桿推約一半就接近全速（和鍵盤相比）', half > keys * 0.85, `搖桿 ${half.toFixed(2)}、鍵盤 ${keys.toFixed(2)} 單位／秒`);
     await browser.close();
   }
+
+  await sectionV43();
 
   const failed = results.filter((r) => !r.ok);
   console.log(`\n共 ${results.length} 項，通過 ${results.length - failed.length} 項，未通過 ${failed.length} 項`);

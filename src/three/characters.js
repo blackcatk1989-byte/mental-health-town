@@ -69,6 +69,13 @@ export function makeCharacter(look) {
     torso.push([G.box, look.accent, at(0, 0.3, 0.15, { sx: 0.22, sy: 0.2, sz: 0.03, rx: -0.15 })]);
     torso.push([G.box, '#c9a77f', at(0, 0.27, 0.168, { sx: 0.1, sy: 0.06, sz: 0.01, rx: -0.15 })]); // 口袋
   }
+  if (look.accessory === 'bag') {
+    // 書包：背在背後，加兩條背帶
+    torso.push([G.box, '#6b7a94', at(0, 0.36, -0.2, { sx: 0.26, sy: 0.28, sz: 0.12 })]);
+    torso.push([G.box, '#56637b', at(0, 0.29, -0.27, { sx: 0.18, sy: 0.1, sz: 0.03 })]);
+    for (const x of [-0.11, 0.11]) torso.push([G.box, '#56637b', at(x, 0.4, 0.13, { sx: 0.035, sy: 0.22, sz: 0.04, rx: -0.1 })]);
+    torso.push([G.box, look.accent, at(0, 0.47, 0.13, { sx: 0.05, sy: 0.07, sz: 0.02 })]); // 制服領帶
+  }
   if (look.accessory === 'scarf') {
     torso.push([G.capsule, look.accent, at(0, 0.52, 0, { sx: 0.17, sy: 0.02, sz: 0.15, rz: Math.PI / 2 })]);
   }
@@ -127,6 +134,10 @@ export function animateCharacter(root, t, walking, still) {
   const u = root.userData;
   const k = still ? 0 : 1;
   u.head.rotation.y += ((u.lookYaw ?? 0) - u.head.rotation.y) * (still ? 1 : 0.15);
+  // 縮起來：低頭、身體縮小一點（聽到不舒服的話時的反應）
+  const shrink = u.shrinkUntil && t < u.shrinkUntil ? 1 : 0;
+  u.shrink = still ? shrink : (u.shrink ?? 0) + (shrink - (u.shrink ?? 0)) * 0.12;
+  root.scale.setScalar(1 - u.shrink * 0.1);
   if (u.sitting) {
     u.legL.rotation.x = u.legR.rotation.x = -1.45;
     u.armL.rotation.x = u.armR.rotation.x = -0.35;

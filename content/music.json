@@ -27,6 +27,14 @@
       "url": "https://opengameart.org/content/bluebonnet",
       "license": "CC0 1.0（公眾領域）",
       "licenseUrl": "https://creativecommons.org/publicdomain/zero/1.0/"
+    },
+    "alley": {
+      "file": "assets/audio/cafe.mp3",
+      "title": "Catmint（looped 版）",
+      "author": "Kistol",
+      "url": "https://opengameart.org/content/catmint",
+      "license": "CC0 1.0（公眾領域）",
+      "licenseUrl": "https://creativecommons.org/publicdomain/zero/1.0/"
     }
   }
 }

@@ -50,6 +50,7 @@ export class Game extends EventTarget {
           notes.push(`依任務紀錄補回理解卡「${this.card(g.card).title}」。`);
         }
       }
+      s.side ??= {}; // 舊存檔沒有支線紀錄：補上空的，直接沿用
       for (const id of this.puzzleIds) {
         s.puzzles[id] ??= { place: {}, solved: false };
         // 謎題改版後，舊存檔裡已經不存在的位置清掉（植物回到托盤上）
@@ -80,7 +81,31 @@ export class Game extends EventTarget {
     if (when.flag && !s.flags[when.flag]) return false;
     if (when.notFlag && s.flags[when.notFlag]) return false;
     if (when.card && !this.hasCard(when.card)) return false;
+    if (when.side && !when.side.in.includes(this.side(when.side.id))) return false;
+    if (when.absent && this.present(when.absent)) return false;
     return true;
+  }
+
+  // ---- 支線（隱藏角色）----
+  // 支線進度：還沒開始時是 'closed'
+  side(id) { return this.s.side?.[id] ?? 'closed'; }
+
+  // 角色現在在不在：支線完成後，每次走進那個區域輪流在與不在（完成當下他就離開了）
+  present(charId) {
+    const ch = this.c.characters.characters.find((x) => x.id === charId);
+    const pr = ch?.presence;
+    if (!pr || this.side(pr.side) !== pr.alternateAfter) return true;
+    return (this.s.side[`${pr.side}Visits`] ?? 0) % 2 === 1;
+  }
+
+  // 走進一個區域：支線完成後，記一次來訪（決定角色這次在不在）
+  enterArea(s, area) {
+    for (const ch of this.c.characters.characters) {
+      const pr = ch.presence;
+      if (pr && ch.spots[0].area === area && (s.side?.[pr.side] ?? 'closed') === pr.alternateAfter) {
+        s.side[`${pr.side}Visits`] = (s.side[`${pr.side}Visits`] ?? 0) + 1;
+      }
+    }
   }
 
   characterSpot(ch) {
@@ -93,10 +118,12 @@ export class Game extends EventTarget {
   targets() {
     const list = [];
     for (const ch of this.c.characters.characters) {
+      if (!this.present(ch.id)) continue;
       const sp = this.characterSpot(ch);
       list.push({ id: ch.id, kind: 'character', name: ch.name, area: sp.area, x: sp.x, z: sp.z, sit: !!sp.sit, cardTarget: true, data: ch });
     }
     for (const o of this.c.places.objects) {
+      if (o.showWhen && !this.check(o.showWhen)) continue;
       list.push({ id: o.id, kind: o.puzzle ? 'puzzle' : 'object', name: o.name, area: o.area, x: o.x, z: o.z, cardTarget: !!o.cardTarget, data: o });
     }
     return list;
@@ -126,7 +153,16 @@ export class Game extends EventTarget {
     if (!t || this.ui.busy()) return;
     if (t.kind === 'puzzle') return this.openPuzzle(t.data.puzzle);
     const entry = t.data.talk.find((e) => this.check(e.when));
-    if (entry) this.play(entry.dialogue);
+    if (!entry) return;
+    if (entry.dialogueCycle) {
+      // 每次輪流一句（記在存檔裡）
+      const key = `${id}Line`;
+      const i = (this.s.side[key] ?? 0) % entry.dialogueCycle.length;
+      this.store.mutate((s) => { s.side[key] = i + 1; });
+      this.play(entry.dialogueCycle[i]);
+    } else {
+      this.play(entry.dialogue);
+    }
   }
 
   play(dialogueId, vars) {
@@ -150,10 +186,11 @@ export class Game extends EventTarget {
     const p = this.c.puzzles.puzzles[id];
     const it = p.items.find((x) => x.id === item);
     if (!it || this.s.puzzles[id].solved) return null;
-    const fit = slot === it.answer;
+    const fit = !!slot && slot === it.answer;
     const reaction = p.kind === 'plants' ? it.reactions?.[slot] ?? null : null;
     const keep = slot && (p.kind === 'plants' || fit);
-    const solvedNow = keep && p.items.every((x) => (x.id === item ? fit : this.s.puzzles[id].place[x.id] === x.answer));
+    // answer 為 null 的是混淆物，不用放；其他每一項都放對才算解開
+    const solvedNow = keep && p.items.filter((x) => x.answer).every((x) => (x.id === item ? fit : this.s.puzzles[id].place[x.id] === x.answer));
     this.apply(solvedNow ? [{ giveCard: p.card }] : [], (s) => {
       const place = s.puzzles[id].place;
       if (keep) {
@@ -200,13 +237,15 @@ export class Game extends EventTarget {
     if (!t || !this.hasCard(cardId)) return { ok: false, text: '你還沒有這張卡。' };
     const uses = this.c.uses.uses.filter((u) => u.target === targetId && u.card === cardId);
     const ok = uses.find((u) => this.useAvailable(u));
+    const hidden = !!t.data.hidden; // 隱藏角色：沒有明顯反應，不顯示目標或其他提示
     if (ok) {
       this.store.mutate((s) => { if (!s.used.includes(ok.id)) s.used.push(ok.id); });
       this.changed();
-      this.react(targetId, 'happy'); // 適用：角色有明顯的反應
+      if (!hidden) this.react(targetId, 'happy'); // 適用：角色有明顯的反應
       this.play(ok.dialogue);
       return { ok: true };
     }
+    if (hidden) return { ok: false, text: t.data.notApplicable, quiet: true };
     this.react(targetId, 'question'); // 不適用：露出疑惑的表情，卡片不消耗
     const goal = this.stepInfo?.goal;
     const early = uses.map((u) => this.c.uses.tooEarly[u.id]).find(Boolean);
@@ -223,13 +262,15 @@ export class Game extends EventTarget {
   useAvailable(u) {
     if (u.steps && !u.steps.includes(this.step)) return false;
     if (u.fromStep && this.stepIndex(this.step) < this.stepIndex(u.fromStep)) return false;
+    if (u.side && !u.side.in.includes(this.side(u.side.id))) return false;
     return true;
   }
 
   // 選卡時預覽「這張卡在這裡會怎麼用」
   useIntent(targetId, cardId) {
-    const u = this.c.uses.uses.find((x) => x.target === targetId && x.card === cardId && this.useAvailable(x));
     const t = this.target(targetId);
+    // 隱藏角色不預覽意圖，避免變成「哪張卡才對」的提示
+    const u = t.data.hidden ? null : this.c.uses.uses.find((x) => x.target === targetId && x.card === cardId && this.useAvailable(x));
     return u?.intent ?? `試著用「${this.card(cardId).title}」的觀點，和${t.name}互動。`;
   }
 
@@ -263,6 +304,8 @@ export class Game extends EventTarget {
         this.applyInto(s, e.advance.then, after);
       }
       if (e.setFlag) s.flags[e.setFlag] = true;
+      if (e.setSide) s.side[e.setSide[0]] = e.setSide[1];
+      if (e.gesture) after.push(() => this.dispatchEvent(new CustomEvent('reaction', { detail: { target: e.gesture[0], kind: e.gesture[1] } })));
       if (e.openResources) after.push(() => window.openSupport?.());
       if (e.openCardbook) this.deferred.push(() => this.ui.openCardbook());
       if (e.tutorial) after.push(() => this.ui.tutorial(e.tutorial));
@@ -304,6 +347,8 @@ export class Game extends EventTarget {
     s.player = { x, z };
     if (area && area !== s.area) {
       s.area = area;
+      this.enterArea(s, area);
+      this.changed();
       this.dispatchEvent(new CustomEvent('area', { detail: area }));
     }
   }
@@ -312,6 +357,7 @@ export class Game extends EventTarget {
     this.store.mutate((s) => {
       s.area = area;
       s.player = { ...this.areaById[area].spawn };
+      this.enterArea(s, area);
     });
     this.dispatchEvent(new CustomEvent('area', { detail: area }));
     this.changed();

@@ -93,7 +93,7 @@ export async function start3D(game, ui, store) {
   const start = s.player && !world.blocked(s.player.x, s.player.z, RADIUS) ? s.player : game.areaById[s.area]?.spawn ?? { x: 18, z: 17 };
   const pos = new THREE.Vector3(start.x, 0, start.z);
   let yaw = Math.PI; // 面向北方（背對鏡頭）
-  let lastArea = world.areaOf(pos.x);
+  let lastArea = world.areaOf(pos.x, pos.z);
 
   // ---- 謎題：三盆植物的位置跟著存檔變動 ----
   const potSpots = world.anchors.potSpots; // 謎題的五個位置（sun／shade／wet／wall／eaves）與地上的起始位置
@@ -130,7 +130,7 @@ export async function start3D(game, ui, store) {
   function routeTo(dest, destArea) {
     catRoute.length = 0;
     const order = ['cafe', 'plaza', 'garden'];
-    let a = order.indexOf(world.areaOf(cat.position.x));
+    let a = order.indexOf(world.areaOf(cat.position.x)); // 只看東西向（小巷算在咖啡店這一側）
     const b = order.indexOf(destArea);
     while (a !== b) {
       const next = a + Math.sign(b - a);
@@ -160,6 +160,10 @@ export async function start3D(game, ui, store) {
   const onReaction = (e) => {
     const a = actors.get(e.detail.target);
     if (!a) return;
+    if (e.detail.kind === 'shrink') {
+      a.mesh.userData.shrinkUntil = clock.elapsedTime + 2.5; // 縮了一下，表情由對話的 emote 顯示
+      return;
+    }
     if (e.detail.kind === 'happy') fx.jump(a.mesh);
     fx.emote(a.mesh, e.detail.kind === 'happy' ? 'happy' : 'question', 2600);
   };
@@ -207,6 +211,9 @@ export async function start3D(game, ui, store) {
   function syncActors() {
     for (const [id, a] of actors) {
       const t = game.target(id);
+      a.mesh.visible = !!t; // 不在場的角色（例如小安有時不在）
+      a.tag.classList.toggle('hidden', !t);
+      if (!t) { fx.emote(a.mesh, null); continue; }
       if (a.spot?.x !== t.x || a.spot?.z !== t.z || a.spot?.sit !== t.sit) {
         a.mesh.position.set(t.x, t.sit ? 0.24 : 0, t.z);
         a.mesh.rotation.y = 0;
@@ -283,7 +290,7 @@ export async function start3D(game, ui, store) {
 
   const blocked = (x, z) => {
     if (world.blocked(x, z, RADIUS)) return true;
-    for (const a of actors.values()) if (Math.hypot(a.mesh.position.x - x, a.mesh.position.z - z) < 0.45 + RADIUS) return true;
+    for (const a of actors.values()) if (a.mesh.visible && Math.hypot(a.mesh.position.x - x, a.mesh.position.z - z) < 0.45 + RADIUS) return true;
     return false;
   };
 
@@ -326,7 +333,7 @@ export async function start3D(game, ui, store) {
   }
 
   function savePosition() {
-    game.setPlayer(pos.x, pos.z, world.areaOf(pos.x));
+    game.setPlayer(pos.x, pos.z, world.areaOf(pos.x, pos.z));
     store.save();
     moved = false;
   }
@@ -366,6 +373,7 @@ export async function start3D(game, ui, store) {
     // 角色：玩家靠近時轉頭看過來（太近時身體也慢慢轉過來）；坐著的人只轉頭
     for (const a of actors.values()) {
       const m = a.mesh;
+      if (!m.visible) continue;
       const dx = pos.x - m.position.x;
       const dz = pos.z - m.position.z;
       const d = Math.hypot(dx, dz);
@@ -382,7 +390,7 @@ export async function start3D(game, ui, store) {
     }
 
     // 區域切換提示
-    const area = world.areaOf(pos.x);
+    const area = world.areaOf(pos.x, pos.z);
     if (area !== lastArea) {
       lastArea = area;
       game.setPlayer(pos.x, pos.z, area);

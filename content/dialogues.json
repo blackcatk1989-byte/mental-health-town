@@ -1,5 +1,5 @@
 {
-  "_說明": "預寫對話。每一段（segment）有 lines（依序顯示的台詞）、可選的 effects（整段顯示完時觸發）、choices（選項）或 next（下一段）。speaker 為「旁白」時不顯示名牌，「你」代表玩家。emote 是說話者頭上的表情圖示（smile 微笑、worry 擔心、think 思考、surprise 驚訝、relief 鬆一口氣、question 疑惑、happy 開心），沒填就不顯示。effects 可用：giveCard、advance（from 列出的步驟才會前進到 to，then 是前進成功後才觸發的效果）、setFlag、minigame（thought／present）、openResources、openCardbook、tutorial、dialogue。用台灣日常口語、短句，像朋友聊天。內容草案，尚未完成專業審閱。",
+  "_說明": "預寫對話。每一段（segment）有 lines（依序顯示的台詞）、可選的 effects（整段顯示完時觸發）、choices（選項）或 next（下一段）。speaker 為「旁白」時不顯示名牌，「你」代表玩家。emote 是說話者頭上的表情圖示（smile 微笑、worry 擔心、think 思考、surprise 驚訝、relief 鬆一口氣、question 疑惑、happy 開心），沒填就不顯示。effects 可用：setSide（支線進度，例如 [\"xiaoan\",\"talk\"]）、gesture（角色的動作反應）、giveCard、advance（from 列出的步驟才會前進到 to，then 是前進成功後才觸發的效果）、setFlag、minigame（thought／present）、openResources、openCardbook、tutorial、dialogue。用台灣日常口語、短句，像朋友聊天。內容草案，尚未完成專業審閱。",
   "dialogues": {
     "board.arrive": {
       "lines": [
@@ -1100,6 +1100,663 @@
         },
         {
           "text": "繼續逛逛"
+        }
+      ]
+    },
+    "xiaoan.closed": {
+      "lines": [
+        {
+          "speaker": "旁白",
+          "text": "巷子的階梯上坐著一個穿制服的學生，書包抱在腿上。"
+        },
+        {
+          "speaker": "小安",
+          "text": "……沒事，我在等人。"
+        }
+      ],
+      "choices": [
+        {
+          "text": "嗨。",
+          "next": "xiaoan.closed.hi"
+        },
+        {
+          "text": "離開"
+        }
+      ]
+    },
+    "xiaoan.closed.hi": {
+      "lines": [
+        {
+          "speaker": "小安",
+          "text": "（點了一下頭）嗯。"
+        }
+      ]
+    },
+    "xiaoan.e02": {
+      "lines": [
+        {
+          "speaker": "你",
+          "text": "我不知道你怎麼了，也不想亂猜。你想說的話，我在這。"
+        },
+        {
+          "speaker": "小安",
+          "text": "……（抓著書包背帶，沒有馬上回答）",
+          "emote": "think"
+        }
+      ],
+      "choices": [
+        {
+          "text": "慢慢來，我不趕時間。",
+          "effects": [
+            {
+              "setSide": [
+                "xiaoan",
+                "talk"
+              ]
+            }
+          ],
+          "next": "xiaoan.1"
+        },
+        {
+          "text": "今天先不聊也可以。",
+          "next": "xiaoan.e02.later"
+        }
+      ]
+    },
+    "xiaoan.e02.later": {
+      "lines": [
+        {
+          "speaker": "小安",
+          "text": "嗯。"
+        }
+      ]
+    },
+    "xiaoan.1": {
+      "lines": [
+        {
+          "speaker": "小安",
+          "text": "我被踢出班群了。上禮拜。",
+          "emote": "worry"
+        },
+        {
+          "speaker": "小安",
+          "text": "便當也被藏起來過。我找了一整節下課。",
+          "emote": "worry"
+        },
+        {
+          "speaker": "小安",
+          "text": "他們還幫我取綽號。現在全班都在叫。",
+          "emote": "worry"
+        },
+        {
+          "speaker": "小安",
+          "text": "大家都說是我想太多。",
+          "emote": "worry"
+        },
+        {
+          "speaker": "小安",
+          "text": "最近不太想去學校。晚上也睡不太著。",
+          "emote": "worry"
+        }
+      ],
+      "choices": [
+        {
+          "text": "聽起來很不好受。這樣多久了？",
+          "next": "xiaoan.2.howlong"
+        },
+        {
+          "text": "（先不說話，陪他坐一下）",
+          "next": "xiaoan.2.sit"
+        },
+        {
+          "text": "你是不是憂鬱症？",
+          "next": "xiaoan.2.label"
+        },
+        {
+          "text": "不要理他們就好了。",
+          "next": "xiaoan.2.ignore"
+        },
+        {
+          "text": "他們只是開玩笑吧？",
+          "next": "xiaoan.2.joke"
+        },
+        {
+          "text": "先聊到這裡"
+        }
+      ]
+    },
+    "xiaoan.talk.resume": {
+      "lines": [
+        {
+          "speaker": "旁白",
+          "text": "小安還坐在階梯上。他看了你一眼，沒有趕你走。"
+        },
+        {
+          "speaker": "小安",
+          "text": "……大家都說是我想太多。",
+          "emote": "worry"
+        }
+      ],
+      "choices": [
+        {
+          "text": "聽起來很不好受。這樣多久了？",
+          "next": "xiaoan.2.howlong"
+        },
+        {
+          "text": "（先不說話，陪他坐一下）",
+          "next": "xiaoan.2.sit"
+        },
+        {
+          "text": "你是不是憂鬱症？",
+          "next": "xiaoan.2.label"
+        },
+        {
+          "text": "不要理他們就好了。",
+          "next": "xiaoan.2.ignore"
+        },
+        {
+          "text": "他們只是開玩笑吧？",
+          "next": "xiaoan.2.joke"
+        },
+        {
+          "text": "先聊到這裡"
+        }
+      ]
+    },
+    "xiaoan.2.howlong": {
+      "lines": [
+        {
+          "speaker": "小安",
+          "text": "這學期開始吧。一開始只是分組沒人找我。",
+          "emote": "think"
+        },
+        {
+          "speaker": "小安",
+          "text": "後來就……越來越多。",
+          "emote": "worry"
+        },
+        {
+          "speaker": "小安",
+          "text": "我沒跟別人講過。"
+        },
+        {
+          "speaker": "旁白",
+          "text": "小安把書包抱緊了一點，沒有再說話。"
+        }
+      ],
+      "effects": [
+        {
+          "setSide": [
+            "xiaoan",
+            "waitK02"
+          ]
+        }
+      ]
+    },
+    "xiaoan.2.sit": {
+      "lines": [
+        {
+          "speaker": "旁白",
+          "text": "你在旁邊的階梯坐下。巷口有機車經過。過了一會兒。"
+        },
+        {
+          "speaker": "小安",
+          "text": "……我本來想說，忍一下就過了。",
+          "emote": "think"
+        },
+        {
+          "speaker": "小安",
+          "text": "可是好像沒有。",
+          "emote": "worry"
+        },
+        {
+          "speaker": "旁白",
+          "text": "小安把書包抱緊了一點，沒有再說話。"
+        }
+      ],
+      "effects": [
+        {
+          "setSide": [
+            "xiaoan",
+            "waitK02"
+          ]
+        }
+      ]
+    },
+    "xiaoan.2.sorry": {
+      "lines": [
+        {
+          "speaker": "小安",
+          "text": "……沒關係。"
+        }
+      ],
+      "next": "xiaoan.2.howlong"
+    },
+    "xiaoan.2.label": {
+      "lines": [
+        {
+          "speaker": "小安",
+          "text": "（往牆邊縮了一點）我不知道。我只是很累。",
+          "emote": "worry"
+        },
+        {
+          "speaker": "旁白",
+          "text": "補充：相似的感受，很多處境都會出現，不能用來判定疾病。被貼上名稱，有時會讓人更不想說。"
+        }
+      ],
+      "effects": [
+        {
+          "gesture": [
+            "xiaoan",
+            "shrink"
+          ]
+        }
+      ],
+      "next": "xiaoan.2.retry"
+    },
+    "xiaoan.2.ignore": {
+      "lines": [
+        {
+          "speaker": "小安",
+          "text": "我試過了。（扯了一下嘴角）沒用。",
+          "emote": "worry"
+        },
+        {
+          "speaker": "旁白",
+          "text": "補充：這句話常是好意，但聽的人可能覺得自己的努力沒被看見。"
+        }
+      ],
+      "effects": [
+        {
+          "gesture": [
+            "xiaoan",
+            "shrink"
+          ]
+        }
+      ],
+      "next": "xiaoan.2.retry"
+    },
+    "xiaoan.2.joke": {
+      "lines": [
+        {
+          "speaker": "旁白",
+          "text": "小安沒有回答，低頭把書包的拉鍊拉上，又拉開。"
+        },
+        {
+          "speaker": "旁白",
+          "text": "補充：把事情說小，會讓人更難開口。"
+        }
+      ],
+      "effects": [
+        {
+          "gesture": [
+            "xiaoan",
+            "shrink"
+          ]
+        }
+      ],
+      "next": "xiaoan.2.retry"
+    },
+    "xiaoan.2.retry": {
+      "lines": [
+        {
+          "speaker": "旁白",
+          "text": "你想了想，換個方式回應。"
+        }
+      ],
+      "choices": [
+        {
+          "text": "聽起來很不好受。這樣多久了？",
+          "next": "xiaoan.2.howlong"
+        },
+        {
+          "text": "（先不說話，陪他坐一下）",
+          "next": "xiaoan.2.sit"
+        },
+        {
+          "text": "抱歉，我剛剛說太快了。",
+          "next": "xiaoan.2.sorry"
+        },
+        {
+          "text": "先聊到這裡"
+        }
+      ]
+    },
+    "xiaoan.waitK02": {
+      "lines": [
+        {
+          "speaker": "旁白",
+          "text": "小安把書包抱緊了一點，沒有再說話。"
+        }
+      ]
+    },
+    "xiaoan.k02": {
+      "lines": [
+        {
+          "speaker": "你",
+          "text": "「是你想太多」是他們說的。那是他們的說法，不是事實。"
+        },
+        {
+          "speaker": "小安",
+          "text": "……",
+          "emote": "think"
+        }
+      ],
+      "effects": [
+        {
+          "setSide": [
+            "xiaoan",
+            "blame"
+          ]
+        }
+      ],
+      "next": "xiaoan.3"
+    },
+    "xiaoan.3": {
+      "lines": [
+        {
+          "speaker": "小安",
+          "text": "是不是我有問題？不然為什麼是我。",
+          "emote": "worry"
+        }
+      ],
+      "choices": [
+        {
+          "text": "被這樣對待不是你的錯。",
+          "next": "xiaoan.3.notfault"
+        },
+        {
+          "text": "我不知道他們為什麼這樣。但沒有人應該被這樣對待。",
+          "next": "xiaoan.3.noone"
+        },
+        {
+          "text": "你覺得呢？",
+          "next": "xiaoan.3.you"
+        },
+        {
+          "text": "先聊到這裡"
+        }
+      ]
+    },
+    "xiaoan.3.notfault": {
+      "lines": [
+        {
+          "speaker": "小安",
+          "text": "（很久沒說話）……真的嗎。",
+          "emote": "surprise"
+        },
+        {
+          "speaker": "小安",
+          "text": "我一直以為是我哪裡怪怪的。",
+          "emote": "think"
+        },
+        {
+          "speaker": "旁白",
+          "text": "小安看著巷口，好像還有話，但沒有說出來。"
+        }
+      ],
+      "effects": [
+        {
+          "setSide": [
+            "xiaoan",
+            "waitK04"
+          ]
+        }
+      ]
+    },
+    "xiaoan.3.noone": {
+      "lines": [
+        {
+          "speaker": "小安",
+          "text": "……嗯。",
+          "emote": "think"
+        },
+        {
+          "speaker": "小安",
+          "text": "第一次有人這樣講。",
+          "emote": "relief"
+        },
+        {
+          "speaker": "旁白",
+          "text": "小安看著巷口，好像還有話，但沒有說出來。"
+        }
+      ],
+      "effects": [
+        {
+          "setSide": [
+            "xiaoan",
+            "waitK04"
+          ]
+        }
+      ]
+    },
+    "xiaoan.3.you": {
+      "lines": [
+        {
+          "speaker": "小安",
+          "text": "我想很久了。想不出來。",
+          "emote": "worry"
+        }
+      ],
+      "choices": [
+        {
+          "text": "被這樣對待不是你的錯。",
+          "next": "xiaoan.3.notfault"
+        },
+        {
+          "text": "我不知道他們為什麼這樣。但沒有人應該被這樣對待。",
+          "next": "xiaoan.3.noone"
+        },
+        {
+          "text": "先聊到這裡"
+        }
+      ]
+    },
+    "xiaoan.waitK04": {
+      "lines": [
+        {
+          "speaker": "旁白",
+          "text": "小安看著巷口，好像還有話，但沒有說出來。"
+        }
+      ]
+    },
+    "xiaoan.k04": {
+      "lines": [
+        {
+          "speaker": "你",
+          "text": "有沒有哪個大人，是你覺得可以說的？"
+        }
+      ],
+      "effects": [
+        {
+          "setSide": [
+            "xiaoan",
+            "adults"
+          ]
+        }
+      ],
+      "next": "xiaoan.4"
+    },
+    "xiaoan.4": {
+      "lines": [
+        {
+          "speaker": "小安",
+          "text": "……輔導老師吧。她上次有問我還好嗎。我說還好。",
+          "emote": "think"
+        },
+        {
+          "speaker": "小安",
+          "text": "還有我姊。可是她在外地念書。"
+        }
+      ],
+      "choices": [
+        {
+          "text": "我會陪你想想可以跟誰說。",
+          "next": "xiaoan.4.together"
+        },
+        {
+          "text": "聽起來她們都會想知道。",
+          "next": "xiaoan.4.care"
+        },
+        {
+          "text": "我不會跟任何人說。",
+          "next": "xiaoan.4.secret"
+        },
+        {
+          "text": "那你今天就去跟老師說吧？",
+          "next": "xiaoan.4.push"
+        },
+        {
+          "text": "先聊到這裡"
+        }
+      ]
+    },
+    "xiaoan.4.together": {
+      "lines": [
+        {
+          "speaker": "小安",
+          "text": "……好。",
+          "emote": "relief"
+        }
+      ],
+      "next": "xiaoan.5"
+    },
+    "xiaoan.4.care": {
+      "lines": [
+        {
+          "speaker": "小安",
+          "text": "可能吧。我姊應該會生氣。不是氣我啦。",
+          "emote": "think"
+        }
+      ],
+      "next": "xiaoan.5"
+    },
+    "xiaoan.4.secret": {
+      "lines": [
+        {
+          "speaker": "小安",
+          "text": "嗯。"
+        },
+        {
+          "speaker": "旁白",
+          "text": "補充：陪伴時不必承諾永遠保密。可以說：「我會陪你想想可以跟誰說。」"
+        },
+        {
+          "speaker": "你",
+          "text": "不過，我會陪你想想可以跟誰說。"
+        }
+      ],
+      "next": "xiaoan.5"
+    },
+    "xiaoan.4.push": {
+      "lines": [
+        {
+          "speaker": "小安",
+          "text": "……我今天不想講了。",
+          "emote": "worry"
+        }
+      ],
+      "choices": [
+        {
+          "text": "好，不急。",
+          "next": "xiaoan.4.push.ok"
+        }
+      ]
+    },
+    "xiaoan.4.push.ok": {
+      "lines": [
+        {
+          "speaker": "小安",
+          "text": "嗯。"
+        }
+      ]
+    },
+    "xiaoan.5": {
+      "lines": [
+        {
+          "speaker": "小安",
+          "text": "明天……也許會去輔導室看看。也許啦。",
+          "emote": "think"
+        },
+        {
+          "speaker": "小安",
+          "text": "我姊那邊，我再想想怎麼講。"
+        }
+      ],
+      "choices": [
+        {
+          "text": "也許就很好了。",
+          "next": "xiaoan.5.end"
+        },
+        {
+          "text": "去不去都沒關係。你想說的時候，我在。",
+          "next": "xiaoan.5.end"
+        }
+      ]
+    },
+    "xiaoan.5.end": {
+      "lines": [
+        {
+          "speaker": "小安",
+          "text": "嗯。謝謝你沒有一直問。",
+          "emote": "relief"
+        },
+        {
+          "speaker": "旁白",
+          "text": "小安背起書包，往巷口走了。明天的教室還是那間教室，事情沒有因此解決。但今天，有人聽他說了。"
+        }
+      ],
+      "effects": [
+        {
+          "setSide": [
+            "xiaoan",
+            "done"
+          ]
+        },
+        {
+          "giveCard": "H01"
+        }
+      ]
+    },
+    "xiaoan.again.0": {
+      "lines": [
+        {
+          "speaker": "小安",
+          "text": "我今天有走到輔導室。在門口站了一下，沒進去。下次吧。",
+          "emote": "think"
+        }
+      ]
+    },
+    "xiaoan.again.1": {
+      "lines": [
+        {
+          "speaker": "小安",
+          "text": "我姊昨天打給我。我講了一點點。"
+        }
+      ]
+    },
+    "xiaoan.again.2": {
+      "lines": [
+        {
+          "speaker": "小安",
+          "text": "今天……就還好。"
+        }
+      ]
+    },
+    "xiaoan.remember": {
+      "lines": [
+        {
+          "speaker": "小安",
+          "text": "我記得你說的。你沒有亂猜。",
+          "emote": "relief"
+        }
+      ]
+    },
+    "steps.empty": {
+      "lines": [
+        {
+          "speaker": "旁白",
+          "text": "階梯上沒有人。牆邊有一小塊被坐得很乾淨的地方。"
         }
       ]
     }

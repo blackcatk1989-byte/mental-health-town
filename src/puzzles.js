@@ -5,13 +5,13 @@
 // 不計時、不扣分、不出現對錯字樣；「減少動畫」時改成靜態的前後變化加一行描述。文字模式用描述代替插畫。
 import { $, esc, openPanel } from './ui.js';
 import { play } from './sfx.js';
-import { PLANT_STAGE, TABLE_STAGE, plantStageSvg, tableStageSvg, potSvg, itemSvg } from './puzzle-art.js';
+import { PLANT_STAGE, TABLE_STAGE, plantStageSvg, tableStageSvg, potSvg, itemSvg, shuffled, shuffleTableStage } from './puzzle-art.js';
 
 const DRAFT = '<p class="fine draft">內容草案，尚未完成專業審閱。</p>';
 const SOIL = { rosemary: 'dry', mint: 'dry', fern: 'wet' };
 const REACT_DELAY = 2000; // 放下後多久做出反應（毫秒）
 
-const reduceMotion = () => document.body.classList.contains('reduce-motion') || matchMedia('(prefers-reduced-motion: reduce)').matches;
+const reduceMotion = () => document.body.classList.contains('reduce-motion');
 
 export function openPuzzle(game, id) {
   const p = game.c.puzzles.puzzles[id];
@@ -20,6 +20,7 @@ export function openPuzzle(game, id) {
   const timers = [];
   const later = (fn, ms) => timers.push(setTimeout(fn, ms));
 
+  let textOrder = null; // 文字模式也打亂桌子與東西的順序（這次打開期間固定）
   const solvedView = () => {
     body.innerHTML = `<div class="solved">
       <h3 class="hand">${esc(p.solvedTitle)}</h3>
@@ -38,6 +39,7 @@ export function openPuzzle(game, id) {
   // ---- 插畫版：拖曳或點選 ----
   function stageView() {
     const plants = p.kind === 'plants';
+    if (!plants) shuffleTableStage(p.tables.map((t) => t.id), p.items.map((it) => it.id)); // 每次打開都打亂位置與順序
     const S = plants ? PLANT_STAGE : TABLE_STAGE;
     const slotPos = (slot) => (plants ? S.spots[slot] : S.tables[slot]);
     body.innerHTML = `<p class="fine">${esc(p.minutes)}・不計時，可以一直重新擺</p>
@@ -63,7 +65,7 @@ export function openPuzzle(game, id) {
       g.setAttribute('aria-label', `${it.label}：${plants ? it.looks.join('') : it.look}`);
       // 透明的點擊區比圖案大一點，手機上比較好點
       g.innerHTML = (plants ? potSvg(it.id, { soil: SOIL[it.id] }) : itemSvg(it.id))
-        + (plants ? '<rect class="pot-hit" x="-26" y="-84" width="52" height="88" fill="transparent"/>' : '<rect class="pot-hit" x="-22" y="-18" width="44" height="36" fill="transparent"/>');
+        + (plants ? '<rect class="pot-hit" x="-26" y="-84" width="52" height="88" fill="transparent"/>' : '<rect class="pot-hit" x="-19" y="-19" width="38" height="38" fill="transparent"/>');
       layer.append(g);
       nodes.set(it.id, g);
     }
@@ -237,14 +239,15 @@ export function openPuzzle(game, id) {
   function textView(message) {
     const plants = p.kind === 'plants';
     const place = game.s.puzzles[id].place;
-    const slots = plants ? p.spots : p.tables;
+    textOrder ??= plants ? { slots: p.spots, items: p.items } : { slots: shuffled(p.tables), items: shuffled(p.items) };
+    const slots = textOrder.slots;
     const where = (sid) => slots.find((x) => x.id === sid)?.short;
     body.innerHTML = `<p class="fine">${esc(p.minutes)}・不計時，可以一直重新擺</p>
       <p>${esc(p.intro)}</p>
       <h3>${plants ? '地上的位置' : '三張桌子'}</h3>
       <ul class="text-list">${slots.map((x) => `<li>${esc(x.look)}</li>`).join('')}</ul>
       ${message ? `<div class="notice" role="status">${esc(message)}</div>` : ''}
-      <div class="puzzle-items">${p.items.map((it) => {
+      <div class="puzzle-items">${textOrder.items.map((it) => {
     const at = place[it.id];
     return `<div class="puzzle-item">
           <h4>${esc(it.label)}</h4>

@@ -1,11 +1,13 @@
 {
-  "_說明": "用卡互動。玩家在角色或物件旁按「使用理解卡」並選卡後，依序找 target 與 card 相符、且任務階段符合（steps 列出可用的步驟，或 fromStep 表示從該步驟起都可用）的互動。卡片使用後保留，不會消耗。missing 是玩家缺少這張卡時的取得指引。",
+  "_說明": "用卡互動。玩家在角色或物件旁按「使用理解卡」並選卡後，依序找 target 與 card 相符、且任務階段符合（steps 列出可用的步驟，或 fromStep 表示從該步驟起都可用）的互動。卡片使用後保留，不會消耗。missing 是玩家缺少這張卡時的取得指引。side 表示支線進度符合時才可用（隱藏角色小安：依序使用 E02、K02、K04，不提示下一張是哪張卡）。",
   "uses": [
     {
       "id": "clarify-invite",
       "target": "xiaoqing",
       "card": "K02",
-      "steps": ["clarify"],
+      "steps": [
+        "clarify"
+      ],
       "intent": "和曉晴聊聊：確定的事和猜測分開之後，要不要直接問問看？由她自己決定。",
       "dialogue": "use.clarify"
     },
@@ -13,7 +15,9 @@
       "id": "ask-ade",
       "target": "ade",
       "card": "K01",
-      "steps": ["askAde"],
+      "steps": [
+        "askAde"
+      ],
       "intent": "問問阿德：你現在需要什麼？",
       "dialogue": "use.askAde"
     },
@@ -21,7 +25,9 @@
       "id": "bench-tonight",
       "target": "bench",
       "card": "K03",
-      "steps": ["tonight"],
+      "steps": [
+        "tonight"
+      ],
       "intent": "在長椅坐下，陪阿德想想今晚做得到的一小步。",
       "dialogue": "use.tonight"
     },
@@ -29,7 +35,9 @@
       "id": "next-support-xiaoqing",
       "target": "xiaoqing",
       "card": "K04",
-      "steps": ["done"],
+      "steps": [
+        "done"
+      ],
       "intent": "和曉晴聊聊「需要的時候，可以找誰」。",
       "dialogue": "use.k04.xiaoqing"
     },
@@ -37,7 +45,9 @@
       "id": "next-support-ade",
       "target": "ade",
       "card": "K04",
-      "steps": ["done"],
+      "steps": [
+        "done"
+      ],
       "intent": "和阿德聊聊「需要的時候，可以找誰」。",
       "dialogue": "use.k04.ade"
     },
@@ -72,6 +82,90 @@
       "fromStep": "askAde",
       "intent": "和阿德聊聊「不要急著替彼此下結論」。",
       "dialogue": "use.e02.ade"
+    },
+    {
+      "id": "xiaoan-open",
+      "target": "xiaoan",
+      "card": "E02",
+      "side": {
+        "id": "xiaoan",
+        "in": [
+          "closed"
+        ]
+      },
+      "dialogue": "xiaoan.e02"
+    },
+    {
+      "id": "xiaoan-open-again",
+      "target": "xiaoan",
+      "card": "E02",
+      "side": {
+        "id": "xiaoan",
+        "in": [
+          "talk"
+        ]
+      },
+      "dialogue": "xiaoan.talk.resume"
+    },
+    {
+      "id": "xiaoan-blame",
+      "target": "xiaoan",
+      "card": "K02",
+      "side": {
+        "id": "xiaoan",
+        "in": [
+          "waitK02"
+        ]
+      },
+      "dialogue": "xiaoan.k02"
+    },
+    {
+      "id": "xiaoan-blame-again",
+      "target": "xiaoan",
+      "card": "K02",
+      "side": {
+        "id": "xiaoan",
+        "in": [
+          "blame"
+        ]
+      },
+      "dialogue": "xiaoan.3"
+    },
+    {
+      "id": "xiaoan-adults",
+      "target": "xiaoan",
+      "card": "K04",
+      "side": {
+        "id": "xiaoan",
+        "in": [
+          "waitK04"
+        ]
+      },
+      "dialogue": "xiaoan.k04"
+    },
+    {
+      "id": "xiaoan-adults-again",
+      "target": "xiaoan",
+      "card": "K04",
+      "side": {
+        "id": "xiaoan",
+        "in": [
+          "adults"
+        ]
+      },
+      "dialogue": "xiaoan.4"
+    },
+    {
+      "id": "xiaoan-remember",
+      "target": "xiaoan",
+      "card": "E02",
+      "side": {
+        "id": "xiaoan",
+        "in": [
+          "done"
+        ]
+      },
+      "dialogue": "xiaoan.remember"
     }
   ],
   "tooEarly": {

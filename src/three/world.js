@@ -211,9 +211,16 @@ export function buildWorld(scene) {
   const rack = new THREE.Group();
   rack.add(box(0.9, 1.3, 0.08, C.wood, 0, 0.9, 0), box(0.07, 1.6, 0.07, C.woodDark, -0.45, 0.8, 0), box(0.07, 1.6, 0.07, C.woodDark, 0.45, 0.8, 0));
   rack.add(box(0.3, 0.4, 0.02, C.paper, -0.18, 1.0, 0.05, { shadow: false }), box(0.3, 0.3, 0.02, 0xf6d9c8, 0.2, 1.15, 0.05, { shadow: false }));
-  rack.position.set(11.2, 0, 5.2);
+  rack.position.set(9.9, 0, 5.2); // 靠咖啡店這一側，讓出旁邊小巷的入口
   add(rack);
-  boxes.push([10.7, 4.95, 11.7, 5.45]);
+  // ---- 咖啡店旁的小巷：夾在咖啡店和隔壁店面之間，盡頭有幾階通往後門的階梯 ----
+  add(flat(1.4, 4.4, C.alley, 11.3, 2.7, 0.013));
+  add(box(0.2, 1.7, 3.9, 0xe6d9c6, 12.1, 0.85, 2.45)); // 東側的矮牆
+  boxes.push([12.0, 0.5, 12.2, 4.4]);
+  for (let i = 0; i < 3; i++) add(box(1.3, 0.16, 0.42, C.stone, 11.3, 0.08 + i * 0.16, 1.5 - i * 0.42)); // 階梯
+  add(box(0.9, 1.9, 0.08, C.woodDark, 11.3, 1.43, 0.42)); // 後門
+  deco(cyl(0.2, 0.17, 0.5, 0x8d8580, 11.75, 0.25, 3.6, 10)); // 巷子裡的小水桶
+  boxes.push([9.4, 4.95, 10.4, 5.45]);
 
   // ---- 廣場北側：騎樓連棟店面（只是背景，不能進去）----
   [[13.9, C.shop], [18.1, C.shopB], [22.3, C.shopC]].forEach(([x, col]) => {
@@ -412,7 +419,8 @@ export function buildWorld(scene) {
     for (const [cx, cz, cr] of circles) if (Math.hypot(x - cx, z - cz) < r + cr) return true;
     return false;
   };
-  const areaOf = (x) => (x < 11.8 ? 'cafe' : x > 24.6 ? 'garden' : 'plaza');
+  // 小巷：咖啡店東側、矮牆以西、巷口以北
+  const areaOf = (x, z = 99) => (x > 10.6 && x < 12.0 && z < 4.8 ? 'alley' : x < 11.8 ? 'cafe' : x > 24.6 ? 'garden' : 'plaza');
 
   return { width: WIDTH, height: HEIGHT, blocked, areaOf, visuals, details, anchors: { chimes, potSpots } };
 }

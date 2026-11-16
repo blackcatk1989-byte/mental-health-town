@@ -4,6 +4,7 @@ import { $, esc, openPanel, EMOTES } from './ui.js';
 
 // 簡單的線條插圖（自製 SVG，不使用外部素材）
 const ICONS = {
+  umbrella: '<path d="M14 40a26 26 0 0 1 52 0z"/><path d="M40 40v16a5 5 0 0 1-10 0"/><path d="M40 12v4"/>',
   hands: '<path d="M18 44c6-10 14-14 22-14s16 4 22 14" /><circle cx="28" cy="26" r="6"/><circle cx="52" cy="26" r="6"/><path d="M30 50c4 4 16 4 20 0"/>',
   magnifier: '<circle cx="34" cy="32" r="14"/><path d="M44 42l14 14"/><path d="M28 32h12"/>',
   leaf: '<path d="M20 56C20 30 38 18 60 18c0 24-14 38-40 38z"/><path d="M20 56L46 30"/>',
@@ -65,6 +66,8 @@ export function openCardbook(game, { focus } = {}) {
       const cards = game.c.cards.cards.filter((k) => k.theme === t.id);
       return `<h3>${esc(t.name)}</h3><div class="card-grid">${cards.map((k) => {
         const owned = game.hasCard(k.id);
+        // 隱藏卡：取得前只是一個「？」，沒有名稱、剪影與線索，也點不開
+        if (k.hidden && !owned) return '<div class="card-tile locked secret" aria-label="還不知道的卡">？</div>';
         return `<button type="button" class="card-tile ${owned ? '' : 'locked'}" data-card="${k.id}">
           ${cardArt(k, owned)}<strong>${esc(k.title)}</strong>
           <small>${owned ? esc(k.keyPoint) : `未取得：${esc(k.hint)}`}</small></button>`;
@@ -117,6 +120,15 @@ export function openUseCard(game, targetId) {
       const r = game.useCard(targetId, cardId);
       if (r.ok) return;
       openPanel('usecard');
+      if (r.quiet) {
+        // 隱藏角色：只有簡短的情境描述，沒有表情、目標或其他提示
+        body.innerHTML = `<div class="notice">${esc(r.text)}</div>
+          <div class="row-actions"><button type="button" class="btn" data-close>關閉</button>
+          <button type="button" class="btn primary" data-again>再選一張</button></div>`;
+        body.querySelector('[data-close]').onclick = () => $('usecard').close();
+        body.querySelector('[data-again]').onclick = () => pick();
+        return;
+      }
       body.innerHTML = `<div class="notice puzzled"><span class="emote-inline" aria-hidden="true">${EMOTES.question}</span>
           <span>${esc(r.text)}</span></div>
         ${r.goal ? `<p class="fine">目前目標：${esc(r.goal)}</p>` : ''}

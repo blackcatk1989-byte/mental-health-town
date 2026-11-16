@@ -273,6 +273,7 @@
     @keyframes wiggle { 25% { rotate: -4deg; } 75% { rotate: 4deg; } }
     .stage .table-win, .stage .sigh-theme, .stage .sigh-dots { transition: opacity .5s; }
     .solved { text-align: left; }
+    .card-tile.secret { align-items: center; justify-content: center; min-height: 120px; font-size: 2rem; color: #b9aea4; border-style: dashed; }
     .notice.puzzled { display: flex; gap: 10px; align-items: flex-start; }
     .emote-inline svg { width: 32px; height: 32px; flex: none; }
     .text-list { padding-left: 18px; }
@@ -339,7 +340,6 @@
 
     /* 減少動畫：關掉所有動態效果（前後變化仍會顯示，並有文字描述） */
     .reduce-motion *, .reduce-motion *::before, .reduce-motion *::after { animation: none !important; transition: none !important; }
-    @media (prefers-reduced-motion: reduce) { .goal-mark, .pulse { animation: none; } }
     @media (max-width: 560px) {
       #goal { max-width: calc(100vw - 140px); padding: 6px 10px; font-size: .9rem; }
       #dlg-box { padding: 22px 14px 10px; }
@@ -382,7 +382,7 @@
         <button type="button" class="btn" data-open-settings>設定</button>
       </div>
       <p class="fine">電腦：WASD／方向鍵移動，E 互動，F 使用理解卡。手機：左下角搖桿移動，右下角按鈕互動。</p>
-      <p class="fine version">版本 v4.2（2026-11-13）</p>
+      <p class="fine version">版本 v4.3（2026-11-16）</p>
     </div>
   </section>
 

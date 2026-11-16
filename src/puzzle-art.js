@@ -19,8 +19,29 @@ export const TABLE_STAGE = {
   w: 400,
   h: 300,
   tables: { t1: { x: 78, y: 112, r: 54 }, t2: { x: 200, y: 92, r: 54 }, t3: { x: 322, y: 112, r: 54 } },
-  tray: { ticket: { x: 140, y: 256 }, bill: { x: 200, y: 256 }, stamp: { x: 260, y: 256 } },
+  tray: {},
 };
+
+const TABLE_SEATS = [{ x: 78, y: 112, r: 54 }, { x: 200, y: 92, r: 54 }, { x: 322, y: 112, r: 54 }];
+
+export function shuffled(list) {
+  const a = [...list];
+  for (let i = a.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [a[i], a[j]] = [a[j], a[i]];
+  }
+  return a;
+}
+
+// 每次打開謎題：三張桌子的左右位置、托盤上東西的順序都重新打亂
+export function shuffleTableStage(tableIds, itemIds) {
+  const seats = shuffled(TABLE_SEATS);
+  TABLE_STAGE.tables = Object.fromEntries(tableIds.map((id, i) => [id, seats[i]]));
+  const order = shuffled(itemIds);
+  const step = 216 / Math.max(1, order.length - 1);
+  TABLE_STAGE.tray = Object.fromEntries(order.map((id, i) => [id, { x: 92 + i * step, y: 256 }]));
+  return order;
+}
 
 // ---- 植物謎題的場地 ----
 function spotArt(id, { x, y, r }) {
@@ -163,21 +184,28 @@ export function tableStageSvg(tables) {
         <circle class="zone-hit" cx="${s.x}" cy="${s.y}" r="${s.r}" fill="transparent"/>
       </g>`;
   }).join('')}
-    <g class="tray-area" data-slot=""><rect x="96" y="${h - 76}" width="208" height="56" rx="10" fill="#9d7b5c"/></g>
+    <g class="tray-area" data-slot=""><rect x="62" y="${h - 76}" width="276" height="56" rx="10" fill="#9d7b5c"/></g>
     <g class="pots"></g>
   </svg>`;
 }
 
+// 托盤上的東西：三樣屬於某一桌，三樣是混淆物（外型刻意相近：兩張收據、兩張小卡、兩樣長條的東西）
+const ITEM_ART = {
+  bookmark: `<rect x="-8" y="-15" width="16" height="30" rx="2" fill="#f6e3c8" stroke="#c98f6b" stroke-width="1.4"/>
+    <circle cx="0" cy="-10" r="2" fill="none" stroke="#c98f6b"/><path d="M-4 -2 h8 M-4 3 h6 M-4 8 h8" stroke="#8a7a6c" stroke-width="1.1"/>`,
+  points: `<rect x="-14" y="-10" width="28" height="20" rx="3" fill="#f6e3c8" stroke="#c98f6b" stroke-width="1.4"/>
+    ${[-8, -2, 4, 10].map((x) => `<circle cx="${x}" cy="-2" r="2.2" fill="#c98f6b"/>`).join('')}<path d="M-9 5 h18" stroke="#d8c6ad"/>`,
+  receipt: `<path d="M-10 -15 h20 v28 l-3.3 -3 l-3.3 3 l-3.4 -3 l-3.3 3 l-3.4 -3 l-3.3 3 Z" fill="#fffdf7" stroke="#a89e95" stroke-width="1.2"/>
+    <path d="M-6 -9 h12 M-6 -4 h9" stroke="#a89e95" stroke-width="1.1"/><ellipse cx="2" cy="4" rx="7" ry="3.4" fill="none" stroke="#c97f62" stroke-width="1.3"/>`,
+  invoice: `<path d="M-10 -15 h20 v28 l-3.3 -3 l-3.3 3 l-3.4 -3 l-3.3 3 l-3.4 -3 l-3.3 3 Z" fill="#fffdf7" stroke="#a89e95" stroke-width="1.2"/>
+    <path d="M-6 -9 h12 M-6 -4 h12 M-6 1 h7" stroke="#a89e95" stroke-width="1.1"/><rect x="-6" y="5" width="12" height="4" fill="#3d322c" opacity=".55"/>`,
+  timenote: `<rect x="-15" y="-9" width="30" height="18" fill="#fdf3c4" stroke="#d9b26f" stroke-width="1.2" transform="rotate(-6)"/>
+    <g transform="rotate(-6)"><circle cx="-8" cy="0" r="4" fill="none" stroke="#3d322c" stroke-width="1.1"/><path d="M-8 -2 v2 h2" stroke="#3d322c" fill="none"/>
+    <path d="M-2 0 h3" stroke="#3d322c"/><circle cx="8" cy="0" r="4" fill="none" stroke="#3d322c" stroke-width="1.1"/><path d="M8 -2 v2 h-2" stroke="#3d322c" fill="none"/></g>`,
+  sleeve: `<path d="M-5 -15 h10 l-2 30 h-6 Z" fill="#cfe3ee" stroke="#8fb3c9" stroke-width="1.2" opacity=".9"/>
+    <circle cx="-1" cy="2" r="1.3" fill="#8fb3c9"/><circle cx="2" cy="-6" r="1.1" fill="#8fb3c9"/>`,
+};
+
 export function itemSvg(id) {
-  if (id === 'ticket') {
-    return `<g class="thing"><rect x="-16" y="-11" width="32" height="22" rx="2" fill="#fffaf0" stroke="#8fb3c9" stroke-width="1.5"/>
-      <rect x="-12" y="-7" width="8" height="10" fill="#e2eedb"/><circle cx="8" cy="0" r="6" fill="none" stroke="#3d322c" stroke-width="1.4"/>
-      <path d="M8 -3 v3 l2 2" stroke="#3d322c" stroke-width="1.2" fill="none"/></g>`;
-  }
-  if (id === 'bill') {
-    return `<g class="thing"><rect x="-14" y="-12" width="28" height="24" fill="#f6f0dc" stroke="#c9a03a" stroke-width="1.5"/>
-      <path d="M-14 0 h28" stroke="#d8c6ad" stroke-dasharray="3 2"/><circle cx="7" cy="-5" r="4" fill="#e9c35a"/><line x1="-10" y1="6" x2="4" y2="6" stroke="#a89e95"/></g>`;
-  }
-  return `<g class="thing"><rect x="-11" y="-13" width="22" height="26" fill="#d2705f" stroke="#fff" stroke-width="2" stroke-dasharray="2 2"/>
-    <path d="M-6 4 l6 -10 l6 10 Z" fill="#fff"/></g>`;
+  return `<g class="thing">${ITEM_ART[id] ?? ''}</g>`;
 }

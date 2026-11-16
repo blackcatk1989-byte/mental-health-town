@@ -26,6 +26,7 @@ export function newSave(puzzleIds) {
     used: [], // 已成功的用卡互動
     rewards: [], // 已發放的獎勵紀錄（卡號），避免重複發獎
     flags: {},
+    side: {}, // 支線（隱藏角色）的進度
     practice: { thought: 0, present: 0 }, // 親手完成練習的次數
     puzzles: Object.fromEntries(puzzleIds.map((id) => [id, { place: {}, solved: false }])), // 謎題：已擺放的位置、是否解開
     area: 'plaza',

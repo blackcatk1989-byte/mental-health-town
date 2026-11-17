@@ -388,9 +388,46 @@ export function buildWorld(scene) {
     ground: { rosemary: { x: 34.6, z: 17.6 }, mint: { x: 33.2, z: 17.7 }, fern: { x: 33.9, z: 17.9 } },
   };
 
+  // ---- 西南角的窄巷：舊倉庫和木籬笆之間，盡頭有幾階通往倉庫後門的階梯 ----
+  // 隱藏角色小安坐在這裡。入口只有倉庫東側的窄巷（從北邊進去），從廣場、咖啡店、花園的主要步道上看不到；
+  // 南邊只有矮樹叢，鏡頭跟進來時不會被擋住。這裡不放任何提示或發光的東西。
+  add(flat(3.9, 1.9, C.alley, 2.45, 20.55, 0.013)); // 階梯前的小空地
+  add(flat(1.2, 4.2, C.alley, 3.8, 18.5, 0.013)); // 窄巷
+  add(box(2.7, 2.4, 2.0, C.shopC, 1.85, 1.2, 18.6)); // 舊倉庫
+  add(box(2.9, 0.14, 2.2, 0xd6c4ad, 1.85, 2.47, 18.6)); // 屋頂
+  add(box(0.9, 1.7, 0.08, C.woodDark, 1.6, 1.33, 19.62)); // 後門
+  add(box(1.05, 0.1, 0.12, C.woodDark, 1.6, 2.22, 19.64)); // 門框
+  add(box(0.7, 0.45, 0.06, C.window, 2.75, 1.6, 19.62, { shadow: false })); // 小窗
+  for (let i = 0; i < 3; i++) add(box(1.3, 0.16, 0.42, C.stone, 1.6, 0.08 + i * 0.16, 20.65 - i * 0.42)); // 階梯
+  boxes.push([0.4, 17.6, 3.2, 19.6]);
+  // 東側的木籬笆（擋住從咖啡店南邊看過來的視線，入口留在北邊）
+  const corner = [];
+  for (let z = 17.5; z <= 21.5; z += 0.5) corner.push([4.45, 0.45, z]);
+  add(instanced(new THREE.BoxGeometry(0.12, 0.9, 0.12), C.wood, corner));
+  add(box(0.06, 0.08, 4.0, C.wood, 4.45, 0.7, 19.5), box(0.06, 0.08, 4.0, C.wood, 4.45, 0.35, 19.5));
+  boxes.push([4.35, 17.4, 4.55, 21.6]);
+  deco(cyl(0.2, 0.17, 0.5, 0x8d8580, 0.8, 0.25, 21.1, 10)); // 牆角的小水桶
+  // 圍牆外往東北斜長的大樹：樹冠很高，從北邊遠處（例如手機直式螢幕走在巷道上）看過來會擋住階梯，
+  // 走進角落時鏡頭的視線從樹冠下面穿過，看得到坐在階梯上的人（位置與高度經過計算，修改前請重新確認）
+  const lean = new THREE.Group();
+  const trunkFrom = new THREE.Vector3(-0.3, 0, 23.5);
+  const trunkDir = new THREE.Vector3(1.3, 4.6, 23.0).sub(trunkFrom);
+  const trunk = new THREE.Mesh(new THREE.CylinderGeometry(0.16, 0.26, trunkDir.length(), 8), toon(C.trunk));
+  trunk.position.copy(trunkFrom).addScaledVector(trunkDir, 0.5);
+  trunk.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), trunkDir.clone().normalize());
+  trunk.castShadow = true;
+  lean.add(trunk);
+  for (const [x, y, z, r, col] of [[1.7, 5.4, 22.9, 1.2, C.leaf], [0.7, 5.8, 23.2, 0.96, C.leafDark], [2.4, 5.0, 23.3, 0.7, C.leaf]]) {
+    const leaf = new THREE.Mesh(new THREE.IcosahedronGeometry(r, 1), toon(col));
+    leaf.position.set(x, y, z);
+    leaf.castShadow = true;
+    lean.add(leaf);
+  }
+  add(lean);
+
   // ---- 樹 ----
   const trees = [
-    [35.0, 10.2, 1.4], [1.6, 20.4, 1.2],
+    [35.0, 10.2, 1.4], [5.4, 18.4, 1.1],
     [5.4, 20.8, 1.0], [11.8, 20.6, 1.1], [26.4, 20.6, 1.0], [35.0, 20.4, 1.2], [34.6, 1.6, 1.1], [26.0, 1.8, 0.9],
     [1.2, 12.4, 1.0], [12.4, 8.4, 0.8],
   ];
@@ -419,8 +456,8 @@ export function buildWorld(scene) {
     for (const [cx, cz, cr] of circles) if (Math.hypot(x - cx, z - cz) < r + cr) return true;
     return false;
   };
-  // 小巷：咖啡店東側、矮牆以西、巷口以北
-  const areaOf = (x, z = 99) => (x > 10.6 && x < 12.0 && z < 4.8 ? 'alley' : x < 11.8 ? 'cafe' : x > 24.6 ? 'garden' : 'plaza');
+  // 小巷（id 沿用 alley，舊存檔可直接讀）：西南角舊倉庫旁的窄巷與階梯前的空地。只給 x 時（麻糬帶路）只看東西向
+  const areaOf = (x, z = 0) => (x < 4.4 && z > 17.4 ? 'alley' : x < 11.8 ? 'cafe' : x > 24.6 ? 'garden' : 'plaza');
 
   return { width: WIDTH, height: HEIGHT, blocked, areaOf, visuals, details, anchors: { chimes, potSpots } };
 }

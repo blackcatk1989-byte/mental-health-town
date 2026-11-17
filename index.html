@@ -212,11 +212,16 @@
     .text-targets li { background: var(--paper); border: 2px solid var(--line); border-radius: 16px; padding: 10px 14px; }
     .text-targets small { margin-left: 8px; color: var(--ink-soft); }
 
-    #toasts { position: fixed; left: 50%; top: 84px; transform: translateX(-50%); z-index: 1000; display: grid; gap: 8px; width: min(440px, calc(100vw - 32px)); pointer-events: none; }
-    .toast { display: flex; align-items: center; gap: 10px; justify-content: space-between; background: rgba(79, 64, 56, .94); color: #fff;
-      border-radius: 14px; padding: 8px 14px; box-shadow: var(--shadow); transition: opacity .5s; pointer-events: auto; }
+    /* 提示訊息條：最多 5 行（src/ui.js）。只用畫面上方，下緣留給對話框、互動按鈕與手機搖桿；
+       螢幕太矮時，超出的舊訊息從上方被裁掉，新的一行永遠看得到 */
+    #toasts { position: fixed; left: 50%; top: 84px; transform: translateX(-50%); z-index: 1000; display: flex; flex-direction: column; justify-content: flex-end; gap: 8px;
+      width: min(440px, calc(100vw - 32px)); max-height: max(60px, calc(100dvh - 84px - 210px)); overflow: hidden; pointer-events: none; }
+    .toast { flex: none; display: flex; align-items: center; gap: 10px; justify-content: space-between; background: rgba(79, 64, 56, .94); color: #fff;
+      border-radius: 14px; padding: 8px 14px; box-shadow: var(--shadow); transition: opacity .45s; pointer-events: auto; animation: toast-in .3s ease-out; }
+    @keyframes toast-in { from { opacity: 0; translate: 0 -6px; } }
     .toast .btn { color: var(--ink); }
     .toast.out { opacity: 0; }
+    @media (max-height: 520px) { #toasts { top: 64px; max-height: max(60px, calc(100dvh - 64px - 150px)); } .toast { padding: 5px 12px; font-size: .9rem; } }
     .pickup-fly { position: fixed; left: 50%; top: 50%; width: 46px; height: 62px; border-radius: 8px; z-index: 1001; pointer-events: none;
       box-shadow: 0 0 20px #fff3c8; animation: fly .9s ease-in forwards; }
     @keyframes fly { to { left: calc(100% - 80px); top: 120px; transform: scale(.4); opacity: .2; } }
@@ -259,6 +264,70 @@
     .reduce-motion .lens.pop .lens-glass { animation: none; }
     .stage .zone.looking .zone-hit { stroke: #8a7a6c; stroke-width: 3; }
     .stage .look-badge { pointer-events: none; }
+    /* 許願池的留言面板 */
+    #wish textarea { width: 100%; box-sizing: border-box; font: inherit; border: 2px solid var(--line); border-radius: 12px; padding: 8px 10px; background: #fff; color: var(--ink); resize: vertical; min-height: 96px; }
+    #wish label { display: block; font-weight: 700; margin: 10px 0 4px; }
+    .wish-rules { margin: 6px 0; padding-left: 1.2em; font-size: .92rem; }
+    .wish-rules li { margin: 3px 0; }
+    .wish-thanks { font-size: 1.15rem; text-align: center; margin: 20px 0; }
+    #wish { overflow: auto; }
+    /* 謎題「失物招領箱的密碼鎖」：箱子、鎖頭與三個轉盤、旁邊的小筆記、桌子特寫、打開的箱子 */
+    .lock-layout { display: grid; grid-template-columns: minmax(0, 1fr) 170px; gap: 12px; align-items: start; margin: 8px 0; }
+    @media (max-width: 560px) { .lock-layout { grid-template-columns: 1fr; } }
+    .lockbox { text-align: center; }
+    .lockbox .crate { background: linear-gradient(#b68a62, #9d7454); border: 3px solid #8e6a4c; border-radius: 16px; padding: 18px 10px 14px; box-shadow: inset 0 -6px 0 rgba(0,0,0,.08); }
+    .padlock { display: inline-block; position: relative; }
+    .padlock .shackle { display: block; width: 120px; height: 70px; margin: 0 auto -6px; transition: translate .4s cubic-bezier(.34, 1.6, .64, 1); }
+    .padlock.pop .shackle { translate: 0 -22px; }
+    .padlock.wobble { animation: lock-wobble .5s ease-in-out; }
+    @keyframes lock-wobble { 20% { rotate: -5deg; } 45% { rotate: 4deg; } 70% { rotate: -2deg; } }
+    .lock-body { display: flex; gap: 10px; justify-content: center; background: linear-gradient(#e9c97a, #d6ab55); border: 3px solid #a87e32; border-radius: 18px; padding: 10px 12px; }
+    .dial { display: grid; justify-items: center; gap: 2px; background: #fff8e6; border: 2px solid #c99a3e; border-radius: 12px; padding: 6px 4px; min-width: 62px; transition: box-shadow .3s, border-color .3s; }
+    .dial.right { border-color: #6f9f78; box-shadow: 0 0 0 3px rgba(111, 159, 120, .35), 0 0 14px rgba(255, 236, 160, .95); }
+    .dial.shake { animation: dial-shake .45s ease-in-out; }
+    @keyframes dial-shake { 20%, 60% { translate: -4px 0; } 40%, 80% { translate: 4px 0; } }
+    .reduce-motion .dial.shake { outline: 3px dashed #c97f62; outline-offset: 2px; }
+    .dial-btn { border: 0; background: transparent; font-size: 1.1rem; color: #8a6a2c; min-width: 48px; min-height: 36px; cursor: pointer; border-radius: 8px; }
+    .dial-btn:hover, .dial-btn:focus-visible { background: rgba(201, 154, 62, .18); }
+    .dial-num { display: grid; justify-items: center; width: 48px; border-radius: 8px; background: #3d322c; color: #fff8e6; padding: 2px 0; cursor: ns-resize; touch-action: none; user-select: none; }
+    .dial-num .n { font-size: 1.8rem; font-weight: 700; line-height: 1.1; }
+    .dial-num .n-prev, .dial-num .n-next { font-size: .8rem; opacity: .45; line-height: 1; }
+    .dial.right .dial-num .n { color: #fff3b8; text-shadow: 0 0 8px rgba(255, 236, 160, .9); }
+    .dial-num.roll-up .n { animation: roll-up .18s ease-out; }
+    .dial-num.roll-down .n { animation: roll-down .18s ease-out; }
+    @keyframes roll-up { from { translate: 0 10px; opacity: .3; } }
+    @keyframes roll-down { from { translate: 0 -10px; opacity: .3; } }
+    .lock-note { font-size: .9rem; color: var(--ink-soft); margin: 8px 4px 0; }
+    .lock-notes { background: #fffdf2; border: 2px solid var(--line); border-radius: 14px; padding: 8px 10px; background-image: repeating-linear-gradient(transparent 0 25px, #ece2cf 25px 26px); }
+    .lock-notes h4 { margin: 0 0 6px; }
+    .note-row { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; margin: 6px 0; }
+    .note-name { font-size: .85rem; }
+    .note-icons { display: flex; gap: 4px; margin-left: auto; }
+    .note-icon { width: 34px; height: 34px; display: grid; place-items: center; border-radius: 8px; background: #fff; border: 1px solid #d8c6ad; position: relative; }
+    .note-icon.empty { border-style: dashed; background: transparent; }
+    .sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+    .table-head { display: flex; align-items: center; gap: 8px; margin: 4px 0; }
+    .stage.table-close .spot { cursor: pointer; }
+    .stage.table-close .spot:focus { outline: none; }
+    .stage.table-close .spot:hover .spot-hit, .stage.table-close .spot:focus .spot-hit { stroke: #c97f62; stroke-width: 3; stroke-dasharray: 6 5; }
+    .stage.table-close .spot-badge { transform-box: fill-box; transform-origin: 50% 50%; animation: mark-pulse 1.1s ease-in-out infinite alternate; }
+    .stage.table-close .spot.seen .spot-badge { animation: none; opacity: .35; }
+    .stage.table-close .spot.marked .spot-hit { stroke: #d98d45; stroke-width: 3; }
+    .box-open .lockbox.opened { position: relative; height: 70px; width: 200px; margin: 6px auto 4px; }
+    .box-open .lockbox.opened .crate { position: absolute; inset: 22px 0 0; padding: 0; }
+    .box-open .lockbox.opened .lid { position: absolute; left: -4px; right: -4px; top: 6px; height: 22px; background: #c79a6e; border: 3px solid #8e6a4c; border-radius: 10px;
+      transform-origin: 0 100%; rotate: -28deg; }
+    .box-open.animate .lid { animation: lid-open .9s cubic-bezier(.34, 1.4, .64, 1); }
+    @keyframes lid-open { from { rotate: 0deg; } }
+    .box-items { list-style: none; padding: 0; margin: 10px 0; display: grid; gap: 10px; }
+    .box-items li { display: flex; gap: 10px; align-items: flex-start; background: var(--paper); border: 2px solid var(--line); border-radius: 14px; padding: 8px 12px; }
+    .box-items li p { margin: 4px 0 0; }
+    .box-open.animate .box-items li { animation: item-in .5s calc(.9s + var(--i) * .45s) both ease-out; }
+    @keyframes item-in { from { opacity: 0; translate: 0 10px; } }
+    .item-art { flex: none; width: 52px; height: 52px; display: grid; place-items: center; background: #fff8e6; border-radius: 12px; border: 1px solid #e0cdb4; }
+    .text-dials { display: flex; flex-wrap: wrap; gap: 12px; margin: 8px 0; }
+    .text-dials label { display: grid; gap: 4px; font-size: .9rem; }
+    .text-dials select { font-size: 1.2rem; min-width: 70px; min-height: 44px; }
     /* 謎題「先別急著貼標籤」：貼紙、翹起飄回、新線索的記號、走回來的客人 */
     .stage.labels .sticker { cursor: grab; }
     .stage.labels .sticker:focus { outline: none; }
@@ -303,6 +372,26 @@
     @keyframes wiggle { 25% { rotate: -4deg; } 75% { rotate: 4deg; } }
     .stage .table-win, .stage .sigh-theme, .stage .sigh-dots { transition: opacity .5s; }
     .solved { text-align: left; }
+    /* 卡冊分兩區：理解卡、隱藏卡（金卡）。金色只是外觀與分類，不代表稀有度 */
+    .cardbook-section + .cardbook-section { margin-top: 18px; padding-top: 12px; border-top: 2px dashed var(--line); }
+    .section-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin: 4px 0 8px; }
+    .section-head .count { font-size: .85rem; font-weight: 400; background: var(--accent-soft); border-radius: 999px; padding: 1px 10px; }
+    .cardbook-section h4 { margin: 10px 0 6px; color: var(--ink-soft); }
+    .gold-label { display: inline-block; font-size: .78rem; font-weight: 700; color: #6e4f12; background: #f6e2a8; border: 1px solid #c99a3e; border-radius: 999px; padding: 0 8px; }
+    .card-tile.gold { position: relative; overflow: hidden; border: 3px solid #c99a3e; background: linear-gradient(160deg, #fff8e2, #fbeec6 55%, #fff6dc); box-shadow: 0 0 0 2px #f3dc9a inset; }
+    .card-tile.gold .gold-label { position: absolute; top: 8px; right: 8px; }
+    .card-tile.gold::after { content: ""; position: absolute; inset: -40%; background: linear-gradient(105deg, transparent 42%, rgba(255, 255, 255, .75) 50%, transparent 58%);
+      transform: translateX(-60%); animation: gold-sheen 3.6s ease-in-out infinite; pointer-events: none; }
+    @keyframes gold-sheen { 0%, 35% { transform: translateX(-60%); } 75%, 100% { transform: translateX(60%); } }
+    .reduce-motion .card-tile.gold::after { display: none; } /* 減少動畫：只留靜態的金色邊框 */
+    .card-detail.gold .art { border-radius: 14px; box-shadow: 0 0 0 3px #c99a3e, 0 0 0 6px #f3dc9a; }
+    .card-fly.gold .back { background: repeating-linear-gradient(45deg, #d6a94a 0 10px, #efd38a 10px 20px); box-shadow: 0 0 30px 10px rgba(255, 214, 120, .9); }
+    .card-fly.gold .front { border: 4px solid #c99a3e; box-shadow: 0 0 0 3px #f3dc9a inset, 0 10px 30px rgba(0,0,0,.25); }
+    .card-fly.gold .rays { background: repeating-conic-gradient(rgba(255, 214, 120, .55) 0 10deg, transparent 10deg 20deg) !important; }
+    .card-fly.gold .halo { background: radial-gradient(circle, rgba(255, 226, 150, .95), rgba(255, 214, 120, 0) 70%) !important; }
+    .card-fly.gold .sparks i { background: radial-gradient(circle, #fff 0 30%, #f0c048 60%, transparent 70%) !important; width: 13px; height: 13px; }
+    .card-fly.gold { background: rgba(84, 62, 24, .42); }
+    .card-fly.gold .got-label { color: #ffe9b0; text-shadow: 0 0 10px rgba(240, 192, 72, .9); }
     .card-tile.secret { align-items: center; justify-content: center; min-height: 120px; font-size: 2rem; color: #b9aea4; border-style: dashed; }
     .notice.puzzled { display: flex; gap: 10px; align-items: flex-start; }
     .emote-inline svg { width: 32px; height: 32px; flex: none; }
@@ -401,6 +490,7 @@
         <h2>開始之前</h2>
         <p><strong>這個遊戲不能診斷。</strong>遊戲裡的對話、選擇與收藏，不代表任何疾病、心理類型或風險判定；單一角色的經驗也不代表所有人。</p>
         <p>遊戲不會要你輸入姓名、病史或心情，進度只存在這個瀏覽器裡。需要現實協助時，右上角的「找支持」隨時可以打開。</p>
+        <p>唯一的例外是廣場的許願池：如果你寫下留言並按「送出」，留言文字和送出時間會傳給遊戲製作者（只有製作者看得到，不會公開，也不會回覆）。</p>
         <p class="fine">內容為衛教草案，尚未完成心理專業審閱。角色與故事均為虛構。</p>
       </div>
       <div id="home-message" class="notice hidden" role="status"></div>
@@ -489,6 +579,35 @@
 
   <!-- 「找支持」：獨立於遊戲程式，遊戲出錯時也能使用 -->
   <button type="button" id="support-button" class="btn" data-open-support aria-haspopup="dialog">找支持</button>
+  <dialog id="wish" aria-labelledby="wish-title">
+    <div class="panel-head"><h2 id="wish-title">許願池</h2><button type="button" id="wish-close" class="btn small">關閉</button></div>
+    <div class="panel-body">
+      <p id="wish-coin-line" class="hidden">你丟出一枚硬幣，噗通一聲落進池裡，水面泛起一圈一圈的漣漪。</p>
+      <div id="wish-form">
+        <p>願望可以只放在心裡，也可以寫下來，留給做這個遊戲的人。</p>
+        <ul class="wish-rules">
+          <li>留言會傳送給遊戲製作者，用來改進遊戲；只有製作者看得到，不會公開。</li>
+          <li>這裡不是求助管道：製作者不會即時看到，也不會回覆。</li>
+          <li>請不要寫下姓名、聯絡方式或個人隱私。</li>
+        </ul>
+        <p><button type="button" class="btn" data-open-support>現在想找人談談</button></p>
+        <p id="wish-off" class="notice hidden">留言功能還在準備中，這次先許願就好。</p>
+        <div id="wish-write">
+          <label for="wish-text">想對製作者說的話（可以不寫）</label>
+          <textarea id="wish-text" maxlength="200" rows="4" autocomplete="off" spellcheck="false"></textarea>
+          <p id="wish-count" class="fine" aria-live="polite">還可以寫 200 字</p>
+          <p id="wish-fake" class="fine hidden">（本機測試：目前接的是假的收件端，留言不會送出去。）</p>
+        </div>
+        <p id="wish-status" class="fine" role="status"></p>
+        <div class="row-actions"><button type="button" id="wish-skip" class="btn">只許願，不留言</button><button type="button" id="wish-send" class="btn primary">送出</button></div>
+      </div>
+      <div id="wish-done" class="hidden" role="status">
+        <p class="wish-thanks">願望收到了，謝謝你告訴我們。</p>
+        <div class="row-actions"><button type="button" id="wish-ok" class="btn primary">好</button></div>
+      </div>
+    </div>
+  </dialog>
+
   <dialog id="support" aria-labelledby="support-title">
     <div class="panel-head"><h2 id="support-title">找支持</h2><button type="button" id="support-close" class="btn small">關閉</button></div>
     <div class="panel-body" id="support-body">

@@ -75,6 +75,15 @@ const SOUNDS = {
   // 卡片旋轉放大：一串往上爬的輕柔音
   spin: (a) => [392, 440, 523, 587, 659, 784].forEach((f, i) => tone(a, f, { dur: 0.18, vol: 0.02, type: 'triangle', at: i * 0.17 })),
   card: (a) => [784, 988, 1175, 1568].forEach((f, i) => tone(a, f, { dur: 0.6, vol: 0.03, at: i * 0.07 })),
+  // 許願池：硬幣叮一聲，落水噗通
+  coin: (a) => { tone(a, 1976, { dur: 0.18, vol: 0.02, type: 'triangle' }); tone(a, 2637, { dur: 0.12, vol: 0.012, at: 0.04 }); noise(a, { dur: 0.16, vol: 0.05, freq: 500, q: 1.2, at: 0.62 }); },
+  // 密碼鎖：撥一格的輕響、撥對一格的卡榫聲、拉不開的悶響、彈開的聲音
+  tick: (a) => noise(a, { dur: 0.025, vol: 0.03, freq: 2600, q: 2 }),
+  latch: (a) => { noise(a, { dur: 0.04, vol: 0.05, freq: 1500, q: 3 }); tone(a, 1175, { dur: 0.12, vol: 0.02, type: 'triangle', at: 0.03 }); },
+  stuck: (a) => { noise(a, { dur: 0.12, vol: 0.06, freq: 260, q: 1.2 }); tone(a, 110, { dur: 0.16, vol: 0.03, type: 'square', at: 0.02 }); noise(a, { dur: 0.08, vol: 0.04, freq: 320, q: 1.2, at: 0.13 }); },
+  unlock: (a) => { noise(a, { dur: 0.06, vol: 0.06, freq: 1800, q: 2 }); [523, 659, 784, 1047].forEach((f, i) => tone(a, f, { dur: 0.45, vol: 0.03, at: 0.12 + i * 0.08 })); },
+  // 取得金卡（隱藏卡）：比一般卡片長一點、像鈴鐺一樣往上灑的和弦
+  gold: (a) => [659, 784, 988, 1319, 1568, 1976].forEach((f, i) => { tone(a, f, { dur: 0.9, vol: 0.026, at: i * 0.09 }); tone(a, f * 2, { dur: 0.5, vol: 0.008, type: 'triangle', at: i * 0.09 + 0.02 }); }),
   flip: (a) => noise(a, { dur: 0.12, vol: 0.03, freq: 2400, q: 0.6 }),
   quest: (a) => { tone(a, 659, { dur: 0.25, vol: 0.03 }); tone(a, 988, { dur: 0.4, vol: 0.03, at: 0.1 }); },
   wonder: (a) => tone(a, 523, { dur: 0.3, vol: 0.025, type: 'triangle', slide: 1.25 }),

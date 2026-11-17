@@ -321,17 +321,29 @@ export function buildWorld(scene) {
     c.rotation.y = r;
     add(c);
   }
-  // 三張桌子上留下的東西看起來很像（謎題「先別急著貼標籤」）：一杯放涼的咖啡、一團揉皺的紙巾
-  for (const [x, z] of [[2.4, 7.2], [5.0, 6.6], [7.8, 7.2]]) {
-    add(cyl(0.06, 0.045, 0.1, C.paper, x - 0.14, 0.82, z + 0.05, 10), cyl(0.05, 0.05, 0.01, 0xb08a68, x - 0.14, 0.872, z + 0.05, 10));
-    const tissue = new THREE.Mesh(new THREE.IcosahedronGeometry(0.06, 0), toon(0xfffdf7));
-    tissue.position.set(x + 0.16, 0.82, z - 0.06);
-    tissue.castShadow = true;
-    add(tissue);
+  // 三張桌子上留下的東西（謎題「失物招領箱的密碼鎖」的表面數字）：靠窗 3 團紙、中間 2 個杯子、門口 1 顆小球。
+  // 要多看一眼才知道的東西（桌下的紙袋、椅子上的紙袋）也擺出來，但看不出裡面裝了什麼；門口那桌椅子下的第二顆球不擺
+  const paperGeo = new THREE.IcosahedronGeometry(0.09, 0);
+  for (const [x, z] of [[2.25, 7.1], [2.5, 7.0], [2.4, 7.35]]) {
+    const ball = new THREE.Mesh(paperGeo, toon(0xe2d6c2)); // 比桌面暗一點，看得出來
+    ball.position.set(x, 0.83, z);
+    ball.castShadow = true;
+    add(ball);
   }
-  // 收桌托盤（謎題入口）
-  add(box(0.7, 0.75, 0.45, C.woodDark, 9.6, 0.38, 8.0), box(0.6, 0.03, 0.4, 0x9d7b5c, 9.6, 0.78, 8.0));
-  boxes.push([9.25, 7.75, 9.95, 8.25]);
+  add(box(0.32, 0.26, 0.2, 0xd9b98f, 2.75, 0.13, 7.55)); // 靠窗那桌：桌下的紙袋
+  for (const [x, z] of [[4.85, 6.55], [5.15, 6.7]]) add(cyl(0.06, 0.045, 0.11, C.paper, x, 0.825, z, 10));
+  add(box(0.3, 0.24, 0.2, 0xd9b98f, 5.0, 0.6, 7.4)); // 中間那桌：椅子上的紙袋
+  const toyBall = new THREE.Mesh(new THREE.SphereGeometry(0.07, 12, 8), toon(0xf0a59a));
+  toyBall.position.set(7.8, 0.84, 7.15);
+  toyBall.castShadow = true;
+  add(toyBall);
+  // 失物招領箱（謎題入口）：木箱、上面掛著一個金色的密碼鎖
+  add(box(0.8, 0.62, 0.55, C.wood, 9.9, 0.31, 8.6), box(0.86, 0.08, 0.6, C.woodDark, 9.9, 0.66, 8.6));
+  add(box(0.22, 0.18, 0.06, 0xd6ab55, 9.9, 0.5, 8.9), box(0.5, 0.3, 0.02, C.paper, 9.9, 0.3, 8.88, { shadow: false }));
+  const shackle = new THREE.Mesh(new THREE.TorusGeometry(0.06, 0.014, 6, 12, Math.PI), toon(0xa89e95));
+  shackle.position.set(9.9, 0.59, 8.9);
+  add(shackle);
+  boxes.push([9.45, 8.3, 10.35, 8.95]);
   // 活動便條
   const note = box(0.3, 0.01, 0.22, C.paper, 8.0, 0.78, 9.85, { shadow: false });
   note.rotation.y = 0.3;

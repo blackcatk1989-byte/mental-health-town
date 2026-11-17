@@ -109,27 +109,37 @@ async function playPresent(page) {
 
 // 謎題：直接操作。插畫版「點東西 → 點位置」；drag 為 true 時用滑鼠拖曳；文字模式按「放到……」
 const E01 = { rosemary: 'sun', mint: 'wet', fern: 'shade' };
-// 謎題「先別急著貼標籤」：把貼紙貼到桌上（文字模式按清單的按鈕；插畫版點貼紙再點桌子）
-async function stick(page, table, sticker, { tap = false } = {}) {
+// 謎題「失物招領箱的密碼鎖」（E02）：密碼 5-4-2，三個表面數字 3-2-1 打不開
+const CODE = [5, 4, 2];
+const SURFACE = [3, 2, 1];
+const SPOTS = { t1: ['t1a', 't1b'], t2: ['t2a', 't2b'], t3: ['t3a', 't3b'] };
+// 打開一張桌子的特寫，查看指定的地方（文字模式按清單的按鈕；插畫版點桌面上的放大鏡）
+async function lookAt(page, table, spots) {
+  await page.evaluate((t) => { const d = document.getElementById('puzzle'); if (d.open) d.close(); window.__xzj.game.openPuzzle('E02', t); }, table);
   await page.waitForSelector('#puzzle[open]');
-  if (await page.$('#puzzle-body .puzzle-items')) {
-    await page.click(`#puzzle-body [data-table="${table}"][data-sticker="${sticker}"]`);
-    return;
+  for (const sp of spots) {
+    const text = await page.$('#puzzle-body .text-list');
+    await page.click(text ? `#puzzle-body [data-spot="${sp}"]` : `#puzzle .spot[data-spot="${sp}"] .spot-hit`, { force: true });
   }
-  const st = page.locator(`#puzzle .sticker[data-sticker="${sticker}"]`);
-  const zone = page.locator(`#puzzle .zone[data-slot="${table}"] .zone-hit`);
-  if (tap) { await st.tap({ force: true }); await zone.tap({ force: true }); } else { await st.click({ force: true }); await zone.click({ force: true }); }
 }
-// 貼上圖示貼紙後等新線索出現，再點桌子查看；等貼紙飄回手上
-async function stickAndLook(page, table, sticker) {
-  await stick(page, table, sticker);
-  await page.waitForSelector(`#puzzle .zone[data-slot="${table}"].has-new`, { timeout: 10000 });
-  await page.locator(`#puzzle .zone[data-slot="${table}"] .zone-hit`).click({ force: true });
-  const text = await caption(page);
-  await page.waitForFunction((t) => !document.querySelector(`#puzzle .zone[data-slot="${t}"] .stuck`), table, { timeout: 10000 });
-  return text;
+// 打開密碼鎖，撥到指定的數字，拉拉看；回傳說明文字
+async function tryCode(page, digits, { tap = false } = {}) {
+  await page.evaluate(() => { const d = document.getElementById('puzzle'); if (d.open) d.close(); window.__xzj.game.openPuzzle('E02'); });
+  await page.waitForSelector('#puzzle[open]');
+  if (await page.$('#puzzle-body select')) {
+    for (const [i, n] of digits.entries()) await page.selectOption(`#puzzle-body select[data-i="${i}"]`, String(n));
+    await page.click('#puzzle-body [data-try]');
+    return page.innerText('#puzzle-body .notice, #puzzle-body .box-items').catch(() => '');
+  }
+  for (const [i, n] of digits.entries()) {
+    const now = await page.evaluate((k) => window.__xzj.game.lockState('E02').dial[k], i);
+    const steps = (n - now + 10) % 10;
+    const btn = page.locator(`#puzzle .dial[data-i="${i}"] [data-step="1"]`);
+    for (let k = 0; k < steps; k++) { if (tap) await btn.tap(); else await btn.click(); }
+  }
+  await page.click('#puzzle-body [data-try]');
+  return caption(page);
 }
-const tableDone = (page, table) => page.waitForFunction((t) => window.__xzj.game.labelTable('E02', t).done && /走回來/.test(document.querySelector('#puzzle-body .caption')?.textContent ?? ''), table, { timeout: 15000 });
 async function place(page, item, slot, { drag = false, tap = false } = {}) {
   await page.waitForSelector('#puzzle[open]');
   if (await page.$('#puzzle-body .text-list')) {
@@ -242,43 +252,43 @@ async function sectionV43() {
     const cls = await page.evaluate(() => document.body.classList.contains('reduce-motion'));
     check('動畫預設開啟（系統設定「減少動態效果」時也是）', !cls && partial < full, `${partial} → ${full} 字`);
     await talkThrough(page, ['先去咖啡店']);
-    // 謎題「先別急著貼標籤」：圖示貼紙會被新線索推翻；貼問號或看完線索，主人回來自己說
+    // 謎題「失物招領箱的密碼鎖」：表面數字打不開；只有不對的格子會抖；看過的線索記在小筆記上
     await page.evaluate(() => { document.body.dataset.mode = '3d'; }); // 用插畫版
-    await page.evaluate(() => window.__xzj.game.openPuzzle('E02'));
-    await page.waitForSelector('#puzzle[open] svg.stage');
-    const stageText = await page.evaluate(() => document.querySelector('#puzzle svg.stage').textContent.trim());
-    check('E02 的貼紙只有圖、沒有字；共五張（四張圖示加一張空白問號）', stageText === '' && (await page.locator('#puzzle .sticker').count()) === 5, stageText);
-    const c1 = await stickAndLook(page, 't1', 'tired');
-    check('E02 貼上圖示貼紙後出現新線索；查看後貼紙翹起飄回，不出現對錯字樣', /未接來電/.test(c1) && /飄回/.test(c1) && !NO_JUDGE.test(c1), c1);
-    const c2 = await stickAndLook(page, 't1', 'sad');
-    await tableDone(page, 't1');
-    const owner1 = await caption(page);
-    const cupGone = await page.evaluate(() => document.querySelector('#puzzle .zone[data-slot="t1"] .cup').getAttribute('opacity') === '0');
-    check('E02 看完一張桌子的所有線索：主人回來自己說原因，杯子被收走', /歡迎回來/.test(c2) && /接她/.test(owner1) && cupGone && !NO_JUDGE.test(owner1), owner1);
-    await stick(page, 't2', 'ask');
-    await tableDone(page, 't2');
-    check('E02 貼上空白問號：不用看線索，主人就回來自己說', /生日卡/.test(await caption(page)));
-    const mid = (await state(page)).puzzles.E02;
-    check('E02 的存檔只記每張桌子看到第幾層，不記貼過哪些貼紙', Object.keys(mid).sort().join() === 'place,solved,tables' && Object.values(mid.tables).every((t) => Object.keys(t).sort().join() === 'done,layer,seen'), JSON.stringify(mid));
+    const surface = await tryCode(page, SURFACE);
+    const shaken = await page.evaluate(() => [...document.querySelectorAll('#puzzle .dial.shake')].map((d) => d.dataset.i).join());
+    check('E02 用三個表面數字打不開，出現「好像不只是看到的那樣」，不出現對錯字樣', /拉不開/.test(surface) && /好像不只是看到的那樣/.test(surface) && !NO_JUDGE.test(surface) && shaken === '0,1,2', surface);
+    const oneOff = await tryCode(page, [5, 4, 1]);
+    const shaken1 = await page.evaluate(() => [...document.querySelectorAll('#puzzle .dial.shake')].map((d) => d.dataset.i).join());
+    const lit = await page.evaluate(() => [...document.querySelectorAll('#puzzle .dial.right')].map((d) => d.dataset.i).join());
+    check('E02 只錯一格：只有那一格會抖，撥對的兩格會亮', /拉不開/.test(oneOff) && shaken1 === '2' && lit === '0,1', `${shaken1}｜${lit}`);
+    await lookAt(page, 't1', ['t1a']);
+    const lensT1 = await page.innerText('#puzzle-body .lens');
+    check('E02 查看桌上的東西：放大鏡說明真正的樣子', /生日快樂/.test(lensT1) && !NO_JUDGE.test(lensT1), lensT1);
     await page.click('#puzzle .panel-head button:last-child');
     await settle(page);
     await page.evaluate(() => window.__xzj.game.openPuzzle('E02'));
-    await page.waitForSelector('#puzzle[open] svg.stage');
-    check('E02 中途離開再回來，完成的桌子仍然保留', await page.evaluate(() => ['t1', 't2'].every((t) => document.querySelector(`#puzzle .zone[data-slot="${t}"]`).classList.contains('done'))));
-    await stick(page, 't3', 'ask');
-    await page.waitForSelector('#puzzle-body .solved', { timeout: 20000 });
+    await page.waitForSelector('#puzzle[open] .lock-body');
+    const kept = await page.evaluate(() => ({ dial: window.__xzj.game.lockState('E02').dial.join(), notes: document.querySelectorAll('#puzzle .note-icon:not(.empty)').length }));
+    check('E02 中途離開再回來：撥好的數字保留，看過的線索記在小筆記上', kept.dial === '5,4,1' && kept.notes === 1, JSON.stringify(kept));
+    const opened = await tryCode(page, CODE);
+    await page.waitForSelector('#puzzle-body .box-items', { timeout: 10000 });
+    const boxText = await page.innerText('#puzzle-body .box-items');
+    check('E02 全部正確：鎖彈開、箱子裡有三位客人的物品與他們說的話', /鎖彈開/.test(opened) && /生日卡/.test(boxText) && /火車/.test(boxText) && /鴿子/.test(boxText), boxText);
+    await page.click('#puzzle-body [data-done]');
     const solvedE02 = await page.innerText('#puzzle-body .solved');
-    check('三張桌子都完成後取得 E02，說明「可以問，也可以等對方說」', (await state(page)).puzzles.E02.solved && (await state(page)).cards.includes('E02') && /可以問，也可以等對方說/.test(solvedE02) && !NO_JUDGE.test(solvedE02), solvedE02);
+    const saved = (await state(page)).puzzles.E02;
+    check('看完箱子裡的東西才取得 E02，說明「可以問，也可以等對方說」', saved.solved && (await state(page)).cards.includes('E02') && /可以問，也可以等對方說/.test(solvedE02), solvedE02);
+    check('E02 的存檔只記看過的線索、撥到的數字、是否開鎖', Object.keys(saved).sort().join() === 'dial,opened,place,seen,solved', JSON.stringify(saved));
     // 重玩：不重複發卡
     await page.click('#puzzle-body [data-replay]');
-    await page.waitForSelector('#puzzle[open] svg.stage');
-    await page.evaluate(() => { for (const t of ['t1', 't2', 't3']) window.__xzj.game.stickLabel('E02', t, 'ask'); });
+    await page.waitForSelector('#puzzle-body .lock-body');
+    await page.evaluate(() => { const g = window.__xzj.game; [5, 4, 2].forEach((n, i) => g.setDial('E02', i, n)); g.tryLock('E02'); g.finishLock('E02'); });
     const again = await state(page);
     check('E02 可以重玩，不會重複發卡', again.cards.filter((c) => c === 'E02').length === 1 && again.rewards.filter((c) => c === 'E02').length === 1 && again.puzzles.E02.solved);
-    // 用舊玩法取得 E02 的存檔：卡片保留，可以重玩
-    await page.evaluate(() => { const g = window.__xzj.game; g.store.mutate((d) => { d.puzzles.E02 = { place: { bookmark: 't1', receipt: 't2', timenote: 't3' }, solved: true }; }); g.repair(); });
+    // 用前一版謎題取得 E02 的存檔：卡片保留，可以重玩
+    await page.evaluate(() => { const g = window.__xzj.game; g.store.mutate((d) => { d.puzzles.E02 = { place: { bookmark: 't1' }, solved: true, tables: { t1: { layer: 2, seen: 2, done: true } } }; }); g.repair(); });
     const oldSave = await state(page);
-    check('舊玩法取得 E02 的存檔：卡片保留，舊的擺放紀錄清掉', oldSave.cards.includes('E02') && oldSave.puzzles.E02.solved && Object.keys(oldSave.puzzles.E02.place).length === 0, JSON.stringify(oldSave.puzzles.E02));
+    check('舊版謎題取得 E02 的存檔：卡片保留，舊的紀錄清掉', oldSave.cards.includes('E02') && oldSave.puzzles.E02.solved && !oldSave.puzzles.E02.tables && Object.keys(oldSave.puzzles.E02.place).length === 0, JSON.stringify(oldSave.puzzles.E02));
     await browser.close();
   }
 
@@ -521,15 +531,12 @@ async function main() {
 
     // 文字模式的謎題：兩題各故意放錯三次再完成
     await text.go(page, 'cafe');
-    await text.act(page, 'tables');
-    await stick(page, 't1', 'tired');
-    const tx1 = await caption(page);
-    await stick(page, 't1', 'angry');
-    const tx2 = await caption(page);
-    check('文字模式 E02：貼上貼紙後描述新線索與貼紙翹起；看完線索主人回來，不出現對錯字樣', /未接來電/.test(tx1) && /飄回/.test(tx1) && /走回來/.test(tx2) && !NO_JUDGE.test(tx1 + tx2), tx1);
-    await stick(page, 't2', 'ask');
-    await stick(page, 't3', 'ask');
-    await page.click('#puzzle-body [data-next]');
+    await lookAt(page, 't2', SPOTS.t2);
+    const tableText = await page.innerText('#puzzle-body .text-list');
+    const tx1 = await tryCode(page, [3, 2, 1]);
+    check('文字模式 E02：查看桌子的文字描述；拉不開時說明哪一格不對，不出現對錯字樣', /火車誤點/.test(tableText) && /第一格/.test(tx1) && /好像不只是看到的那樣/.test(tx1) && !NO_JUDGE.test(tx1.replace(/不對/g, '')), tx1);
+    await tryCode(page, CODE);
+    await page.click('#puzzle-body [data-done]');
     const solvedText = await page.innerText('#puzzle-body');
     check('文字模式完成 E02，說明「可以問，也可以等對方說」', /可以問，也可以等對方說/.test(solvedText) && (await state(page)).cards.includes('E02'));
     await page.click('#puzzle-body [data-close]');
@@ -682,7 +689,7 @@ async function main() {
       `麻糬 (${catPos0.x.toFixed(1)},${catPos0.z.toFixed(1)}) → (${catPos1.x.toFixed(1)},${catPos1.z.toFixed(1)})，目的地在三盆植物旁`);
     await page.evaluate(() => window.__xzj.ui.hints());
     const next = await page.evaluate(() => window.__xzj.view().catGuide);
-    const tables = await page.evaluate(() => window.__xzj.game.target('tables'));
+    const tables = await page.evaluate(() => window.__xzj.game.target('table1'));
     check('再問一次麻糬：換到下一個地方（咖啡店外的謎題）', next && Math.hypot(next.x - tables.x, next.z - tables.z) < 1.2);
 
     // 謎題 E01（插畫版）：故意放錯三次（一次用拖曳），中途離開、重整後位置仍在，再全部放對
@@ -718,20 +725,25 @@ async function main() {
     check('E01 重新打開時植物仍保留反應；三盆都合適才取得卡片，說明「需要不同，沒有哪個比較好」', /r-droop/.test(restored) && bloomed && /需要不同，沒有哪個比較好/.test(e01) && (await state(page)).cards.includes('E01'));
     await page.screenshot({ path: `${OUT}/3d-pots-solved.png` });
 
-    // 謎題 E02（插畫版）：一張桌子看完線索，另外兩張貼問號
-    await go('tables', 0, 0.6);
+    // 謎題 E02（插畫版）：麻糬的三層提示，走到桌子旁查看，再去開鎖
+    const hints = await page.evaluate(() => { const g = window.__xzj.game; const out = []; for (let i = 0; i < 8 && out.length < 3; i++) { const r = g.catHint(); if (r.target?.id === 'table1') out.push({ text: r.text, at: !!r.at }); } return { out, mark: g.lockMark }; });
+    check('麻糬對密碼鎖的三層提示：走到桌子 → 坐到還沒看的地方旁 → 直接標出那個地方', hints.out.length === 3 && !hints.out[0].at && hints.out[1].at && /打開紙團/.test(hints.out[1].text) && /拍了拍/.test(hints.out[2].text) && hints.mark === 't1a', JSON.stringify(hints));
+    await go('table1', 0, 0.9);
     await pressE();
-    await page.waitForSelector('#puzzle[open] svg.stage');
-    await stickAndLook(page, 't1', 'angry');
-    await stickAndLook(page, 't1', 'sick');
-    await tableDone(page, 't1');
-    const cupTaken = await page.evaluate(() => document.querySelector('#puzzle .zone[data-slot="t1"] .cup').getAttribute('opacity') === '0');
-    await stick(page, 't2', 'ask');
-    await tableDone(page, 't2');
-    await stick(page, 't3', 'ask');
-    await page.waitForSelector('#puzzle-body .solved', { timeout: 20000 });
+    await page.waitForSelector('#puzzle[open] .stage.table-close');
+    const pawShown = await page.evaluate(() => !!document.querySelector('#puzzle .spot.marked .paw'));
+    check('第三層提示：桌子特寫上標出麻糬拍過的地方', pawShown);
+    for (const sp of SPOTS.t1) await page.click(`#puzzle .spot[data-spot="${sp}"] .spot-hit`, { force: true });
+    await page.click('#puzzle .panel-head button:last-child');
+    await settle(page);
+    await go('lockbox', 0, 0.7);
+    await pressE();
+    await page.waitForSelector('#puzzle[open] .lock-body');
+    await tryCode(page, CODE);
+    await page.waitForSelector('#puzzle-body .box-items', { timeout: 10000 });
+    await page.click('#puzzle-body [data-done]');
+    await page.waitForSelector('#puzzle-body .solved');
     await page.click('#puzzle-body [data-close]');
-    check('E02 主人回來後桌上的杯子被收走', cupTaken);
     s = await state(page);
     check('謎題 E02 在 3D 解開', s.puzzles.E02.solved && s.cards.includes('E02'));
     await reloadContinue(page);
@@ -856,13 +868,13 @@ async function main() {
     await talkThrough(page, ['先去咖啡店']);
     // 手機上的謎題面板
     await page.evaluate(() => {
-      const t = window.__xzj.game.target('tables');
+      const t = window.__xzj.game.target('lockbox');
       window.__xzj.view().teleport(t.x, t.z + 0.6);
     });
-    await page.waitForFunction(() => document.getElementById('interact-name').textContent === '還沒收的三張桌子', null, { timeout: 30000 });
+    await page.waitForFunction(() => document.getElementById('interact-name').textContent === '失物招領箱', null, { timeout: 30000 });
     await page.tap('#interact-go');
     await page.waitForSelector('#puzzle[open]');
-    await stick(page, 't1', 'tired', { tap: true });
+    await page.locator('#puzzle .dial[data-i="0"] [data-step="1"]').tap();
     await page.screenshot({ path: `${OUT}/mobile-puzzle.png` });
     const p2 = await page.evaluate(() => window.__xzj.view().position);
     await page.mouse.move(cx, cy);
@@ -871,8 +883,74 @@ async function main() {
     await page.waitForTimeout(800);
     await page.mouse.up();
     const p3 = await page.evaluate(() => window.__xzj.view().position);
-    check('手機用點選操作謎題；面板開啟時角色不會誤走動', (await state(page)).puzzles.E02.tables?.t1?.layer === 2 && Math.abs(p3.z - p2.z) < 0.01);
+    check('手機用點選操作謎題；面板開啟時角色不會誤走動', (await state(page)).puzzles.E02.dial?.[0] === 1 && Math.abs(p3.z - p2.z) < 0.01);
     check('手機流程無錯誤', errors.length === 0, errors.join(' | '));
+    await browser.close();
+  }
+  {
+    // 金卡與卡冊分區、提示訊息條上限、許願池留言（本機用假的收件端）
+    const { browser, page, errors } = await launch();
+    await newGame(page, '#home-text');
+    const book = await page.evaluate(() => {
+      const x = window.__xzj;
+      const read = () => ({
+        heads: [...document.querySelectorAll('#cardbook-body .section-head')].map((h) => h.innerText.replace(/\s+/g, ' ')),
+        secret: document.querySelectorAll('#cardbook-body .hidden-cards .card-tile.secret').length,
+        gold: [...document.querySelectorAll('#cardbook-body .card-tile.gold')].map((g) => g.innerText),
+      });
+      x.ui.openCardbook();
+      const before = read();
+      document.getElementById('cardbook').close();
+      x.game.store.mutate((s) => { s.cards.push('H01'); });
+      x.game.changed();
+      x.ui.openCardbook();
+      const after = read();
+      document.getElementById('cardbook').close();
+      return { before, after, hud: document.getElementById('cardbook-count').textContent };
+    });
+    check('卡冊分成理解卡與隱藏卡兩區，進度分開；取得前隱藏卡只是「？」、不是金色', book.before.heads.join('｜') === '理解卡 0/6｜隱藏卡 0/1' && book.before.secret === 1 && book.before.gold.length === 0, JSON.stringify(book.before));
+    check('已有 H01 的存檔：直接顯示為金卡、以「金卡」文字標示；卡冊按鈕的進度不算隱藏卡', book.after.gold.length === 1 && /金卡/.test(book.after.gold[0]) && book.after.heads[1] === '隱藏卡 1/1' && book.hud === '0/6', JSON.stringify(book));
+    const toasts = await page.evaluate(async () => {
+      for (let i = 1; i <= 8; i++) window.__xzj.ui.toast(`訊息 ${i}`, { ms: 8000 });
+      await new Promise((r) => setTimeout(r, 900));
+      return [...document.querySelectorAll('#toasts .toast')].map((e) => e.innerText);
+    });
+    check('連續 8 則提示訊息：畫面上最多 5 行，最舊的先消失', toasts.length === 5 && toasts[0] === '訊息 4' && toasts[4] === '訊息 8', toasts.join('、'));
+    // 許願池（文字模式在廣場的地點清單裡）
+    await text.act(page, 'wishpool');
+    await page.waitForSelector('#wish[open]');
+    const panel = await page.innerText('#wish');
+    check('許願池：文字模式以一行描述丟硬幣；面板寫明只有製作者看得到、不是求助管道、不要寫個資', /丟出一枚硬幣/.test(panel) && /只有製作者看得到/.test(panel) && /不是求助管道/.test(panel) && /不要寫下姓名/.test(panel), panel);
+    check('許願池：空白不能送出', await page.isDisabled('#wish-send'));
+    await page.fill('#wish-text', '   ');
+    check('許願池：只有空白也不能送出', await page.isDisabled('#wish-send'));
+    await page.fill('#wish-text', '字'.repeat(250));
+    check('許願池：最多 200 字，顯示剩餘字數', (await page.inputValue('#wish-text')).length === 200 && /還可以寫 0 字/.test(await page.innerText('#wish-count')));
+    await page.click('#wish [data-open-support]');
+    check('許願池：「現在想找人談談」打開找支持', await page.isVisible('#support[open]'));
+    await page.click('#support-close');
+    await page.context().setOffline(true);
+    await page.fill('#wish-text', '希望麻糬多一點動作');
+    await page.click('#wish-send');
+    await page.waitForFunction(() => /沒有送成功/.test(document.getElementById('wish-status').textContent), null, { timeout: 10000 });
+    check('許願池：斷網時送不出去，保留文字，不影響遊戲', (await page.inputValue('#wish-text')) === '希望麻糬多一點動作');
+    await page.context().setOffline(false);
+    await page.click('#wish-send');
+    await page.waitForSelector('#wish-done:not(.hidden)', { timeout: 10000 });
+    check('許願池：送出成功顯示「願望收到了，謝謝你告訴我們」', /願望收到了，謝謝你告訴我們/.test(await page.innerText('#wish-done')));
+    const sent = await page.evaluate(() => JSON.parse(localStorage.getItem('xinzhijian.wish.fake') || '[]'));
+    check('許願池：只送出留言文字（假的收件端只收到文字與時間）', sent.length === 1 && Object.keys(sent[0]).sort().join() === 'created_at,id,is_read,message' && sent[0].message === '希望麻糬多一點動作', JSON.stringify(sent));
+    await page.click('#wish-ok');
+    await text.act(page, 'wishpool');
+    await page.waitForSelector('#wish[open]');
+    await page.fill('#wish-text', '再一則');
+    await page.click('#wish-send');
+    check('許願池：30 秒內再送會請玩家稍等，文字保留', /秒後可以再送/.test(await page.innerText('#wish-status')) && (await page.inputValue('#wish-text')) === '再一則');
+    await page.click('#wish-skip');
+    check('許願池：「只許願，不留言」直接關閉', !(await page.isVisible('#wish[open]')));
+    const progress = await page.evaluate(() => JSON.stringify(window.__xzj.store.data));
+    check('許願池：硬幣與留言都不寫進遊戲進度', !/wish|coin|希望麻糬/.test(progress));
+    check('金卡、訊息條、許願池流程無錯誤', errors.length === 0, errors.join(' | '));
     await browser.close();
   }
 
@@ -986,7 +1064,7 @@ async function main() {
       const tagFar = v.tagShown('xiaoan');
       return { lines, name, board, canopy, tagFar, same: before === JSON.stringify(window.__xzj.store.data) };
     });
-    check('小互動：每個都有一行字，而且不寫進存檔', toyState.lines.length >= 9 && toyState.lines.every(Boolean) && toyState.same, JSON.stringify(toyState));
+    check('小互動：每個都有一行字，而且不寫進存檔', toyState.lines.length >= 8 && toyState.lines.every(Boolean) && toyState.same, JSON.stringify(toyState));
     check('小互動：靠近許願池可以互動；公布欄旁仍以公布欄優先', toyState.name === '許願池' && toyState.board === '公布欄', JSON.stringify(toyState));
     check('走到榕樹後面時樹冠變半透明', toyState.canopy < 0.6, String(toyState.canopy));
     check('隱藏角色的名牌：在主要步道上不顯示', toyState.tagFar === false, String(toyState.tagFar));

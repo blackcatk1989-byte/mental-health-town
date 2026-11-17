@@ -1,5 +1,5 @@
 {
-  "_說明": "微光里的區域與可互動物件。座標單位約 1 公尺，西北角在原點，+X 往東、+Z 往南（與 src/three/world.js 的地圖一致）。talk 依序比對 when 條件，用第一個符合的對話；puzzle 表示互動時開啟該謎題。cardTarget 為 true 的物件會出現「使用理解卡」按鈕。showWhen 是物件出現的條件（例如 absent：某個角色不在時才出現）。",
+  "_說明": "微光里的區域與可互動物件。座標單位約 1 公尺，西北角在原點，+X 往東、+Z 往南（與 src/three/world.js 的地圖一致）。talk 依序比對 when 條件，用第一個符合的對話；puzzle 表示互動時開啟該謎題（view 是打開哪一個畫面，例如某一張桌子的特寫）。cardTarget 為 true 的物件會出現「使用理解卡」按鈕。showWhen 是物件出現的條件（例如 absent：某個角色不在時才出現）。 wish 為 true 的是許願池：丟一枚硬幣後可以留言給遊戲製作者（src/wish.js）；r 是物件的半徑（很大的東西從邊緣算互動距離），verb 是互動按鈕上的字。",
   "town": "微光里",
   "areas": [
     {
@@ -14,7 +14,7 @@
     {
       "id": "cafe",
       "name": "咖啡店外",
-      "description": "咖啡店的遮陽棚下擺著幾張小桌子。有三張桌子還沒收，旁邊放著一個收桌托盤。",
+      "description": "咖啡店的遮陽棚下擺著幾張小桌子。有三張桌子的客人剛離開，旁邊的失物招領箱上了一個密碼鎖。",
       "spawn": {
         "x": 9,
         "z": 15
@@ -61,6 +61,16 @@
       ]
     },
     {
+      "id": "wishpool",
+      "name": "許願池",
+      "area": "plaza",
+      "x": 18,
+      "z": 13.8,
+      "r": 1.9,
+      "wish": true,
+      "verb": "丟一枚硬幣"
+    },
+    {
       "id": "note",
       "name": "曉晴的便條",
       "area": "cafe",
@@ -90,12 +100,39 @@
       ]
     },
     {
-      "id": "tables",
-      "name": "還沒收的三張桌子",
+      "id": "lockbox",
+      "name": "失物招領箱",
       "area": "cafe",
-      "x": 9.6,
-      "z": 8.4,
+      "x": 9.9,
+      "z": 8.6,
       "puzzle": "E02"
+    },
+    {
+      "id": "table1",
+      "name": "靠窗那桌",
+      "area": "cafe",
+      "x": 2.4,
+      "z": 7.2,
+      "puzzle": "E02",
+      "view": "t1"
+    },
+    {
+      "id": "table2",
+      "name": "中間那桌",
+      "area": "cafe",
+      "x": 5.0,
+      "z": 6.6,
+      "puzzle": "E02",
+      "view": "t2"
+    },
+    {
+      "id": "table3",
+      "name": "門口那桌",
+      "area": "cafe",
+      "x": 7.8,
+      "z": 7.2,
+      "puzzle": "E02",
+      "view": "t3"
     },
     {
       "id": "chime",

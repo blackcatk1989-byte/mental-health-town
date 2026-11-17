@@ -7,7 +7,7 @@ export function startTextMode(game, ui) {
   root.classList.remove('hidden');
   let mark = null; // 麻糬坐在哪裡：{ targetId, areaId }
 
-  const verb = (t) => (t.kind === 'character' ? '對話' : t.kind === 'puzzle' ? '仔細看看' : '查看');
+  const verb = (t) => t.verb ?? (t.kind === 'character' ? '對話' : t.kind === 'puzzle' ? '仔細看看' : '查看');
 
   function render() {
     if (!game.s) return;

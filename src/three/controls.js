@@ -81,7 +81,7 @@ export function setupControls({ onInteract, onUse, isBlocked }) {
       $('interact').classList.toggle('hidden', !t);
       if (!t) return;
       $('interact-name').textContent = t.name;
-      const verb = { character: '對話', puzzle: '仔細看看', cat: '問問麻糬' }[t.kind] ?? '查看';
+      const verb = t.verb ?? { character: '對話', puzzle: '仔細看看', cat: '問問麻糬' }[t.kind] ?? '查看';
       $('interact-go').textContent = `${verb}${isTouch ? '' : '（E）'}`;
       $('interact-use').classList.toggle('hidden', !t.cardTarget);
       $('interact-use').textContent = `使用理解卡${isTouch ? '' : '（F）'}`;

@@ -2,12 +2,14 @@
 // 遊戲規則與進度都在 src/game.js；這裡只負責呈現與輸入，和文字模式共用同一份進度。
 import * as THREE from 'three';
 import { animateCat, animateCharacter, makeCat, makeCharacter, makePot, PLAYER_LOOK, toon } from './characters.js';
-import { buildWorld } from './world.js';
+import { buildWorld, wind } from './world.js';
 import { FollowCamera } from './camera.js';
 import { setupLighting } from './lighting.js';
 import { animateWaters, loadIsland } from './island.js';
 import { setupControls, isTouch } from './controls.js';
 import { createFeedback } from './feedback.js';
+import { createAmbient } from './ambient.js';
+import { createToys } from './toys.js';
 import { play } from '../sfx.js';
 import { $ } from '../ui.js';
 
@@ -35,10 +37,15 @@ export async function start3D(game, ui, store) {
     renderer.setPixelRatio(low ? 1 : Math.min(devicePixelRatio, 2));
     renderer.setSize(innerWidth, innerHeight);
     lighting?.setQuality(store.settings.quality);
-    if (world) world.details.visible = !low; // 省電畫質：隱藏小裝飾
+    if (world) {
+      world.details.visible = !low; // 低畫質：隱藏小裝飾與邊界外的遠景
+      world.far.visible = !low;
+    }
+    ambient?.setQuality(store.settings.quality); // 低畫質：關閉雲影、落葉、麻雀
   };
   let world = null;
   let lighting = null;
+  let ambient = null;
   container.append(renderer.domElement);
 
   const scene = new THREE.Scene();
@@ -50,6 +57,7 @@ export async function start3D(game, ui, store) {
   applyQuality();
 
   world = buildWorld(scene);
+  ambient = createAmbient(scene, world.anchors);
   applyQuality();
   const island = await loadIsland(scene, ISLAND_URL);
   if (island) world.visuals.visible = false;
@@ -77,12 +85,22 @@ export async function start3D(game, ui, store) {
     mesh.add(hit);
     pickables.push(hit);
     scene.add(mesh);
-    actors.set(ch.id, { mesh, tag: label('tag', ch.name), spot: null });
+    actors.set(ch.id, { mesh, tag: label('tag', ch.name), spot: null, hidden: !!ch.hidden });
   }
   for (const o of game.c.places.objects) {
     const hit = new THREE.Mesh(hitGeo, hitMat);
     hit.position.set(o.x, 0.8, o.z);
     hit.userData.targetId = o.id;
+    scene.add(hit);
+    pickables.push(hit);
+  }
+
+  // 可以摸的小東西（純趣味，不影響任務與存檔）
+  const toys = createToys(game.c.fun?.toys ?? [], world.anchors.toyMeshes, ui);
+  for (const tg of toys.targets) {
+    const hit = new THREE.Mesh(hitGeo, hitMat);
+    hit.position.set(tg.x, 0.8, tg.z);
+    hit.userData.targetId = tg.id;
     scene.add(hit);
     pickables.push(hit);
   }
@@ -176,7 +194,7 @@ export async function start3D(game, ui, store) {
   const neatNote = new THREE.Group();
   for (let i = 0; i < 3; i++) {
     const m = new THREE.Mesh(new THREE.BoxGeometry(0.28, 0.008, 0.2), toon(i === 2 ? '#fdf3c4' : '#fffaf0'));
-    m.position.set(8.45, 0.785 + i * 0.01, 12.75);
+    m.position.set(7.85, 0.785 + i * 0.01, 10.05);
     neatNote.add(m);
   }
   scenery.add(neatNote);
@@ -202,7 +220,7 @@ export async function start3D(game, ui, store) {
     if (game.step !== lastStep) {
       lastStep = game.step;
       // 場景有變化的地方冒一下光點
-      if (game.step === 'clarify') fx.step(8.6, 12.6, store.settings.reduceMotion);
+      if (game.step === 'clarify') fx.step(8.0, 9.9, store.settings.reduceMotion);
     }
   }
 
@@ -255,6 +273,7 @@ export async function start3D(game, ui, store) {
 
   function interact(t) {
     if (t.kind === 'cat') ui.hints();
+    else if (t.kind === 'toy') toys.poke(t);
     else game.interact(t.id);
   }
 
@@ -267,7 +286,7 @@ export async function start3D(game, ui, store) {
     const hit = ray.intersectObjects(pickables, false)[0];
     if (!hit) return;
     const id = hit.object.userData.targetId;
-    const t = id === 'mochi' ? catTarget : game.target(id);
+    const t = id === 'mochi' ? catTarget : toys.byId(id) ?? game.target(id);
     if (!t) return;
     if (Math.hypot(t.x - pos.x, t.z - pos.z) <= REACH) interact(t);
     else ui.toast(`再靠近${t.name}一點，就可以互動。`, { ms: 2200 });
@@ -301,12 +320,31 @@ export async function start3D(game, ui, store) {
     el.style.top = `${((1 - tmp.y) / 2) * innerHeight}px`;
   };
 
-  // 麻糬：沒有提示時跟在玩家身後；有提示時沿著路點走到目的地，坐著等玩家過來
+  // 麻糬：沒有提示時跟在玩家身後；有提示時沿著路點走到目的地，坐著等玩家過來。
+  // 玩家停著不動一陣子，牠會走到附近的打盹點趴下；玩家一走牠就跟上（帶路優先，不受影響）
   const CAT_SPEED = 2.6;
-  function updateCat(dt, t, still) {
+  const NAP_AFTER = 9; // 玩家停幾秒後去打盹
+  const NAP_RANGE = 9; // 打盹點離玩家多近才去
+  let idle = 0;
+  let nap = null; // 目前要去（或正在）打盹的位置
+  let napping = false;
+  function updateCat(dt, t, still, playerWalking) {
+    idle = playerWalking || catRoute.length || catGuide ? 0 : idle + dt;
+    if (!idle) { nap = null; napping = false; }
+    if (idle > NAP_AFTER && !nap) {
+      let best = NAP_RANGE;
+      for (const sp of world.anchors.napSpots) {
+        const d = Math.hypot(sp.x - pos.x, sp.z - pos.z);
+        if (d < best) { best = d; nap = sp; }
+      }
+      if (!nap) idle = 0; // 附近沒有打盹點，過一陣子再看
+    }
     let tx;
     let tz;
-    if (catRoute.length) {
+    if (nap) {
+      tx = nap.x;
+      tz = nap.z;
+    } else if (catRoute.length) {
       tx = catRoute[0].x;
       tz = catRoute[0].z;
     } else if (catGuide) {
@@ -320,7 +358,16 @@ export async function start3D(game, ui, store) {
     const dx = tx - cat.position.x;
     const dz = tz - cat.position.z;
     const d = Math.hypot(dx, dz);
-    const walking = d > (catRoute.length ? 0.15 : 0.4);
+    const walking = d > (catRoute.length || nap ? 0.15 : 0.4);
+    if (nap && !walking) napping = true;
+    // 打盹：趴低、慢慢呼吸；跳上石椅時跟著墊高
+    const wantY = nap && d < 0.5 ? nap.y : 0;
+    const k = Math.min(1, dt * 8);
+    cat.position.y += (wantY - cat.position.y) * k;
+    const breathe = napping && !still ? Math.sin(t * 1.4) * 0.03 : 0;
+    cat.scale.y += ((napping ? 0.7 + breathe : 1) - cat.scale.y) * k;
+    cat.scale.x = cat.scale.z = 1 + (1 - cat.scale.y) * 0.35;
+    if (napping) cat.rotation.y += (0 - cat.rotation.y) * k;
     if (walking) {
       const step = Math.min(d, CAT_SPEED * dt);
       cat.position.x += (dx / d) * step;
@@ -410,6 +457,13 @@ export async function start3D(game, ui, store) {
         const d = Math.hypot(tg.x - pos.x, tg.z - pos.z);
         if (d <= best) { best = d; near = tg; }
       }
+      // 劇情用的目標優先；附近沒有時才輪到小東西
+      if (!near) {
+        for (const tg of toys.targets) {
+          const d = Math.hypot(tg.x - pos.x, tg.z - pos.z);
+          if (d <= best) { best = d; near = tg; }
+        }
+      }
       catTarget.x = cat.position.x;
       catTarget.z = cat.position.z;
       if (!near && Math.hypot(catTarget.x - pos.x, catTarget.z - pos.z) <= REACH) near = catTarget;
@@ -422,15 +476,35 @@ export async function start3D(game, ui, store) {
       if (near) play('near');
     }
 
-    updateCat(dt, t, still);
+    updateCat(dt, t, still, walking);
     world.anchors.chimes.rotation.z = still ? 0 : Math.sin(t * 1.3) * 0.06;
+    // 風、曬的衣服、雲影、落葉、麻雀、水窪、居民
+    if (!still) wind.value = t * 1.1;
+    for (const l of world.anchors.laundry) l.rotation.x = still ? 0 : Math.sin(t * 1.5 + l.position.x) * 0.12 + 0.05;
+    ambient.update(dt, t, still, pos, walking);
+    toys.update(dt, still);
+    // 玩家走到大榕樹後面時，樹冠變半透明，不遮住人
+    const by = world.anchors.banyan;
+    const behind = pos.x > by.x - 3.2 && pos.x < by.x + 3.2 && pos.z < by.z + 1.3;
+    const cm = by.canopy.material;
+    const wantO = behind ? 0.32 : 1;
+    if (cm.opacity !== wantO) {
+      cm.opacity = still || Math.abs(wantO - cm.opacity) < 0.02 ? wantO : cm.opacity + (wantO - cm.opacity) * Math.min(1, dt * 6);
+      const tr = cm.opacity < 1;
+      if (cm.transparent !== tr) { cm.transparent = tr; cm.needsUpdate = true; }
+    }
 
     follow.update(dt, pos, { reduceMotion: still });
     lighting.follow(follow.target);
     if (island) animateWaters(island.waters, t);
 
     // 名牌與目標記號
-    for (const a of actors.values()) placeLabel(a.tag, a.mesh.position.x, 1.55, a.mesh.position.z);
+    for (const a of actors.values()) {
+      // 隱藏角色的名牌只在玩家走進他所在的角落時才顯示：名牌是疊在畫面上的 HTML，不會被樹和牆擋住，
+      // 直式螢幕從遠處走過時不能讓名牌先露出來
+      if (a.hidden && area !== 'alley') { a.tag.style.display = 'none'; continue; }
+      placeLabel(a.tag, a.mesh.position.x, 1.55, a.mesh.position.z);
+    }
     for (const [id, el] of goalTags) {
       const tg = targetMap.get(id);
       if (tg) placeLabel(el, tg.x, tg.kind === 'character' ? 2.0 : 2.4, tg.z);
@@ -456,6 +530,7 @@ export async function start3D(game, ui, store) {
       game.removeEventListener('reaction', onReaction);
       document.removeEventListener('emote', onEmote);
       fx.dispose();
+      ambient.dispose();
       removeEventListener('resize', onResize);
       removeEventListener('pagehide', onHide);
       renderer.domElement.removeEventListener('pointerup', onPointer);
@@ -473,11 +548,16 @@ export async function start3D(game, ui, store) {
     // 測試用：某個點是否在目前的畫面範圍內、附近目標的光圈是否顯示
     onScreen(x, y, z) { tmp.set(x, y, z).project(camera); return Math.abs(tmp.x) <= 1 && Math.abs(tmp.y) <= 1 && tmp.z < 1; },
     get ringShown() { return fx.ringShown; },
+    tagShown: (id) => { const el = actors.get(id)?.tag; return !!el && !el.classList.contains('hidden') && el.style.display !== 'none'; },
     get position() { return { x: pos.x, z: pos.z }; },
     get catPosition() { return { x: cat.position.x, z: cat.position.z }; },
     get catGuide() { return catGuide ? { ...catGuide } : null; },
     get playerPose() { const u = player.userData; return { lean: u.body.rotation.x, sway: u.body.rotation.y, bounce: u.body.position.y }; },
     get drawCalls() { return renderer.info.render.calls; },
+    get triangles() { return renderer.info.render.triangles; },
+    get ambient() { return { ...ambient.state, canopyOpacity: world.anchors.banyan.canopy.material.opacity, catNapping: napping, far: world.far.visible }; },
+    toys: () => toys.targets.map((tg) => ({ id: tg.id, name: tg.name, x: tg.x, z: tg.z })),
+    poke: (id) => toys.poke(toys.byId(id)),
     get quality() { return { shadows: renderer.shadowMap.enabled, details: world.details.visible, pixelRatio: renderer.getPixelRatio() }; },
     isTouch,
   };

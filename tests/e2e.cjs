@@ -949,6 +949,31 @@ async function main() {
     await page.waitForTimeout(1500);
     const qy = await page.evaluate(() => window.__xzj.view().quality);
     check('省電畫質：關陰影、隱藏小裝飾、像素比 1', !qy.shadows && !qy.details && qy.pixelRatio === 1, JSON.stringify(qy));
+    // 場景優化（小廣場）：低畫質隱藏遠景；小互動、樹冠半透明、隱藏角色的名牌
+    const amb = await page.evaluate(() => window.__xzj.view().ambient);
+    check('低畫質：隱藏邊界外的遠景', amb.far === false, JSON.stringify(amb));
+    const toyState = await page.evaluate(async () => {
+      const v = window.__xzj.view();
+      const before = JSON.stringify(window.__xzj.store.data);
+      const lines = v.toys().map((t) => v.poke(t.id));
+      v.teleport(18, 15.5);
+      await new Promise((r) => setTimeout(r, 800));
+      const name = document.getElementById('interact-name').textContent;
+      v.teleport(18, 10.5);
+      await new Promise((r) => setTimeout(r, 800));
+      const board = document.getElementById('interact-name').textContent;
+      v.teleport(21.4, 4.8);
+      await new Promise((r) => setTimeout(r, 1500));
+      const canopy = v.ambient.canopyOpacity;
+      v.teleport(3.0, 13.8);
+      await new Promise((r) => setTimeout(r, 800));
+      const tagFar = v.tagShown('xiaoan');
+      return { lines, name, board, canopy, tagFar, same: before === JSON.stringify(window.__xzj.store.data) };
+    });
+    check('小互動：每個都有一行字，而且不寫進存檔', toyState.lines.length >= 6 && toyState.lines.every(Boolean) && toyState.same, JSON.stringify(toyState));
+    check('小互動：靠近許願池可以互動；公布欄旁仍以公布欄優先', toyState.name === '許願池' && toyState.board === '公布欄', JSON.stringify(toyState));
+    check('走到榕樹後面時樹冠變半透明', toyState.canopy < 0.6, String(toyState.canopy));
+    check('隱藏角色的名牌：在主要步道上不顯示', toyState.tagFar === false, String(toyState.tagFar));
     await browser.close();
   }
   {

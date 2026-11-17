@@ -232,7 +232,7 @@ export function createUI(content, store) {
       <div class="setting"><span>音效（腳步、按鈕、風鈴）</span><div class="segs">${opt('sound', false, '關閉')}${opt('sound', true, '開啟')}</div></div>
       <div class="setting"><span>動畫</span><div class="segs">${opt('reduceMotion', false, '開啟')}${opt('reduceMotion', true, '關閉')}</div></div>
       <div class="setting"><span>文字大小</span><div class="segs">${opt('textSize', 's', '小')}${opt('textSize', 'm', '中')}${opt('textSize', 'l', '大')}</div></div>
-      <div class="setting"><span>3D 畫質</span><div class="segs">${opt('quality', 'high', '標準')}${opt('quality', 'low', '省電')}</div></div>
+      <div class="setting"><span>3D 畫質</span><div class="segs">${opt('quality', 'high', '高')}${opt('quality', 'low', '低')}</div></div>
       ${inGame ? `<div class="setting"><span>遊玩模式</span><div class="segs">
         <button type="button" class="seg ${handlers.mode() === '3d' ? 'on' : ''}" data-mode="3d">3D</button>
         <button type="button" class="seg ${handlers.mode() === 'text' ? 'on' : ''}" data-mode="text">文字</button></div></div>

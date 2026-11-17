@@ -2,7 +2,7 @@
 // 陽光的陰影範圍跟著鏡頭目標移動，陰影才會清楚又不用很大的陰影貼圖。
 import * as THREE from 'three';
 
-const SUN_OFFSET = new THREE.Vector3(7, 12, 6); // 從東南方高處照下來
+const SUN_OFFSET = new THREE.Vector3(8, 10.5, 5.5); // 午後的斜陽：從東南方照下來，影子比正午長一點
 const SHADOW_SIZE = 14;
 
 export function setupLighting(renderer, scene) {

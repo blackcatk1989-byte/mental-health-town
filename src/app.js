@@ -9,7 +9,7 @@ import { setupSfx } from './sfx.js';
 
 const FILES = {
   quest: 'quest', cards: 'cards', characters: 'characters', places: 'places', puzzles: 'puzzles',
-  hints: 'hints', uses: 'card-uses', dialogues: 'dialogues', minigames: 'minigames', music: 'music',
+  hints: 'hints', uses: 'card-uses', dialogues: 'dialogues', minigames: 'minigames', music: 'music', fun: 'fun',
 };
 
 const params = new URLSearchParams(location.search);

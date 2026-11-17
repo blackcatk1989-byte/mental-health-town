@@ -412,8 +412,9 @@ export function buildWorld(scene) {
   board.add(box(0.4, 0.5, 0.02, 0xf6d9c8, 0.6, 1.3, 0.06, { shadow: false }));
   board.add(box(2.0, 0.12, 0.25, C.roof, 0, 1.96, 0));
   board.position.set(18, 0, 9.4);
+  board.scale.setScalar(1.4); // 大一點，遠遠就看得到
   add(board);
-  boxes.push([17.0, 9.2, 19.0, 9.65]);
+  boxes.push([16.65, 9.15, 19.35, 9.7]);
   // 廣場長椅
   const pBench = new THREE.Group();
   pBench.add(box(1.7, 0.08, 0.5, C.wood, 0, 0.45, 0), box(1.7, 0.4, 0.07, C.wood, 0, 0.72, -0.22));
@@ -448,24 +449,31 @@ export function buildWorld(scene) {
   add(canopy);
   circles.push([BX, BZ, 1.42]);
 
-  // 小土地公廟（只有外觀）：石台、紅牆、小屋頂、香爐
+  // 小土地公廟（只有外觀）：石台、紅牆、小屋頂、香爐。零件先照原尺寸擺好，再整組以廟的中心放大
   const SX = 15.2;
   const SZ = 6.2;
-  add(box(1.5, 0.22, 1.3, C.stone, SX, 0.11, SZ), box(1.1, 0.9, 0.9, C.shrine, SX, 0.67, SZ));
-  add(box(0.5, 0.6, 0.06, 0x6b4a3a, SX, 0.6, SZ + 0.46, { shadow: false }), box(0.16, 0.22, 0.04, C.gold, SX, 0.48, SZ + 0.49, { shadow: false }));
+  const SHRINE_SCALE = 1.4;
+  const shrine = new THREE.Group();
+  shrine.add(box(1.5, 0.22, 1.3, C.stone, SX, 0.11, SZ), box(1.1, 0.9, 0.9, C.shrine, SX, 0.67, SZ));
+  shrine.add(box(0.5, 0.6, 0.06, 0x6b4a3a, SX, 0.6, SZ + 0.46, { shadow: false }), box(0.16, 0.22, 0.04, C.gold, SX, 0.48, SZ + 0.49, { shadow: false }));
   const sRoof = new THREE.Mesh(new THREE.CylinderGeometry(0.62, 0.62, 1.5, 3), toon(C.roof));
   sRoof.rotation.set(0, 0, Math.PI / 2);
   sRoof.rotation.order = 'ZXY';
   sRoof.scale.set(0.62, 1, 1.05);
   sRoof.position.set(SX, 1.31, SZ);
   sRoof.castShadow = true;
-  add(sRoof);
+  shrine.add(sRoof);
   for (const sgn of [-1, 1]) {
-    add(box(0.3, 0.06, 0.08, C.roof, SX + sgn * 0.82, 1.74, SZ).rotateZ(sgn * 0.5)); // 翹起來的屋脊
-    add(cyl(0.08, 0.08, 0.16, 0xd9604e, SX + sgn * 0.45, 0.98, SZ + 0.52, 8)); // 小燈籠
+    shrine.add(box(0.3, 0.06, 0.08, C.roof, SX + sgn * 0.82, 1.74, SZ).rotateZ(sgn * 0.5)); // 翹起來的屋脊
+    shrine.add(cyl(0.08, 0.08, 0.16, 0xd9604e, SX + sgn * 0.45, 0.98, SZ + 0.52, 8)); // 小燈籠
   }
-  add(box(0.4, 0.3, 0.4, C.stone, SX, 0.15, SZ + 0.95), cyl(0.15, 0.11, 0.18, C.gold, SX, 0.39, SZ + 0.95, 12)); // 香爐
-  boxes.push([SX - 0.75, SZ - 0.65, SX + 0.75, SZ + 0.65], [SX - 0.2, SZ + 0.75, SX + 0.2, SZ + 1.15]);
+  shrine.add(box(0.4, 0.3, 0.4, C.stone, SX, 0.15, SZ + 0.95), cyl(0.15, 0.11, 0.18, C.gold, SX, 0.39, SZ + 0.95, 12)); // 香爐
+  shrine.scale.setScalar(SHRINE_SCALE);
+  shrine.position.set(SX * (1 - SHRINE_SCALE), 0, SZ * (1 - SHRINE_SCALE));
+  add(shrine);
+  boxes.push([SX - 1.05, SZ - 0.91, SX + 1.05, SZ + 0.91], [SX - 0.28, SZ + 1.05, SX + 0.28, SZ + 1.61]);
+  const censer = { x: SX, y: 0.48 * SHRINE_SCALE, z: SZ + 0.95 * SHRINE_SCALE }; // 香爐口：上香時香插在這裡
+
 
   // 電線桿與電線：都在步道北側，電線沿著騎樓前拉過去，不會橫過玩家頭上
   const POLES = [[12.5, 2.9], [24.1, 2.7], [12.2, 10.6]];
@@ -791,6 +799,6 @@ export function buildWorld(scene) {
   const napSpots = [{ x: BX, y: 0.47, z: BZ + 1.17 }, { x: 22.9, y: 0, z: 18.4 }, { x: 4.7, y: 0, z: 5.3 }, { x: 32.9, y: 0, z: 13.4 }];
   return {
     width: WIDTH, height: HEIGHT, blocked, areaOf, visuals, details, far,
-    anchors: { chimes, potSpots, banyan: { canopy, x: BX, z: BZ }, fountain: { x: FX, z: FZ, r: FR }, laundry: [laundry, laundry2], cafeChime, toyMeshes, napSpots },
+    anchors: { chimes, potSpots, banyan: { canopy, x: BX, z: BZ }, fountain: { x: FX, z: FZ, r: FR }, censer, laundry: [laundry, laundry2], cafeChime, toyMeshes, napSpots },
   };
 }

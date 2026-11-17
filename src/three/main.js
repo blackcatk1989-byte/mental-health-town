@@ -98,7 +98,7 @@ export async function start3D(game, ui, store) {
   }
 
   // 可以摸的小東西（純趣味，不影響任務與存檔）
-  const toys = createToys(game.c.fun?.toys ?? [], world.anchors.toyMeshes, ui);
+  const toys = createToys(game.c.fun?.toys ?? [], world.anchors.toyMeshes, ui, { incense: () => ambient.offerIncense() });
   for (const tg of toys.targets) {
     const hit = new THREE.Mesh(hitGeo, hitMat);
     hit.position.set(tg.x, 0.8, tg.z);
@@ -312,6 +312,12 @@ export async function start3D(game, ui, store) {
   const blocked = (x, z) => {
     if (world.blocked(x, z, RADIUS)) return true;
     for (const a of actors.values()) if (a.mesh.visible && Math.hypot(a.mesh.position.x - x, a.mesh.position.z - z) < 0.45 + RADIUS) return true;
+    // 散步的路人：不能走進去；萬一已經重疊（例如讀檔位置剛好在他身上），往外走不會被擋
+    for (const m of ambient.solids) {
+      if (!m.visible) continue;
+      const d = Math.hypot(m.position.x - x, m.position.z - z);
+      if (d < 0.35 + RADIUS && d < Math.hypot(m.position.x - pos.x, m.position.z - pos.z)) return true;
+    }
     return false;
   };
 

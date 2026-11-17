@@ -20,7 +20,7 @@ function blobTexture(rgb, alpha) {
 }
 
 // 水窪的位置（踩過會有漣漪）
-const PUDDLES = [{ x: 16.9, z: 17.6, r: 0.5 }, { x: 6.4, z: 13.5, r: 0.45 }];
+const PUDDLES = [{ x: 6.4, z: 13.5, r: 0.45 }];
 // 麻雀停的地方
 const FLOCKS = [[[20.6, 16.6], [21.3, 17.0], [20.9, 17.5]], [[30.1, 17.3], [31.0, 17.35], [30.5, 15.9]]];
 // 不能對話的居民：在活動範圍外做自己的事
@@ -28,6 +28,8 @@ const RESIDENTS = [
   { x: 21.3, z: -0.3, ry: 0.5, act: 'sweep', keepOnLow: true }, // 騎樓下掃地
   { x: -0.75, z: 9.75, ry: Math.PI / 2, act: 'water' }, // 西邊住家門口澆花
   { x: 33.4, z: 0.25, ry: 2.6, act: 'weed' }, // 花園北緣蹲著拔草
+  { x: 20.55, y: 0.3, z: 7.85, ry: -0.7, act: 'sit' }, // 坐在榕樹的石椅上看書
+  { x: 13.8, z: 16.4, x2: 19.4, ry: Math.PI / 2, act: 'walk', solid: true }, // 在廣場南側來回散步的路人（玩家靠近時會停下來）
 ];
 // 蝴蝶：在花圃上方繞圈，玩家靠近時會過來繞著玩家飛一下
 const BUTTERFLIES = [[29.0, 4.0, 0xf6d98a], [33.5, 5.8, 0xf3b6a8], [31.2, 20.3, 0xf6d98a], [27.4, 7.2, 0xd9c3ea]];
@@ -67,6 +69,11 @@ function makeResident(act) {
   ] : act === 'water' ? [
     [CYL, 0x8fb3c9, at(0, 0, 0, { sx: 0.1, sy: 0.2, sz: 0.1 })],
     [CYL, 0x8fb3c9, at(0, 0.06, 0.2, { rx: 1.1, sx: 0.02, sy: 0.26, sz: 0.02 })],
+  ] : act === 'sit' ? [
+    [BOX, 0xfffaf0, at(0, 0, 0, { rx: -0.6, sx: 0.24, sy: 0.02, sz: 0.17 })], // 攤開的書
+  ] : act === 'walk' ? [
+    [BOX, 0xd9b26f, at(0, -0.22, 0, { sx: 0.2, sy: 0.24, sz: 0.08 })], // 提袋
+    [CYL, 0x8e6a4c, at(0, -0.05, 0, { sx: 0.012, sy: 0.14, sz: 0.012 })],
   ] : [
     [SPHERE, 0x93b98a, at(0, 0, 0, { sx: 0.07, sy: 0.1, sz: 0.07 })],
   ], vertexToon);
@@ -77,7 +84,7 @@ function makeResident(act) {
   return g;
 }
 
-export function createAmbient(scene, { banyan, fountain, cafeChime }) {
+export function createAmbient(scene, { banyan, fountain, cafeChime, censer }) {
   const root = new THREE.Group();
   root.name = 'ambient';
   scene.add(root);
@@ -165,6 +172,23 @@ export function createAmbient(scene, { banyan, fountain, cafeChime }) {
   };
   steam.forEach((s) => placeSteam(s, s.userData.phase));
 
+  // ---- 土地公廟的香：玩家上香後，香爐裡插著三炷香，冒一陣子煙 ----
+  const sticks = mergedMesh([-0.05, 0, 0.05].flatMap((dx) => [
+    [CYL, 0xb5584a, at(dx, 0.17, 0, { rz: -dx * 2, sx: 0.008, sy: 0.34, sz: 0.008 })],
+    [SPHERE, 0xf2a25a, at(dx * 1.7, 0.34, 0, { s: 0.016 })],
+  ]), vertexToon);
+  sticks.position.set(censer.x, censer.y, censer.z);
+  sticks.visible = false;
+  root.add(sticks);
+  const smoke = [0, 1].map((i) => {
+    const sp = new THREE.Sprite(steamMat(0));
+    sp.userData.phase = i / 2;
+    sp.visible = false;
+    root.add(sp);
+    return sp;
+  });
+  let incense = 0; // 剩幾秒
+
   // ---- 咖啡店的小風鈴：平常輕輕晃，玩家走近時響一聲、晃大一點 ----
   let chimeSwing = 0;
   let chimeNear = false;
@@ -210,18 +234,22 @@ export function createAmbient(scene, { banyan, fountain, cafeChime }) {
   // ---- 居民 ----
   const residents = RESIDENTS.map((r) => {
     const m = makeResident(r.act);
-    m.position.set(r.x, 0, r.z);
+    m.position.set(r.x, r.y ?? 0, r.z);
     m.rotation.y = r.ry;
     root.add(m);
-    return { ...r, m };
+    return { ...r, m, dir: 1 };
   });
 
   let low = false;
   let lastFlutter = -9;
-  const state = { birdsAway: 0, ripples: 0, chimes: 0, visiting: 0 };
+  const state = { birdsAway: 0, ripples: 0, chimes: 0, visiting: 0, incense: 0 };
 
   return {
     state, // 測試用
+    // 玩家在土地公廟上香
+    offerIncense() { incense = 30; },
+    // 站在路上的居民（會擋住玩家）：main.js 用來做碰撞
+    solids: residents.filter((r) => r.solid).map((r) => r.m),
     setQuality(quality) {
       low = quality === 'low';
       fancy.visible = !low;
@@ -237,6 +265,22 @@ export function createAmbient(scene, { banyan, fountain, cafeChime }) {
           u.body.rotation.y = Math.sin(t * 1.6) * 0.18 * k;
           u.broom.rotation.z = (Math.sin(t * 1.6) * 0.35 + 0.15) * k;
           u.broom.rotation.x = 0.25;
+        } else if (u.act === 'sit') {
+          u.body.rotation.x = 0.12 + Math.sin(t * 0.6) * 0.05 * k; // 低頭看書，偶爾動一下
+        } else if (u.act === 'walk') {
+          // 來回散步；玩家靠近時停下來看一眼，不會撞到玩家
+          const d = Math.hypot(pos.x - r.m.position.x, pos.z - r.m.position.z);
+          if (d < 1.5) {
+            r.m.rotation.y = Math.atan2(pos.x - r.m.position.x, pos.z - r.m.position.z);
+            r.m.position.y = 0;
+          } else if (!still) {
+            r.m.position.x += r.dir * 0.85 * dt;
+            if (r.m.position.x > r.x2) r.dir = -1;
+            if (r.m.position.x < r.x) r.dir = 1;
+            r.m.rotation.y = r.dir * Math.PI / 2;
+            r.m.position.y = Math.abs(Math.sin(t * 6.5)) * 0.035;
+            u.body.rotation.z = Math.sin(t * 6.5) * 0.05;
+          }
         } else if (u.act === 'water') {
           u.body.rotation.y = Math.sin(t * 0.5) * 0.25 * k; // 慢慢從這盆澆到那盆
           u.broom.rotation.x = 0.35 + Math.sin(t * 0.9) * 0.2 * k;
@@ -276,6 +320,20 @@ export function createAmbient(scene, { banyan, fountain, cafeChime }) {
           r.scale.set(s, s * 0.72, 1);
           r.material.opacity = 0.75 * k;
           if (k <= 0) r.visible = false;
+        }
+      }
+
+      // 上香後的香與煙（減少動畫時煙停在原地）
+      if (incense > 0) {
+        incense -= dt;
+        state.incense = Math.max(0, incense);
+        sticks.visible = incense > 0;
+        for (const sp of smoke) {
+          sp.visible = incense > 0;
+          const u = still ? 0.35 + sp.userData.phase * 0.3 : (t * 0.3 + sp.userData.phase) % 1;
+          sp.position.set(censer.x + Math.sin(u * 6 + sp.userData.phase * 5) * 0.06, censer.y + 0.36 + u * 0.8, censer.z);
+          sp.scale.setScalar(0.12 + u * 0.3);
+          sp.material.opacity = Math.sin(u * Math.PI) * 0.45 * Math.min(1, incense / 3);
         }
       }
 

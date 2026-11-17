@@ -109,7 +109,27 @@ async function playPresent(page) {
 
 // 謎題：直接操作。插畫版「點東西 → 點位置」；drag 為 true 時用滑鼠拖曳；文字模式按「放到……」
 const E01 = { rosemary: 'sun', mint: 'wet', fern: 'shade' };
-const E02 = { bookmark: 't1', receipt: 't2', timenote: 't3' };
+// 謎題「先別急著貼標籤」：把貼紙貼到桌上（文字模式按清單的按鈕；插畫版點貼紙再點桌子）
+async function stick(page, table, sticker, { tap = false } = {}) {
+  await page.waitForSelector('#puzzle[open]');
+  if (await page.$('#puzzle-body .puzzle-items')) {
+    await page.click(`#puzzle-body [data-table="${table}"][data-sticker="${sticker}"]`);
+    return;
+  }
+  const st = page.locator(`#puzzle .sticker[data-sticker="${sticker}"]`);
+  const zone = page.locator(`#puzzle .zone[data-slot="${table}"] .zone-hit`);
+  if (tap) { await st.tap({ force: true }); await zone.tap({ force: true }); } else { await st.click({ force: true }); await zone.click({ force: true }); }
+}
+// 貼上圖示貼紙後等新線索出現，再點桌子查看；等貼紙飄回手上
+async function stickAndLook(page, table, sticker) {
+  await stick(page, table, sticker);
+  await page.waitForSelector(`#puzzle .zone[data-slot="${table}"].has-new`, { timeout: 10000 });
+  await page.locator(`#puzzle .zone[data-slot="${table}"] .zone-hit`).click({ force: true });
+  const text = await caption(page);
+  await page.waitForFunction((t) => !document.querySelector(`#puzzle .zone[data-slot="${t}"] .stuck`), table, { timeout: 10000 });
+  return text;
+}
+const tableDone = (page, table) => page.waitForFunction((t) => window.__xzj.game.labelTable('E02', t).done && /走回來/.test(document.querySelector('#puzzle-body .caption')?.textContent ?? ''), table, { timeout: 15000 });
 async function place(page, item, slot, { drag = false, tap = false } = {}) {
   await page.waitForSelector('#puzzle[open]');
   if (await page.$('#puzzle-body .text-list')) {
@@ -222,48 +242,43 @@ async function sectionV43() {
     const cls = await page.evaluate(() => document.body.classList.contains('reduce-motion'));
     check('動畫預設開啟（系統設定「減少動態效果」時也是）', !cls && partial < full, `${partial} → ${full} 字`);
     await talkThrough(page, ['先去咖啡店']);
-    // 桌子謎題：六樣東西、順序與桌子位置每次打亂、混淆物會滑回托盤
-    const orders = new Set();
-    const seats = new Set();
-    let count = 0;
-    await page.evaluate(() => { document.body.dataset.mode = '3d'; }); // 用插畫版看位置
-    for (let i = 0; i < 6; i++) {
-      await page.evaluate(() => window.__xzj.game.openPuzzle('E02'));
-      await page.waitForSelector('#puzzle[open] svg.stage');
-      const o = await page.evaluate(() => ({
-        items: [...document.querySelectorAll('#puzzle .pot')].map((g) => [g.dataset.item, parseFloat(g.style.transform.match(/translate\(([-\d.]+)px/)[1])]).sort((a, b) => a[1] - b[1]).map((x) => x[0]),
-        tables: [...document.querySelectorAll('#puzzle .zone.table')].map((z) => [z.dataset.slot, z.querySelector('.zone-hit').getAttribute('cx')]).sort((a, b) => a[1] - b[1]).map((x) => x[0]),
-      }));
-      count = o.items.length;
-      orders.add(o.items.join());
-      seats.add(o.tables.join());
-      await page.click('#puzzle .panel-head button:last-child');
-      await settle(page);
-    }
-    check('桌子謎題：托盤上有六樣東西（三樣是混淆物）', count === 6);
-    check('桌子謎題：每次打開，東西的順序和桌子的位置都會打亂', orders.size >= 3 && seats.size >= 2, `6 次打開出現 ${orders.size} 種順序、${seats.size} 種桌子排法`);
+    // 謎題「先別急著貼標籤」：圖示貼紙會被新線索推翻；貼問號或看完線索，主人回來自己說
+    await page.evaluate(() => { document.body.dataset.mode = '3d'; }); // 用插畫版
     await page.evaluate(() => window.__xzj.game.openPuzzle('E02'));
     await page.waitForSelector('#puzzle[open] svg.stage');
-    // 放大鏡：手上沒拿東西時點桌子，放大顯示桌上的東西與上面的字；點托盤上的東西改顯示那樣東西
-    await page.locator('#puzzle .zone[data-slot="t3"] .zone-hit').click({ force: true });
-    const lensTable = await page.evaluate(() => { const l = document.querySelector('#puzzle-body .lens'); return { shown: !l.classList.contains('hidden'), text: l.innerText, art: !!l.querySelector('svg') }; });
-    check('桌子謎題：點桌子會打開放大鏡，看得到桌上東西的字', lensTable.shown && lensTable.art && /明信片/.test(lensTable.text) && /合照/.test(lensTable.text) && !NO_JUDGE.test(lensTable.text), lensTable.text);
-    await page.locator('#puzzle .pot[data-item="bookmark"] .pot-hit').click({ force: true });
-    const lensItem = await page.evaluate(() => document.querySelector('#puzzle-body .lens').innerText);
-    check('桌子謎題：點托盤上的東西，放大鏡顯示那樣東西的描述', /書籤/.test(lensItem) && /公式/.test(lensItem), lensItem);
-    await page.locator('#puzzle .pot[data-item="bookmark"] .pot-hit').click({ force: true }); // 放下
-    let cap = await caption(page);
-    const decoy = [];
-    for (const t of ['t1', 't2', 't3']) {
-      await place(page, 'invoice', t);
-      cap = await reaction(page, cap);
-      decoy.push(cap);
-      await page.waitForFunction(() => !document.querySelector('#puzzle .pot.returning'), null, { timeout: 10000 });
-    }
-    check('混淆物放到任何一桌都滑回托盤，不出現對錯字樣', decoy.every((w) => /滑回托盤/.test(w) && !NO_JUDGE.test(w)) && !(await state(page)).puzzles.E02.place.invoice, decoy[0]);
-    for (const [item, slot] of Object.entries(E02)) { cap = await caption(page); await place(page, item, slot); await reaction(page, cap); }
-    await page.waitForSelector('#puzzle-body .solved', { timeout: 15000 });
-    check('只放對三樣真正的線索就解開（混淆物不用放）', (await state(page)).puzzles.E02.solved);
+    const stageText = await page.evaluate(() => document.querySelector('#puzzle svg.stage').textContent.trim());
+    check('E02 的貼紙只有圖、沒有字；共五張（四張圖示加一張空白問號）', stageText === '' && (await page.locator('#puzzle .sticker').count()) === 5, stageText);
+    const c1 = await stickAndLook(page, 't1', 'tired');
+    check('E02 貼上圖示貼紙後出現新線索；查看後貼紙翹起飄回，不出現對錯字樣', /未接來電/.test(c1) && /飄回/.test(c1) && !NO_JUDGE.test(c1), c1);
+    const c2 = await stickAndLook(page, 't1', 'sad');
+    await tableDone(page, 't1');
+    const owner1 = await caption(page);
+    const cupGone = await page.evaluate(() => document.querySelector('#puzzle .zone[data-slot="t1"] .cup').getAttribute('opacity') === '0');
+    check('E02 看完一張桌子的所有線索：主人回來自己說原因，杯子被收走', /歡迎回來/.test(c2) && /接她/.test(owner1) && cupGone && !NO_JUDGE.test(owner1), owner1);
+    await stick(page, 't2', 'ask');
+    await tableDone(page, 't2');
+    check('E02 貼上空白問號：不用看線索，主人就回來自己說', /生日卡/.test(await caption(page)));
+    const mid = (await state(page)).puzzles.E02;
+    check('E02 的存檔只記每張桌子看到第幾層，不記貼過哪些貼紙', Object.keys(mid).sort().join() === 'place,solved,tables' && Object.values(mid.tables).every((t) => Object.keys(t).sort().join() === 'done,layer,seen'), JSON.stringify(mid));
+    await page.click('#puzzle .panel-head button:last-child');
+    await settle(page);
+    await page.evaluate(() => window.__xzj.game.openPuzzle('E02'));
+    await page.waitForSelector('#puzzle[open] svg.stage');
+    check('E02 中途離開再回來，完成的桌子仍然保留', await page.evaluate(() => ['t1', 't2'].every((t) => document.querySelector(`#puzzle .zone[data-slot="${t}"]`).classList.contains('done'))));
+    await stick(page, 't3', 'ask');
+    await page.waitForSelector('#puzzle-body .solved', { timeout: 20000 });
+    const solvedE02 = await page.innerText('#puzzle-body .solved');
+    check('三張桌子都完成後取得 E02，說明「可以問，也可以等對方說」', (await state(page)).puzzles.E02.solved && (await state(page)).cards.includes('E02') && /可以問，也可以等對方說/.test(solvedE02) && !NO_JUDGE.test(solvedE02), solvedE02);
+    // 重玩：不重複發卡
+    await page.click('#puzzle-body [data-replay]');
+    await page.waitForSelector('#puzzle[open] svg.stage');
+    await page.evaluate(() => { for (const t of ['t1', 't2', 't3']) window.__xzj.game.stickLabel('E02', t, 'ask'); });
+    const again = await state(page);
+    check('E02 可以重玩，不會重複發卡', again.cards.filter((c) => c === 'E02').length === 1 && again.rewards.filter((c) => c === 'E02').length === 1 && again.puzzles.E02.solved);
+    // 用舊玩法取得 E02 的存檔：卡片保留，可以重玩
+    await page.evaluate(() => { const g = window.__xzj.game; g.store.mutate((d) => { d.puzzles.E02 = { place: { bookmark: 't1', receipt: 't2', timenote: 't3' }, solved: true }; }); g.repair(); });
+    const oldSave = await state(page);
+    check('舊玩法取得 E02 的存檔：卡片保留，舊的擺放紀錄清掉', oldSave.cards.includes('E02') && oldSave.puzzles.E02.solved && Object.keys(oldSave.puzzles.E02.place).length === 0, JSON.stringify(oldSave.puzzles.E02));
     await browser.close();
   }
 
@@ -507,16 +522,16 @@ async function main() {
     // 文字模式的謎題：兩題各故意放錯三次再完成
     await text.go(page, 'cafe');
     await text.act(page, 'tables');
-    const wrongs = [];
-    for (const [item, slot] of [['bookmark', 't2'], ['receipt', 't3'], ['points', 't1']]) {
-      await place(page, item, slot);
-      wrongs.push(await caption(page));
-    }
-    const back = (await state(page)).puzzles.E02.place;
-    check('文字模式 E02 放錯三次：東西滑回托盤、桌上的東西晃一下，不出現對錯字樣', wrongs.every((w) => /滑回托盤/.test(w) && !NO_JUDGE.test(w)) && Object.keys(back).length === 0, wrongs[0]);
-    for (const [item, slot] of Object.entries(E02)) await place(page, item, slot);
+    await stick(page, 't1', 'tired');
+    const tx1 = await caption(page);
+    await stick(page, 't1', 'angry');
+    const tx2 = await caption(page);
+    check('文字模式 E02：貼上貼紙後描述新線索與貼紙翹起；看完線索主人回來，不出現對錯字樣', /未接來電/.test(tx1) && /飄回/.test(tx1) && /走回來/.test(tx2) && !NO_JUDGE.test(tx1 + tx2), tx1);
+    await stick(page, 't2', 'ask');
+    await stick(page, 't3', 'ask');
+    await page.click('#puzzle-body [data-next]');
     const solvedText = await page.innerText('#puzzle-body');
-    check('文字模式解開 E02，說明「相似的表現，背後的處境不同」', /相似的表現，背後的處境不同/.test(solvedText) && (await state(page)).cards.includes('E02'));
+    check('文字模式完成 E02，說明「可以問，也可以等對方說」', /可以問，也可以等對方說/.test(solvedText) && (await state(page)).cards.includes('E02'));
     await page.click('#puzzle-body [data-close]');
 
     // 文字模式的麻糬：按一下就說明牠走去哪裡坐下，沒有選單
@@ -703,27 +718,20 @@ async function main() {
     check('E01 重新打開時植物仍保留反應；三盆都合適才取得卡片，說明「需要不同，沒有哪個比較好」', /r-droop/.test(restored) && bloomed && /需要不同，沒有哪個比較好/.test(e01) && (await state(page)).cards.includes('E01'));
     await page.screenshot({ path: `${OUT}/3d-pots-solved.png` });
 
-    // 謎題 E02（插畫版）：故意放錯三次再完成
+    // 謎題 E02（插畫版）：一張桌子看完線索，另外兩張貼問號
     await go('tables', 0, 0.6);
     await pressE();
-    const e02w = [];
-    for (const [item, slot] of [['bookmark', 't3'], ['receipt', 't1'], ['invoice', 't2']]) {
-      cap = await caption(page);
-      await place(page, item, slot);
-      e02w.push(await reaction(page, cap));
-      await page.waitForFunction(() => !document.querySelector('#puzzle .pot.returning'), null, { timeout: 10000 }); // 等它滑回托盤
-    }
-    const wiggle = await page.evaluate(() => !!document.querySelector('#puzzle .zone.wiggle'));
-    check('E02 放錯三次：滑回托盤、那桌的東西晃一下，不出現對錯字樣', e02w.every((w) => /滑回托盤/.test(w) && !NO_JUDGE.test(w)) && wiggle && Object.keys((await state(page)).puzzles.E02.place).length === 0);
-    for (const [item, slot] of Object.entries(E02)) {
-      cap = await caption(page);
-      await place(page, item, slot);
-      await reaction(page, cap);
-    }
-    const winShown = await page.evaluate(() => [...document.querySelectorAll('#puzzle .table-win')].every((g) => g.getAttribute('opacity') === '1'));
-    await page.waitForSelector('#puzzle-body .solved', { timeout: 15000 });
+    await page.waitForSelector('#puzzle[open] svg.stage');
+    await stickAndLook(page, 't1', 'angry');
+    await stickAndLook(page, 't1', 'sick');
+    await tableDone(page, 't1');
+    const cupTaken = await page.evaluate(() => document.querySelector('#puzzle .zone[data-slot="t1"] .cup').getAttribute('opacity') === '0');
+    await stick(page, 't2', 'ask');
+    await tableDone(page, 't2');
+    await stick(page, 't3', 'ask');
+    await page.waitForSelector('#puzzle-body .solved', { timeout: 20000 });
     await page.click('#puzzle-body [data-close]');
-    check('E02 放對時桌上出現小變化', winShown);
+    check('E02 主人回來後桌上的杯子被收走', cupTaken);
     s = await state(page);
     check('謎題 E02 在 3D 解開', s.puzzles.E02.solved && s.cards.includes('E02'));
     await reloadContinue(page);
@@ -854,7 +862,7 @@ async function main() {
     await page.waitForFunction(() => document.getElementById('interact-name').textContent === '還沒收的三張桌子', null, { timeout: 30000 });
     await page.tap('#interact-go');
     await page.waitForSelector('#puzzle[open]');
-    await place(page, 'bookmark', 't1', { tap: true });
+    await stick(page, 't1', 'tired', { tap: true });
     await page.screenshot({ path: `${OUT}/mobile-puzzle.png` });
     const p2 = await page.evaluate(() => window.__xzj.view().position);
     await page.mouse.move(cx, cy);
@@ -863,7 +871,7 @@ async function main() {
     await page.waitForTimeout(800);
     await page.mouse.up();
     const p3 = await page.evaluate(() => window.__xzj.view().position);
-    check('手機用點選操作謎題；面板開啟時角色不會誤走動', (await state(page)).puzzles.E02.place.bookmark === 't1' && Math.abs(p3.z - p2.z) < 0.01);
+    check('手機用點選操作謎題；面板開啟時角色不會誤走動', (await state(page)).puzzles.E02.tables?.t1?.layer === 2 && Math.abs(p3.z - p2.z) < 0.01);
     check('手機流程無錯誤', errors.length === 0, errors.join(' | '));
     await browser.close();
   }

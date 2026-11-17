@@ -56,9 +56,22 @@ export class Game extends EventTarget {
         // 謎題改版後，舊存檔裡已經不存在的位置清掉（植物回到托盤上）
         const pz = this.c.puzzles.puzzles[id];
         const slots = new Set((pz.spots ?? pz.tables).map((x) => x.id));
-        const items = new Set(pz.items.map((x) => x.id));
+        const items = new Set((pz.items ?? []).map((x) => x.id));
         for (const [item, slot] of Object.entries(s.puzzles[id].place)) {
           if (!items.has(item) || !slots.has(slot)) delete s.puzzles[id].place[item];
+        }
+        if (pz.kind === 'labels') {
+          // 「先別急著貼標籤」：每張桌子只記看到第幾層線索、主人回來了沒；舊玩法留下的資料直接丟掉（卡片保留）
+          const old = s.puzzles[id].tables ?? {};
+          s.puzzles[id].tables = {};
+          for (const t of pz.tables) {
+            const max = t.clues.length + 1;
+            const o = old[t.id];
+            if (!o) continue;
+            const layer = Math.min(max, Math.max(1, Math.floor(o.layer) || 1));
+            const seen = Math.min(layer, Math.max(1, Math.floor(o.seen) || 1));
+            s.puzzles[id].tables[t.id] = { layer, seen, done: !!o.done };
+          }
         }
         const card = this.c.puzzles.puzzles[id].card;
         if (s.puzzles[id].solved && !s.cards.includes(card)) {
@@ -184,7 +197,7 @@ export class Game extends EventTarget {
   // 全部放對時才發卡；不計分、不記錄放錯次數。
   placePuzzle(id, item, slot) {
     const p = this.c.puzzles.puzzles[id];
-    const it = p.items.find((x) => x.id === item);
+    const it = p.items?.find((x) => x.id === item);
     if (!it || this.s.puzzles[id].solved) return null;
     const fit = !!slot && slot === it.answer;
     const reaction = p.kind === 'plants' ? it.reactions?.[slot] ?? null : null;
@@ -202,6 +215,63 @@ export class Game extends EventTarget {
       if (solvedNow) s.puzzles[id].solved = true;
     });
     return { fit, reaction, solved: solvedNow };
+  }
+
+  // ---- 謎題「先別急著貼標籤」（kind 為 labels）----
+  // 每張桌子記三件事：layer（已經出現到第幾層線索，第 1 層是一開始就看得到的）、seen（看過到第幾層）、done（主人回來了）。
+  // 不記錄玩家貼過哪些貼紙，也沒有對錯：任何有圖示的貼紙都只會帶出下一層線索，然後被推翻。
+  labelTable(id, tableId) {
+    return this.s.puzzles[id].tables?.[tableId] ?? { layer: 1, seen: 1, done: false };
+  }
+
+  // 把貼紙貼到一張桌子上。回傳：
+  //   { done: true, solved }   貼的是空白問號：先不猜，主人回來自己說
+  //   { reveal: n }            貼的是有圖示的貼紙：出現第 n 層線索（要玩家自己去看）
+  //   { pending: true }        這張桌子還有出現了但沒看的線索，先去看
+  //   null                     這張桌子已經完成，或資料不對
+  stickLabel(id, tableId, stickerId) {
+    const p = this.c.puzzles.puzzles[id];
+    const t = p.tables.find((x) => x.id === tableId);
+    const sticker = p.stickers?.find((x) => x.id === stickerId);
+    const cur = this.labelTable(id, tableId);
+    if (!t || !sticker || cur.done) return null;
+    if (!sticker.blank && cur.layer > cur.seen) return { pending: true };
+    const next = { ...cur };
+    if (sticker.blank) next.done = true;
+    else next.layer = Math.min(t.clues.length + 1, cur.layer + 1);
+    const solved = this.saveLabelTable(id, tableId, next);
+    return sticker.blank ? { done: true, solved } : { reveal: next.layer };
+  }
+
+  // 查看一張桌子新出現的線索。回傳 { clue, done, solved }；沒有新線索時回傳 null。
+  // 看完最後一層，主人就回來了（和貼問號的結果一樣）。
+  viewClue(id, tableId) {
+    const p = this.c.puzzles.puzzles[id];
+    const t = p.tables.find((x) => x.id === tableId);
+    const cur = this.labelTable(id, tableId);
+    if (!t || cur.done || cur.layer <= cur.seen) return null;
+    const next = { ...cur, seen: cur.layer };
+    next.done = next.seen >= t.clues.length + 1;
+    const solved = this.saveLabelTable(id, tableId, next);
+    return { clue: t.clues[next.seen - 2], done: next.done, solved };
+  }
+
+  saveLabelTable(id, tableId, next) {
+    const p = this.c.puzzles.puzzles[id];
+    const all = { ...(this.s.puzzles[id].tables ?? {}), [tableId]: next };
+    const solvedNow = p.tables.every((x) => all[x.id]?.done);
+    // 已經有這張卡（舊玩法取得，或重玩）時，giveCard 不會重複發
+    this.apply(solvedNow ? [{ giveCard: p.card }] : [], (s) => {
+      s.puzzles[id].tables = all;
+      if (solvedNow) s.puzzles[id].solved = true;
+    });
+    return solvedNow;
+  }
+
+  // 重玩：桌子回到一開始的樣子；卡片與「已解開」的紀錄保留，不會重複發卡
+  replayPuzzle(id) {
+    this.store.mutate((s) => { s.puzzles[id].tables = {}; });
+    this.changed();
   }
 
   // ---- 麻糬的提示 ----

@@ -259,6 +259,23 @@
     .reduce-motion .lens.pop .lens-glass { animation: none; }
     .stage .zone.looking .zone-hit { stroke: #8a7a6c; stroke-width: 3; }
     .stage .look-badge { pointer-events: none; }
+    /* 謎題「先別急著貼標籤」：貼紙、翹起飄回、新線索的記號、走回來的客人 */
+    .stage.labels .sticker { cursor: grab; }
+    .stage.labels .sticker:focus { outline: none; }
+    .stage.labels .sticker-art { transition: translate .2s, scale .2s; transform-box: fill-box; transform-origin: 50% 50%; }
+    .stage.labels .sticker.selected .sticker-art, .stage.labels .sticker:focus .sticker-art { translate: 0 -6px; scale: 1.15; filter: drop-shadow(0 0 4px #fff) drop-shadow(0 0 6px #c97f62); }
+    .stage.labels .sheet, .stage.labels .ghost, .stage.labels .stuck-spot, .stage.labels .clue-mark, .stage.labels .q-bubble, .stage.labels .owner, .stage.labels .t-clues { pointer-events: none; }
+    .stage.labels .stuck { transform-box: fill-box; transform-origin: 15% 85%; transition: transform .5s ease-in, opacity .5s; }
+    .stage.labels .stuck.land { animation: sticker-land .3s cubic-bezier(.34, 1.5, .64, 1); }
+    @keyframes sticker-land { from { scale: 1.5; opacity: 0; } }
+    .stage.labels .stuck.peel { transform: rotate(-26deg) translateY(-5px); }
+    .stage.labels .stuck.fly { transform: translate(-30px, 150px) scale(.4); opacity: 0; }
+    .stage.labels .clue-icon, .stage.labels .clue-mark, .stage.labels .q-bubble, .stage.labels .cup { transition: opacity .5s; }
+    .stage.labels .zone.has-new .clue-mark { transform-box: fill-box; transform-origin: 50% 50%; animation: mark-pulse 1s ease-in-out infinite alternate; }
+    @keyframes mark-pulse { to { scale: 1.25; } }
+    .stage.labels .owner { transition: opacity .5s, translate .6s ease-out; translate: 24px 0; }
+    .stage.labels .owner.in { translate: 0 0; }
+    .reduce-motion .stage.labels * { animation: none !important; transition: none !important; }
     /* 植物：初始姿態就是線索；反應用 class 切換 */
     .plant .stems, .plant .extra { transform-box: fill-box; transform-origin: 50% 100%; transition: transform 1.2s cubic-bezier(.34, 1.2, .64, 1), opacity .8s; }
     .plant .edge { transition: stroke .8s, fill .8s; }

@@ -309,7 +309,7 @@ export function buildWorld(scene) {
   // 窗台花箱
   add(box(2.2, 0.35, 0.4, C.wood, 3.3, 0.85, 4.3), box(2.1, 0.12, 0.3, C.leaf, 3.3, 1.07, 4.3));
   boxes.push([0.4, 0.4, 10.6, 4.6]);
-  // 露臺：曉晴的便條桌，以及謎題「還沒收的三張桌子」（靠窗、中間、門口）
+  // 露臺：曉晴的便條桌，以及謎題「先別急著貼標籤」的三張桌子（靠窗、中間、門口）
   const TABLES = [[2.4, 7.2], [5.0, 6.6], [7.8, 7.2], [8.0, 9.9]];
   for (const [x, z] of TABLES) {
     add(table(x, z));
@@ -321,13 +321,14 @@ export function buildWorld(scene) {
     c.rotation.y = r;
     add(c);
   }
-  // 桌上留下的東西（線索的文字在 content/puzzles.json，這裡只是外觀）
-  add(box(0.34, 0.02, 0.26, 0xf6f0a8, 2.3, 0.78, 7.15, { shadow: false })); // 畫滿螢光筆的講義
-  for (const dx of [-0.25, 0.05, 0.3]) add(cyl(0.05, 0.04, 0.1, C.paper, 2.4 + dx, 0.82, 7.4, 10)); // 空咖啡杯
-  add(box(0.28, 0.02, 0.2, C.paper, 4.9, 0.78, 6.55, { shadow: false })); // 帳單
-  add(box(0.18, 0.02, 0.18, 0xf2ece0, 5.2, 0.78, 6.75, { shadow: false })); // 寫滿數字的餐巾紙
-  add(box(0.22, 0.02, 0.15, 0xe9d0b0, 7.7, 0.78, 7.1, { shadow: false })); // 寫一半的明信片
-  add(box(0.12, 0.02, 0.16, 0xb8cfe0, 8.0, 0.78, 7.3, { shadow: false })); // 合照
+  // 三張桌子上留下的東西看起來很像（謎題「先別急著貼標籤」）：一杯放涼的咖啡、一團揉皺的紙巾
+  for (const [x, z] of [[2.4, 7.2], [5.0, 6.6], [7.8, 7.2]]) {
+    add(cyl(0.06, 0.045, 0.1, C.paper, x - 0.14, 0.82, z + 0.05, 10), cyl(0.05, 0.05, 0.01, 0xb08a68, x - 0.14, 0.872, z + 0.05, 10));
+    const tissue = new THREE.Mesh(new THREE.IcosahedronGeometry(0.06, 0), toon(0xfffdf7));
+    tissue.position.set(x + 0.16, 0.82, z - 0.06);
+    tissue.castShadow = true;
+    add(tissue);
+  }
   // 收桌托盤（謎題入口）
   add(box(0.7, 0.75, 0.45, C.woodDark, 9.6, 0.38, 8.0), box(0.6, 0.03, 0.4, 0x9d7b5c, 9.6, 0.78, 8.0));
   boxes.push([9.25, 7.75, 9.95, 8.25]);

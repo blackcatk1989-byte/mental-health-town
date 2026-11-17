@@ -148,7 +148,7 @@ export async function start3D(game, ui, store) {
   };
   game.addEventListener('hint', onHint);
 
-  // ---- 回饋：塵土、光圈、表情、跳一下 ----
+  // ---- 回饋：塵土、光圈（麻糬與小安除外）、表情、跳一下 ----
   const fx = createFeedback(scene, $('labels'));
   const actorByName = new Map(game.c.characters.characters.map((ch) => [ch.name, actors.get(ch.id).mesh]));
   const onEmote = (e) => {
@@ -417,7 +417,8 @@ export async function start3D(game, ui, store) {
     if (near?.id !== shownTarget) {
       shownTarget = near?.id;
       controls.showTarget(near);
-      fx.highlight(near);
+      // 地上的光圈與光點只給一般的互動目標：麻糬與隱藏角色（小安）都不顯示，身上不加任何發亮標示
+      fx.highlight(near && near.kind !== 'cat' && !near.data?.hidden ? near : null);
       if (near) play('near');
     }
 
@@ -469,6 +470,9 @@ export async function start3D(game, ui, store) {
       moved = true;
     },
     blockedAt: (x, z) => blocked(x, z),
+    // 測試用：某個點是否在目前的畫面範圍內、附近目標的光圈是否顯示
+    onScreen(x, y, z) { tmp.set(x, y, z).project(camera); return Math.abs(tmp.x) <= 1 && Math.abs(tmp.y) <= 1 && tmp.z < 1; },
+    get ringShown() { return fx.ringShown; },
     get position() { return { x: pos.x, z: pos.z }; },
     get catPosition() { return { x: cat.position.x, z: cat.position.z }; },
     get catGuide() { return catGuide ? { ...catGuide } : null; },

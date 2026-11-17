@@ -85,7 +85,9 @@ export async function start3D(game, ui, store) {
     mesh.add(hit);
     pickables.push(hit);
     scene.add(mesh);
-    actors.set(ch.id, { mesh, tag: label('tag', ch.name), spot: null, hidden: !!ch.hidden });
+    const tag = label('tag', ch.name);
+    if (ch.hidden) tag.style.display = 'none'; // 隱藏角色的名牌一開始就不顯示，走進他的角落才出現
+    actors.set(ch.id, { mesh, tag, spot: null, hidden: !!ch.hidden });
   }
   for (const o of game.c.places.objects) {
     const hit = new THREE.Mesh(hitGeo, hitMat);
@@ -288,7 +290,7 @@ export async function start3D(game, ui, store) {
     const id = hit.object.userData.targetId;
     const t = id === 'mochi' ? catTarget : toys.byId(id) ?? game.target(id);
     if (!t) return;
-    if (Math.hypot(t.x - pos.x, t.z - pos.z) <= REACH) interact(t);
+    if (Math.hypot(t.x - pos.x, t.z - pos.z) - (t.toy?.r ?? 0) <= REACH) interact(t);
     else ui.toast(`再靠近${t.name}一點，就可以互動。`, { ms: 2200 });
   };
   renderer.domElement.addEventListener('pointerup', onPointer);
@@ -460,7 +462,7 @@ export async function start3D(game, ui, store) {
       // 劇情用的目標優先；附近沒有時才輪到小東西
       if (!near) {
         for (const tg of toys.targets) {
-          const d = Math.hypot(tg.x - pos.x, tg.z - pos.z);
+          const d = Math.hypot(tg.x - pos.x, tg.z - pos.z) - (tg.toy.r ?? 0); // 大的東西（許願池）從邊緣算距離
           if (d <= best) { best = d; near = tg; }
         }
       }

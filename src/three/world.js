@@ -17,7 +17,7 @@ const C = {
   alley: 0xd9d3c8, curb: 0xc4bcb0, shop: 0xf1e3cd, shopB: 0xe6ecdf, shopC: 0xf3dccc, shutter: 0xb9b4ad, column: 0xe9dcc6,
   scooterA: 0x9cc3c9, scooterB: 0xe7b9a0, scooterC: 0xd9d2a6, tire: 0x4f4a46, postRed: 0xd2705f, postGreen: 0x6f9f78,
   chalk: 0x4a5a52, cup: 0xfff6e8,
-  asphalt: 0xbdb6ac, zebra: 0xf4efe6, drain: 0x8f8a82, pole: 0x8c8279, wire: 0x5c5550, shrine: 0xe2a48c, gold: 0xe0c078, water: 0xa9d0dc,
+  asphalt: 0xbdb6ac, zebra: 0xf4efe6, drain: 0x8f8a82, pole: 0x8c8279, wire: 0x5c5550, shrine: 0xe2a48c, gold: 0xe0c078, water: 0xa9d0dc, gardenGrass: 0xbfd6a0, bamboo: 0xc9b77a,
 };
 
 // ---- 風：樹葉與花草輕輕擺動（在頂點著色器裡位移，不用每幀改矩陣）。main.js 每幀更新 wind.value，「減少動畫」時不更新 ----
@@ -57,6 +57,49 @@ function brickTexture() {
   t.colorSpace = THREE.SRGBColorSpace;
   t.anisotropy = 4;
   return t;
+}
+
+// 木棧板的貼圖（程式畫的）
+function plankTexture() {
+  const c = document.createElement('canvas');
+  c.width = c.height = 128;
+  const ctx = c.getContext('2d');
+  const tones = ['#e3cfb0', '#dcc5a3', '#e7d4b8', '#d8c09c'];
+  for (let i = 0; i < 8; i++) {
+    ctx.fillStyle = tones[(i * 3) % tones.length];
+    ctx.fillRect(0, i * 16, 128, 16);
+    ctx.fillStyle = '#c4ab88';
+    ctx.fillRect(0, i * 16, 128, 1);
+    ctx.fillRect((i * 53) % 128, i * 16, 1, 16);
+  }
+  const t = new THREE.CanvasTexture(c);
+  t.wrapS = t.wrapT = THREE.RepeatWrapping;
+  t.colorSpace = THREE.SRGBColorSpace;
+  t.anisotropy = 4;
+  return t;
+}
+
+// 腳踏車：同一個造型重複使用（合成一個網格）
+function makeBike(frame) {
+  const parts = [];
+  for (const dz of [-0.5, 0.5]) {
+    const w = new THREE.Mesh(new THREE.TorusGeometry(0.28, 0.025, 6, 16), toon(C.tire));
+    w.position.set(0, 0.3, dz);
+    w.rotation.y = Math.PI / 2;
+    parts.push(w);
+  }
+  parts.push(limb([0, 0.3, -0.5], [0, 0.72, -0.15], 0.022, 0.022, frame), limb([0, 0.72, -0.15], [0, 0.7, 0.35], 0.022, 0.022, frame));
+  parts.push(limb([0, 0.3, 0.5], [0, 0.95, 0.35], 0.022, 0.022, frame), limb([0, 0.3, -0.5], [0, 0.35, 0.05], 0.022, 0.022, frame), limb([0, 0.35, 0.05], [0, 0.7, 0.35], 0.022, 0.022, frame));
+  parts.push(box(0.14, 0.05, 0.26, 0x5a504a, 0, 0.78, -0.17), box(0.46, 0.03, 0.03, C.metal, 0, 0.95, 0.35), cyl(0.045, 0.045, 0.04, C.gold, 0.14, 0.99, 0.35, 8));
+  return fuse(parts);
+}
+
+// 邊界外的透天厝：平屋頂、女兒牆、屋頂的水塔（只是背景）
+function house(x, z, w, d, h, col) {
+  const g = new THREE.Group();
+  g.add(box(w, h, d, col, x, h / 2, z), box(w + 0.2, 0.16, d + 0.2, 0xd6c4ad, x, h + 0.08, z));
+  g.add(cyl(0.34, 0.34, 0.6, 0xcfd3d2, x + w * 0.2, h + 0.62, z - d * 0.2, 12), box(0.7, 0.3, 0.7, 0xb9b4ad, x + w * 0.2, h + 0.23, z - d * 0.2));
+  return g;
 }
 
 // 從 a 到 b 的一根圓柱（樹枝、電線、車架）
@@ -175,7 +218,8 @@ export function buildWorld(scene) {
   add(plaza);
   // 巷道：從咖啡店經過廣場通到花園的一條水泥巷，兩側有路緣石，把三區連在一起
   // 西段是柏油路，到廣場口有斑馬線；廣場裡是人行磚；東段進花園
-  add(flat(12.2, 3.0, C.asphalt, 6.5, 12.6, 0.012), flat(12.6, 3.0, C.alley, 29.7, 12.6, 0.012));
+  add(flat(12.2, 3.0, C.asphalt, 6.5, 12.6, 0.012), flat(12.6, 3.0, C.path, 29.7, 12.6, 0.012));
+  add(flat(11.5, 22, C.gardenGrass, 30.4, 11, 0.006)); // 花園的草地顏色深一點
   for (let z = 11.5; z < 13.9; z += 0.55) add(box(1.2, 0.012, 0.3, C.zebra, 11.0, 0.02, z, { shadow: false })); // 斑馬線
   // 水溝蓋：沿著路緣與騎樓前
   for (const [x, z] of [[7.5, 11.3], [9.6, 13.9], [16.6, 2.3], [21.2, 2.3]]) {
@@ -185,8 +229,18 @@ export function buildWorld(scene) {
   for (const [x1, x2] of [[0.4, 11.8], [24.4, 35.6]]) {
     for (const z of [11.05, 14.15]) add(box(x2 - x1, 0.08, 0.12, C.curb, (x1 + x2) / 2, 0.04, z, { shadow: false }));
   }
-  add(flat(10.5, 3.6, C.stone, 5.6, 7.0, 0.016)); // 咖啡店的露臺
-  add(flat(3.6, 2.3, C.stone, 8.2, 9.9, 0.016)); // 露臺往南多鋪一小塊，放曉晴的便條桌（不佔用巷道）
+  // 咖啡店的露臺：木棧板（貼圖是程式畫的）。往南多鋪一小塊，放曉晴的便條桌（不佔用巷道）
+  const deckTex = plankTexture();
+  for (const [w, d, x, z] of [[10.5, 3.6, 5.6, 7.0], [3.6, 2.3, 8.2, 9.9]]) {
+    const tex = deckTex.clone();
+    tex.repeat.set(w / 1.6, d / 1.6);
+    const deck = new THREE.Mesh(new THREE.PlaneGeometry(w, d), new THREE.MeshToonMaterial({ map: tex, gradientMap: toon(C.stone).gradientMap }));
+    deck.rotation.x = -Math.PI / 2;
+    deck.position.set(x, 0.016, z);
+    deck.receiveShadow = true;
+    deck.userData.keep = true;
+    add(deck);
+  }
   add(flat(3.2, 8, C.path, 18, 18, 0.014)); // 廣場往南
   add(flat(12.4, 1.6, C.alley, 18, 1.3, 0.012)); // 騎樓前的人行道
   add(flat(5.0, 3.0, C.path, 30.0, 12.6, 0.016)); // 花園裡的小徑
@@ -345,11 +399,12 @@ export function buildWorld(scene) {
   // 許願池：在廣場正中央，圓形石砌水池、中間一座兩層的小噴泉（水花由 ambient.js 負責）
   const FX = 18;
   const FZ = 13.8;
-  add(cyl(1.25, 1.3, 0.42, C.stone, FX, 0.21, FZ, 28), cyl(1.08, 1.08, 0.04, C.water, FX, 0.415, FZ, 28));
-  add(cyl(0.2, 0.28, 0.85, C.stone, FX, 0.6, FZ, 12), cyl(0.5, 0.3, 0.16, C.stone, FX, 0.98, FZ, 16), cyl(0.42, 0.42, 0.03, C.water, FX, 1.06, FZ, 16));
-  add(cyl(0.08, 0.12, 0.3, C.stone, FX, 1.2, FZ, 8));
-  for (const [dx, dz] of [[0.5, 0.4], [-0.6, 0.2], [0.1, -0.7], [-0.3, 0.75], [0.75, -0.3]]) add(cyl(0.05, 0.05, 0.012, C.gold, FX + dx, 0.44, FZ + dz, 8)); // 池底的硬幣
-  circles.push([FX, FZ, 1.3]);
+  const FR = 1.9; // 水池外緣的半徑（content/fun.json 的許願池 r 要跟著改）
+  add(cyl(FR, FR + 0.06, 0.42, C.stone, FX, 0.21, FZ, 36), cyl(FR - 0.2, FR - 0.2, 0.04, C.water, FX, 0.415, FZ, 36));
+  add(cyl(0.26, 0.36, 0.95, C.stone, FX, 0.65, FZ, 12), cyl(0.68, 0.4, 0.18, C.stone, FX, 1.1, FZ, 18), cyl(0.58, 0.58, 0.03, C.water, FX, 1.19, FZ, 18));
+  add(cyl(0.1, 0.15, 0.34, C.stone, FX, 1.34, FZ, 8));
+  for (const [dx, dz] of [[0.8, 0.6], [-1.0, 0.3], [0.2, -1.2], [-0.5, 1.2], [1.25, -0.5], [-1.1, -0.8], [0.6, 1.3]]) add(cyl(0.05, 0.05, 0.012, C.gold, FX + dx, 0.44, FZ + dz, 8)); // 池底的硬幣
+  circles.push([FX, FZ, FR + 0.06]);
   // 公布欄（面向南方）
   const board = new THREE.Group();
   board.add(box(1.8, 1.1, 0.1, C.wood, 0, 1.35, 0), box(0.1, 1.9, 0.1, C.woodDark, -0.85, 0.95, 0), box(0.1, 1.9, 0.1, C.woodDark, 0.85, 0.95, 0));
@@ -467,18 +522,7 @@ export function buildWorld(scene) {
   toyMeshes.mailbox = fuse(mail);
   toyMeshes.mailbox.position.set(13.3, 0, 18.4);
   // 腳踏車（停在騎樓前）
-  const bikeParts = [];
-  for (const dz of [-0.5, 0.5]) {
-    const w = new THREE.Mesh(new THREE.TorusGeometry(0.28, 0.025, 6, 16), toon(C.tire));
-    w.position.set(0, 0.3, dz);
-    w.rotation.y = Math.PI / 2;
-    bikeParts.push(w);
-  }
-  const FRAME = 0x8fb3c9;
-  bikeParts.push(limb([0, 0.3, -0.5], [0, 0.72, -0.15], 0.022, 0.022, FRAME), limb([0, 0.72, -0.15], [0, 0.7, 0.35], 0.022, 0.022, FRAME));
-  bikeParts.push(limb([0, 0.3, 0.5], [0, 0.95, 0.35], 0.022, 0.022, FRAME), limb([0, 0.3, -0.5], [0, 0.35, 0.05], 0.022, 0.022, FRAME), limb([0, 0.35, 0.05], [0, 0.7, 0.35], 0.022, 0.022, FRAME));
-  bikeParts.push(box(0.14, 0.05, 0.26, 0x5a504a, 0, 0.78, -0.17), box(0.46, 0.03, 0.03, C.metal, 0, 0.95, 0.35), cyl(0.045, 0.045, 0.04, C.gold, 0.14, 0.99, 0.35, 8));
-  toyMeshes.bike = fuse(bikeParts);
+  toyMeshes.bike = makeBike(0x8fb3c9);
   toyMeshes.bike.position.set(19.6, 0, 1.5);
   boxes.push([19.35, 0.8, 19.85, 2.2]);
   // 飲料店的立牌
@@ -582,6 +626,61 @@ export function buildWorld(scene) {
     ground: { rosemary: { x: 34.6, z: 17.6 }, mint: { x: 33.2, z: 17.7 }, fern: { x: 33.9, z: 17.9 } },
   };
 
+  // ---- 咖啡店外的生活細節 ----
+  // 屋頂的小煙囪（熱氣由 ambient.js 負責）、門邊的信箱、東牆的冷氣室外機
+  add(box(0.5, 1.3, 0.5, 0xe0cdb2, 8.6, 4.5, 1.5), box(0.62, 0.1, 0.62, C.roof, 8.6, 5.2, 1.5));
+  add(box(0.24, 0.3, 0.1, C.postRed, 5.0, 1.35, 4.06), box(0.16, 0.02, 0.02, 0x3d322c, 5.0, 1.42, 4.12, { shadow: false }));
+  add(box(0.4, 0.42, 0.62, 0xe9e6e0, 10.72, 2.3, 2.6), cyl(0.15, 0.15, 0.02, 0xb9b4ad, 10.93, 2.3, 2.6, 12).rotateZ(Math.PI / 2));
+  // 遮陽棚下的小風鈴（靠近會輕輕響；和花園那串劇情用的風鈴分開）
+  const cafeChime = fuse([box(0.02, 0.22, 0.02, C.woodDark, 0, -0.11, 0), cyl(0.09, 0.09, 0.03, C.wood, 0, -0.22, 0, 10),
+    ...[-0.05, 0, 0.05].map((dx, i) => cyl(0.014, 0.014, 0.2 + i * 0.04, 0xe9d8b8, dx, -0.36 - i * 0.02, 0, 6))]);
+  cafeChime.position.set(3.3, 2.36, 5.42);
+  add(cafeChime);
+  // 靠在西牆邊的腳踏車
+  const bike2 = makeBike(0xd99a7a);
+  bike2.position.set(0.95, 0, 9.7);
+  bike2.rotation.z = 0.1;
+  add(bike2);
+  boxes.push([0.5, 9.0, 1.2, 10.4]);
+  // 西側邊界：矮圍牆與牆頭的盆栽；圍牆外是鄰居的透天厝（遠景，低畫質時隱藏）
+  add(box(0.3, 1.0, 10.7, 0xe6d9c6, -0.15, 0.5, 9.95));
+  for (const z of [6.4, 9.4, 10.1, 13.6]) {
+    add(box(0.26, 0.2, 0.5, C.pot, -0.15, 1.1, z));
+    const leaf = new THREE.Mesh(new THREE.IcosahedronGeometry(0.2, 1), toon(z > 9 && z < 11 ? C.flowerC : C.leaf));
+    leaf.position.set(-0.15, 1.32, z);
+    deco(leaf);
+  }
+
+  // ---- 小花園的生活細節（謎題「三盆植物」五個位置周圍 2 單位內不放新的樹、水或遮蔽物）----
+  // 花圃裡的竹支架（在花圃內，不另外加碰撞）
+  const stakes = [];
+  for (let x = 32.6; x < 34.8; x += 0.7) for (const z of [4.8, 6.6]) stakes.push([x, 0.75, z]);
+  add(instanced(new THREE.CylinderGeometry(0.02, 0.02, 0.95, 5), C.bamboo, stakes));
+  for (const z of [4.8, 6.6]) add(box(2.3, 0.025, 0.025, C.bamboo, 33.65, 1.15, z, { shadow: false }));
+  // 餵鳥台
+  add(cyl(0.05, 0.06, 1.1, C.woodDark, 30.6, 0.55, 16.6, 8), box(0.6, 0.05, 0.6, C.wood, 30.6, 1.12, 16.6), box(0.7, 0.05, 0.4, C.roof, 30.6, 1.5, 16.45).rotateX(-0.5), box(0.7, 0.05, 0.4, C.roof, 30.6, 1.5, 16.75).rotateX(0.5));
+  for (const [dx, dz] of [[-0.25, -0.25], [0.25, -0.25], [-0.25, 0.25], [0.25, 0.25]]) add(box(0.03, 0.34, 0.03, C.woodDark, 30.6 + dx, 1.3, 16.6 + dz));
+  circles.push([30.6, 16.6, 0.2]);
+  // 手推車
+  const barrow = new THREE.Group();
+  barrow.add(box(0.6, 0.28, 0.8, 0x9db7a0, 0, 0.5, 0), box(0.5, 0.02, 0.7, C.soil, 0, 0.63, 0));
+  const bw = cyl(0.17, 0.17, 0.08, C.tire, 0, 0.17, 0.5, 12);
+  bw.rotation.z = Math.PI / 2;
+  barrow.add(bw, limb([-0.25, 0.5, -0.4], [-0.3, 0.62, -0.95], 0.02, 0.02, C.woodDark), limb([0.25, 0.5, -0.4], [0.3, 0.62, -0.95], 0.02, 0.02, C.woodDark));
+  barrow.add(box(0.04, 0.36, 0.04, C.metal, -0.22, 0.18, -0.3), box(0.04, 0.36, 0.04, C.metal, 0.22, 0.18, -0.3));
+  barrow.position.set(26.2, 0, 17.0);
+  barrow.rotation.y = 0.5;
+  add(barrow);
+  boxes.push([25.75, 16.4, 26.65, 17.6]);
+  // 雨水桶（工具架旁）與堆肥箱
+  add(cyl(0.34, 0.3, 0.8, 0x8fb3c9, 31.2, 0.4, 1.2, 14), cyl(0.36, 0.36, 0.05, 0x7a9db3, 31.2, 0.82, 1.2, 14));
+  circles.push([31.2, 1.2, 0.38]);
+  add(box(0.95, 0.6, 0.75, C.wood, 27.6, 0.3, 20.6), box(1.0, 0.05, 0.8, C.woodDark, 27.6, 0.63, 20.6).rotateX(0.12));
+  for (const y of [0.2, 0.4]) add(box(0.97, 0.03, 0.77, C.woodDark, 27.6, y, 20.6, { shadow: false }));
+  boxes.push([27.1, 20.2, 28.1, 21.0]);
+  // 北側的矮圍牆
+  add(box(11.3, 1.0, 0.3, 0xe6d9c6, 30.4, 0.5, -0.15));
+
   // ---- 西南角的窄巷：舊倉庫和木籬笆之間，盡頭有幾階通往倉庫後門的階梯 ----
   // 隱藏角色小安坐在這裡。入口只有倉庫東側的窄巷（從北邊進去），從廣場、咖啡店、花園的主要步道上看不到；
   // 南邊只有矮樹叢，鏡頭跟進來時不會被擋住。這裡不放任何提示或發光的東西。
@@ -633,7 +732,7 @@ export function buildWorld(scene) {
   // ---- 邊界：南邊的矮樹叢、西邊與東邊的圍牆，不再像空地上的積木 ----
   const hedge = [];
   for (let x = 0.6; x < 36; x += 0.9) hedge.push([x, 0.35, 21.85, 0.55 + ((x * 3) % 1) * 0.2]);
-  for (let z = 5.2; z < 21; z += 0.9) hedge.push([0.15, 0.35, z, 0.5]);
+  for (let z = 15.1; z < 21; z += 0.9) hedge.push([0.15, 0.35, z, 0.5]); // 西邊：只有南段是樹籬，北段是圍牆與住家
   add(instanced(new THREE.IcosahedronGeometry(1, 1), C.leafDark, hedge));
   add(box(0.3, 1.2, 22, 0xe6d9c6, 36.15, 0.6, 11)); // 東邊的磚牆
   add(box(0.3, 1.2, 4.6, 0xe6d9c6, -0.15, 0.6, 2.3)); // 咖啡店西側
@@ -656,6 +755,14 @@ export function buildWorld(scene) {
     far.add(box(0.5, 0.36, 0.3, 0xe9e6e0, x + w / 2 - 0.5, 0.7, 26.2)); // 冷氣室外機
   }
   far.add(box(27.5, 0.6, 0.2, 0xe6d9c6, 22.2, 0.3, 23.2)); // 矮圍牆
+  // 西邊（咖啡店外）、東邊與北邊（花園外）的透天厝
+  far.add(house(-3.1, 7.3, 3.8, 4.4, 2.9, C.shopB), house(-3.1, 12.6, 3.8, 4.6, 3.3, C.shop));
+  for (const z of [6.6, 8.0, 11.8, 13.4]) far.add(box(0.06, 0.9, 0.9, C.window, -1.17, 2.0, z, { shadow: false }));
+  far.add(box(0.36, 0.4, 0.6, 0xe9e6e0, -1.02, 1.5, 9.0), box(0.36, 0.4, 0.6, 0xe9e6e0, -1.02, 1.6, 14.4));
+  far.add(house(39.2, 4.2, 3.8, 4.6, 3.0, C.shopC), house(39.2, 10.4, 3.8, 4.4, 2.6, C.shopB), house(39.2, 16.6, 3.8, 4.8, 3.2, C.shop));
+  for (const z of [3.4, 5.2, 9.8, 11.2, 15.6, 17.6]) far.add(box(0.06, 0.9, 0.9, C.window, 37.27, 1.9, z, { shadow: false }));
+  far.add(house(27.8, -3.4, 4.6, 3.6, 2.8, C.shop), house(33.2, -3.4, 4.4, 3.6, 3.2, C.shopC));
+  for (const x of [26.6, 28.8, 32.2, 34.2]) far.add(box(0.9, 0.9, 0.06, C.window, x, 1.9, -1.57, { shadow: false }));
   const shrubs = [];
   for (let x = 8.6; x < 36; x += 1.7) shrubs.push([x, 0.45, 23.9 + Math.sin(x * 2.3) * 0.25, 0.6 + ((x * 5) % 1) * 0.25]);
   far.add(instanced(new THREE.IcosahedronGeometry(1, 1), C.leaf, shrubs, windy(toon(C.leaf), 0.03)));
@@ -677,9 +784,13 @@ export function buildWorld(scene) {
   const areaOf = (x, z = 0) => (x < 4.4 && z > 17.4 ? 'alley' : x < 11.8 ? 'cafe' : x > 24.6 ? 'garden' : 'plaza');
 
   // 麻糬會去打盹的地方（玩家停著不動一陣子時）：榕樹的石椅上、廣場長椅前
-  const napSpots = [{ x: BX, y: 0.47, z: BZ + 1.17 }, { x: 22.9, y: 0, z: 18.4 }];
+  // 鄰居頂樓的曬衣架（西邊那一棟）
+  const laundry2 = laundry.clone();
+  laundry2.position.set(-3.3, 4.25, 13.6);
+  far.add(laundry2);
+  const napSpots = [{ x: BX, y: 0.47, z: BZ + 1.17 }, { x: 22.9, y: 0, z: 18.4 }, { x: 4.7, y: 0, z: 5.3 }, { x: 32.9, y: 0, z: 13.4 }];
   return {
     width: WIDTH, height: HEIGHT, blocked, areaOf, visuals, details, far,
-    anchors: { chimes, potSpots, banyan: { canopy, x: BX, z: BZ }, fountain: { x: FX, z: FZ }, laundry: [laundry], toyMeshes, napSpots },
+    anchors: { chimes, potSpots, banyan: { canopy, x: BX, z: BZ }, fountain: { x: FX, z: FZ, r: FR }, laundry: [laundry, laundry2], cafeChime, toyMeshes, napSpots },
   };
 }

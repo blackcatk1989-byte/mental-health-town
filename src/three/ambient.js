@@ -20,11 +20,19 @@ function blobTexture(rgb, alpha) {
 }
 
 // 水窪的位置（踩過會有漣漪）
-const PUDDLES = [{ x: 16.9, z: 17.6, r: 0.5 }];
+const PUDDLES = [{ x: 16.9, z: 17.6, r: 0.5 }, { x: 6.4, z: 13.5, r: 0.45 }];
 // 麻雀停的地方
-const FLOCKS = [[[20.6, 16.6], [21.3, 17.0], [20.9, 17.5]]];
+const FLOCKS = [[[20.6, 16.6], [21.3, 17.0], [20.9, 17.5]], [[30.1, 17.3], [31.0, 17.35], [30.5, 15.9]]];
 // 不能對話的居民：在活動範圍外做自己的事
-const RESIDENTS = [{ x: 21.3, z: -0.3, ry: 0.5, act: 'sweep', keepOnLow: true }];
+const RESIDENTS = [
+  { x: 21.3, z: -0.3, ry: 0.5, act: 'sweep', keepOnLow: true }, // 騎樓下掃地
+  { x: -0.75, z: 9.75, ry: Math.PI / 2, act: 'water' }, // 西邊住家門口澆花
+  { x: 33.4, z: 0.25, ry: 2.6, act: 'weed' }, // 花園北緣蹲著拔草
+];
+// 蝴蝶：在花圃上方繞圈，玩家靠近時會過來繞著玩家飛一下
+const BUTTERFLIES = [[29.0, 4.0, 0xf6d98a], [33.5, 5.8, 0xf3b6a8], [31.2, 20.3, 0xf6d98a], [27.4, 7.2, 0xd9c3ea]];
+const STEAM_AT = { x: 8.6, y: 5.3, z: 1.5 }; // 咖啡店的煙囪口
+const CHIME_AT = { x: 3.3, z: 5.6 }; // 咖啡店遮陽棚下的小風鈴
 
 const SPHERE = new THREE.SphereGeometry(1, 10, 8);
 const CYL = new THREE.CylinderGeometry(1, 1, 1, 10);
@@ -42,8 +50,8 @@ function makeSparrow() {
   return m;
 }
 
-// 剪影式的居民：沒有臉、低彩度，戴斗笠拿掃把
-function makeResident() {
+// 剪影式的居民：沒有臉、低彩度，戴斗笠；依動作拿掃把、澆水壺，或蹲著拔草
+function makeResident(act) {
   const g = new THREE.Group();
   const body = mergedMesh([
     [CYL, 0xcdbfae, at(0, 0.5, 0, { sx: 0.2, sy: 0.6, sz: 0.17 })],
@@ -53,17 +61,23 @@ function makeResident() {
     [CYL, 0xb9ab9a, at(-0.08, 0.1, 0, { sx: 0.06, sy: 0.2, sz: 0.07 })],
     [CYL, 0xb9ab9a, at(0.08, 0.1, 0, { sx: 0.06, sy: 0.2, sz: 0.07 })],
   ], vertexToon);
-  const broom = mergedMesh([
+  const tool = mergedMesh(act === 'sweep' ? [
     [CYL, 0x8e6a4c, at(0, -0.45, 0, { sx: 0.02, sy: 1.1, sz: 0.02 })],
     [BOX, 0xd9b26f, at(0, -1.02, 0, { sx: 0.26, sy: 0.16, sz: 0.06 })],
+  ] : act === 'water' ? [
+    [CYL, 0x8fb3c9, at(0, 0, 0, { sx: 0.1, sy: 0.2, sz: 0.1 })],
+    [CYL, 0x8fb3c9, at(0, 0.06, 0.2, { rx: 1.1, sx: 0.02, sy: 0.26, sz: 0.02 })],
+  ] : [
+    [SPHERE, 0x93b98a, at(0, 0, 0, { sx: 0.07, sy: 0.1, sz: 0.07 })],
   ], vertexToon);
-  broom.position.set(0.22, 1.05, 0.2);
-  g.add(body, broom);
-  g.userData = { body, broom };
+  tool.position.set(0.22, act === 'sweep' ? 1.05 : 0.72, act === 'sweep' ? 0.2 : 0.26);
+  g.add(body, tool);
+  if (act === 'weed') g.scale.y = 0.62; // 蹲著
+  g.userData = { body, broom: tool, act };
   return g;
 }
 
-export function createAmbient(scene, { banyan, fountain }) {
+export function createAmbient(scene, { banyan, fountain, cafeChime }) {
   const root = new THREE.Group();
   root.name = 'ambient';
   scene.add(root);
@@ -94,7 +108,7 @@ export function createAmbient(scene, { banyan, fountain }) {
   leaves.forEach((_, i) => hideLeaf(i));
 
   // ---- 許願池的水花：水滴沿著拋物線從噴嘴落回水池，重複使用 ----
-  const DROPS = 20;
+  const DROPS = 28;
   const dropMesh = new THREE.InstancedMesh(new THREE.SphereGeometry(0.045, 6, 5), new THREE.MeshBasicMaterial({ color: 0xe9f6fa }), DROPS);
   dropMesh.frustumCulled = false;
   fancy.add(dropMesh);
@@ -102,14 +116,58 @@ export function createAmbient(scene, { banyan, fountain }) {
   const placeDrop = (i, u) => {
     const a = (i / DROPS) * Math.PI * 2 * 3 + i;
     const upper = i % 2 === 0;
-    const r = upper ? u * 0.34 : 0.45 + u * 0.4;
-    const y = upper ? 1.36 + Math.sin(u * Math.PI) * 0.28 - u * 0.28 : 1.02 - u * u * 0.62 + Math.sin(u * Math.PI) * 0.06;
+    const r = upper ? u * 0.46 : 0.6 + u * (fountain.r - 1.0);
+    const y = upper ? 1.52 + Math.sin(u * Math.PI) * 0.3 - u * 0.3 : 1.16 - u * u * 0.74 + Math.sin(u * Math.PI) * 0.1;
     dummy.position.set(fountain.x + Math.cos(a) * r, y, fountain.z + Math.sin(a) * r);
     dummy.rotation.set(0, 0, 0);
     dummy.updateMatrix();
     dropMesh.setMatrixAt(i, dummy.matrix);
   };
   for (let i = 0; i < DROPS; i++) placeDrop(i, (i * 0.37) % 1);
+
+  // ---- 蝴蝶：每隻兩片翅膀，全部用同一個 InstancedMesh ----
+  const wingGeo = new THREE.PlaneGeometry(0.12, 0.1);
+  wingGeo.translate(0.06, 0, 0);
+  const wings = new THREE.InstancedMesh(wingGeo, new THREE.MeshBasicMaterial({ side: THREE.DoubleSide }), BUTTERFLIES.length * 2);
+  wings.frustumCulled = false;
+  const wingCol = new THREE.Color();
+  const flies = BUTTERFLIES.map(([x, z, col], i) => {
+    wingCol.set(col);
+    wings.setColorAt(i * 2, wingCol);
+    wings.setColorAt(i * 2 + 1, wingCol);
+    return { hx: x, hz: z, cx: x, cz: z, x, y: 1, z, visit: 0, phase: i * 2.4 };
+  });
+  fancy.add(wings);
+  const placeFly = (i, f, t, flap) => {
+    for (let side = 0; side < 2; side++) {
+      dummy.position.set(f.x, f.y, f.z);
+      dummy.rotation.set(0, -(t * 0.9 + f.phase) + side * Math.PI, flap);
+      dummy.updateMatrix();
+      wings.setMatrixAt(i * 2 + side, dummy.matrix);
+    }
+  };
+
+  flies.forEach((f, i) => { f.x = f.hx + 0.75; f.y = 1.15; placeFly(i, f, 0, 0.5); });
+
+  // ---- 咖啡店的熱氣：四團慢慢往上飄的白霧 ----
+  const steamMat = (o) => new THREE.SpriteMaterial({ map: steamTex, transparent: true, depthWrite: false, opacity: o });
+  const steamTex = blobTexture('255,252,246', 0.7);
+  const steam = [0, 1, 2, 3].map((i) => {
+    const s = new THREE.Sprite(steamMat(0));
+    s.userData.phase = i / 4;
+    fancy.add(s);
+    return s;
+  });
+  const placeSteam = (s, u) => {
+    s.position.set(STEAM_AT.x + Math.sin(u * 5 + s.userData.phase * 9) * 0.12, STEAM_AT.y + u * 1.3, STEAM_AT.z);
+    s.scale.setScalar(0.35 + u * 0.55);
+    s.material.opacity = Math.sin(u * Math.PI) * 0.55;
+  };
+  steam.forEach((s) => placeSteam(s, s.userData.phase));
+
+  // ---- 咖啡店的小風鈴：平常輕輕晃，玩家走近時響一聲、晃大一點 ----
+  let chimeSwing = 0;
+  let chimeNear = false;
 
   // ---- 麻雀：玩家靠近時飛走，過一陣子再回來 ----
   const birds = [];
@@ -151,7 +209,7 @@ export function createAmbient(scene, { banyan, fountain }) {
 
   // ---- 居民 ----
   const residents = RESIDENTS.map((r) => {
-    const m = makeResident();
+    const m = makeResident(r.act);
     m.position.set(r.x, 0, r.z);
     m.rotation.y = r.ry;
     root.add(m);
@@ -159,7 +217,8 @@ export function createAmbient(scene, { banyan, fountain }) {
   });
 
   let low = false;
-  const state = { birdsAway: 0, ripples: 0 };
+  let lastFlutter = -9;
+  const state = { birdsAway: 0, ripples: 0, chimes: 0, visiting: 0 };
 
   return {
     state, // 測試用
@@ -174,9 +233,17 @@ export function createAmbient(scene, { banyan, fountain }) {
         if (!r.m.visible) continue;
         const u = r.m.userData;
         const k = still ? 0 : 1;
-        u.body.rotation.y = Math.sin(t * 1.6) * 0.18 * k;
-        u.broom.rotation.z = (Math.sin(t * 1.6) * 0.35 + 0.15) * k;
-        u.broom.rotation.x = 0.25;
+        if (u.act === 'sweep') {
+          u.body.rotation.y = Math.sin(t * 1.6) * 0.18 * k;
+          u.broom.rotation.z = (Math.sin(t * 1.6) * 0.35 + 0.15) * k;
+          u.broom.rotation.x = 0.25;
+        } else if (u.act === 'water') {
+          u.body.rotation.y = Math.sin(t * 0.5) * 0.25 * k; // 慢慢從這盆澆到那盆
+          u.broom.rotation.x = 0.35 + Math.sin(t * 0.9) * 0.2 * k;
+        } else {
+          u.body.rotation.x = 0.35 + Math.sin(t * 1.1) * 0.1 * k; // 彎腰拔一下、停一下
+          u.broom.position.y = 0.3 + Math.max(0, Math.sin(t * 1.1)) * 0.25 * k;
+        }
       }
 
       // 水窪：走進去時起漣漪；減少動畫時只顯示一圈靜止的水紋
@@ -212,7 +279,37 @@ export function createAmbient(scene, { banyan, fountain }) {
         }
       }
 
+      // 小風鈴
+      const nearChime = Math.hypot(pos.x - CHIME_AT.x, pos.z - CHIME_AT.z) < 1.9;
+      if (nearChime && !chimeNear) { play('windchime'); chimeSwing = 1.6; state.chimes++; }
+      chimeNear = nearChime;
+      chimeSwing = Math.max(0, chimeSwing - dt);
+      cafeChime.rotation.z = still ? 0 : Math.sin(t * 1.7) * 0.05 + Math.sin(t * 9) * 0.16 * (chimeSwing / 1.6);
+
       if (low) return;
+
+      // 蝴蝶與熱氣（減少動畫時停在原地）
+      if (!still) {
+        let visiting = 0;
+        for (let i = 0; i < flies.length; i++) {
+          const f = flies[i];
+          const d = Math.hypot(pos.x - f.hx, pos.z - f.hz);
+          if (d < 2.4) f.visit = 4; else f.visit = Math.max(0, f.visit - dt);
+          const tx = f.visit > 0 && d < 4.5 ? pos.x : f.hx;
+          const tz = f.visit > 0 && d < 4.5 ? pos.z : f.hz;
+          if (tx !== f.hx) visiting++;
+          f.cx += (tx - f.cx) * Math.min(1, dt * 1.5);
+          f.cz += (tz - f.cz) * Math.min(1, dt * 1.5);
+          const a = t * 0.9 + f.phase;
+          f.x = f.cx + Math.cos(a) * 0.75;
+          f.z = f.cz + Math.sin(a) * 0.55;
+          f.y = 1.15 + Math.sin(t * 1.7 + f.phase) * 0.22 + (tx !== f.hx ? 0.35 : 0);
+          placeFly(i, f, t, Math.sin(t * 16 + f.phase) * 0.9);
+        }
+        state.visiting = visiting;
+        wings.instanceMatrix.needsUpdate = true;
+        for (const s of steam) placeSteam(s, (t * 0.22 + s.userData.phase) % 1);
+      }
 
       // 雲影
       if (!still) {
@@ -274,7 +371,7 @@ export function createAmbient(scene, { banyan, fountain }) {
             b.dx = (b.hx - pos.x) / n + Math.sin(b.phase) * 0.5;
             b.dz = (b.hz - pos.z) / n - 0.6;
             b.m.rotation.set(0, Math.atan2(b.dx, b.dz), 0);
-            if (b === birds[0] || Math.hypot(pos.x - birds[0].hx, pos.z - birds[0].hz) >= 2.3) play('flutter');
+            if (t - lastFlutter > 0.5) { lastFlutter = t; play('flutter'); }
           }
         } else if (b.state === 'fly') {
           b.t += dt;

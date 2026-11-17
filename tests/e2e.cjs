@@ -956,7 +956,7 @@ async function main() {
       const v = window.__xzj.view();
       const before = JSON.stringify(window.__xzj.store.data);
       const lines = v.toys().map((t) => v.poke(t.id));
-      v.teleport(18, 15.5);
+      v.teleport(18, 16.2);
       await new Promise((r) => setTimeout(r, 800));
       const name = document.getElementById('interact-name').textContent;
       v.teleport(18, 10.5);
@@ -970,7 +970,7 @@ async function main() {
       const tagFar = v.tagShown('xiaoan');
       return { lines, name, board, canopy, tagFar, same: before === JSON.stringify(window.__xzj.store.data) };
     });
-    check('小互動：每個都有一行字，而且不寫進存檔', toyState.lines.length >= 6 && toyState.lines.every(Boolean) && toyState.same, JSON.stringify(toyState));
+    check('小互動：每個都有一行字，而且不寫進存檔', toyState.lines.length >= 9 && toyState.lines.every(Boolean) && toyState.same, JSON.stringify(toyState));
     check('小互動：靠近許願池可以互動；公布欄旁仍以公布欄優先', toyState.name === '許願池' && toyState.board === '公布欄', JSON.stringify(toyState));
     check('走到榕樹後面時樹冠變半透明', toyState.canopy < 0.6, String(toyState.canopy));
     check('隱藏角色的名牌：在主要步道上不顯示', toyState.tagFar === false, String(toyState.tagFar));

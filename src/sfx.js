@@ -62,6 +62,7 @@ const SOUNDS = {
   close: (a) => { tone(a, 659, { dur: 0.1, vol: 0.02 }); tone(a, 494, { dur: 0.12, vol: 0.02, at: 0.04 }); },
   near: (a) => tone(a, 1318, { dur: 0.12, vol: 0.012 }),
   bell: (a) => { tone(a, 1760, { dur: 0.35, vol: 0.03 }); tone(a, 2217, { dur: 0.3, vol: 0.02, at: 0.09 }); }, // 腳踏車的車鈴
+  windchime: (a) => [2093, 2637, 3136].forEach((f, i) => tone(a, f, { dur: 0.7, vol: 0.014, at: i * 0.16 })), // 咖啡店的小風鈴
   flutter: (a) => [0, 0.07, 0.14].forEach((at) => noise(a, { dur: 0.05, vol: 0.02, freq: 1800, q: 0.7, at })), // 麻雀飛走
   type: (a) => tone(a, 1500 + Math.random() * 200, { dur: 0.02, vol: 0.006, type: 'square' }),
   pickup: (a) => tone(a, 440, { dur: 0.1, vol: 0.03, type: 'triangle', slide: 1.5 }),

@@ -2,10 +2,11 @@
 // 操作：電腦可拖曳，也可「點東西 → 點位置」；手機只用點選。鍵盤：Tab 選到東西按 Enter，再選位置按 Enter。
 // 回饋：植物放下約 2 秒後做出反應（合適就舒展、冒新葉或開花；不合適就垂下、轉向光或葉緣捲起），麻糬歪頭看；
 // 桌子放錯時東西滑回托盤、那桌的東西輕輕晃、嘆氣泡泡浮出主題圖示；放對時桌上出現小變化。
+// 桌子謎題有放大鏡：手上沒拿東西時點桌子，會放大顯示桌上的東西與上面的字；點托盤上的東西也會放大顯示。
 // 不計時、不扣分、不出現對錯字樣；「減少動畫」時改成靜態的前後變化加一行描述。文字模式用描述代替插畫。
 import { $, esc, openPanel } from './ui.js';
 import { play } from './sfx.js';
-import { PLANT_STAGE, TABLE_STAGE, plantStageSvg, tableStageSvg, potSvg, itemSvg, shuffled, shuffleTableStage } from './puzzle-art.js';
+import { PLANT_STAGE, TABLE_STAGE, plantStageSvg, tableStageSvg, potSvg, itemSvg, shuffled, shuffleTableStage, closeUpSvg } from './puzzle-art.js';
 
 const DRAFT = '<p class="fine draft">內容草案，尚未完成專業審閱。</p>';
 const SOIL = { rosemary: 'dry', mint: 'dry', fern: 'wet' };
@@ -45,7 +46,8 @@ export function openPuzzle(game, id) {
     body.innerHTML = `<p class="fine">${esc(p.minutes)}・不計時，可以一直重新擺</p>
       <p>${esc(p.intro)}</p>
       <div class="stage-wrap ${plants ? 'plants' : 'tables'}">${plants ? plantStageSvg() : tableStageSvg(p.tables)}</div>
-      <p class="caption" role="status" aria-live="polite">${plants ? '點一下花盆看看它的樣子，再點地上的位置放下去。電腦也可以直接拖曳。' : '點一下托盤上的東西，再點它原本的桌子。電腦也可以直接拖曳。'}</p>
+      <p class="caption" role="status" aria-live="polite">${plants ? '點一下花盆看看它的樣子，再點地上的位置放下去。電腦也可以直接拖曳。' : '先點桌子，用放大鏡看看桌上留下了什麼；再點托盤上的東西，放回它原本的桌子。電腦也可以直接拖曳。'}</p>
+      ${plants ? '' : '<div class="lens hidden" aria-live="polite"></div>'}
       <div class="mg-footer"><button type="button" class="btn" data-later>先離開，等等再來</button></div>`;
     body.querySelector('[data-later]').onclick = () => $('puzzle').close();
     const svg = body.querySelector('svg.stage');
@@ -53,6 +55,30 @@ export function openPuzzle(game, id) {
     const caption = body.querySelector('.caption');
     const cat = svg.querySelector('.cat');
     let selected = null;
+
+    // 放大鏡（只有桌子謎題）：放大顯示一張桌子或一樣東西，旁邊列出看得到的字
+    const lens = body.querySelector('.lens');
+    const showLens = (kind, thingId) => {
+      if (!lens) return;
+      for (const z of svg.querySelectorAll('.zone')) z.classList.toggle('looking', kind === 'table' && z.dataset.slot === thingId);
+      if (!kind) { lens.classList.add('hidden'); return; }
+      const table = kind === 'table' ? p.tables.find((x) => x.id === thingId) : null;
+      const item = kind === 'item' ? p.items.find((x) => x.id === thingId) : null;
+      lens.innerHTML = `<div class="lens-glass">${closeUpSvg(kind, thingId)}</div>
+        <div class="lens-text"><h4>${esc(table ? table.short : item.label)}</h4>
+        ${table ? `<ul>${table.details.map((x) => `<li><strong>${esc(x.name)}</strong>：${esc(x.text)}</li>`).join('')}</ul>` : `<p>${esc(item.look)}</p>`}</div>`;
+      lens.classList.remove('hidden');
+      lens.classList.remove('pop');
+      void lens.offsetWidth;
+      lens.classList.add('pop');
+      lens.scrollIntoView({ block: 'nearest', behavior: reduceMotion() ? 'auto' : 'smooth' }); // 小螢幕上放大鏡可能在畫面外
+    };
+    const lookAtTable = (slot) => {
+      const t = p.tables.find((x) => x.id === slot);
+      play('flip');
+      showLens('table', slot);
+      caption.textContent = `用放大鏡看${t.short}。想放東西的時候，先點托盤上的東西。`;
+    };
 
     // 每一項東西
     const nodes = new Map();
@@ -107,7 +133,10 @@ export function openPuzzle(game, id) {
       const it = p.items.find((x) => x.id === itemId);
       if (itemId) {
         play('pickup');
-        caption.textContent = plants ? `${it.label}：${it.looks.join('')}` : `${it.label}：${it.look}`;
+        caption.textContent = plants ? `${it.label}：${it.looks.join('')}` : `拿起${it.label}。點它原本的桌子放回去；再點一次就放下。`;
+        showLens('item', itemId);
+      } else {
+        showLens(null);
       }
     };
 
@@ -221,8 +250,11 @@ export function openPuzzle(game, id) {
       const occupied = pot && game.s.puzzles[id].place[pot.dataset.item];
       if (pot && selected && selected !== pot.dataset.item && occupied) { drop(selected, occupied); return; }
       if (pot) { select(selected === pot.dataset.item ? null : pot.dataset.item); return; }
-      if (!selected) return;
       const zone = e.target.closest('.zone');
+      if (!selected) {
+        if (zone && !plants) lookAtTable(zone.dataset.slot); // 手上沒拿東西：用放大鏡看這張桌子
+        return;
+      }
       if (zone) drop(selected, zone.dataset.slot);
       else if (e.target.closest('.tray-area')) drop(selected, null);
     });
@@ -232,6 +264,7 @@ export function openPuzzle(game, id) {
       const pot = e.target.closest('.pot');
       if (pot) select(selected === pot.dataset.item ? null : pot.dataset.item);
       else if (selected && e.target.closest('.zone')) drop(selected, e.target.closest('.zone').dataset.slot);
+      else if (!plants && e.target.closest('.zone')) lookAtTable(e.target.closest('.zone').dataset.slot);
     });
   }
 
@@ -245,7 +278,7 @@ export function openPuzzle(game, id) {
     body.innerHTML = `<p class="fine">${esc(p.minutes)}・不計時，可以一直重新擺</p>
       <p>${esc(p.intro)}</p>
       <h3>${plants ? '地上的位置' : '三張桌子'}</h3>
-      <ul class="text-list">${slots.map((x) => `<li>${esc(x.look)}</li>`).join('')}</ul>
+      <ul class="text-list">${slots.map((x) => `<li>${esc(x.look)}${x.details ? `<ul>${x.details.map((n) => `<li>${esc(n.name)}：${esc(n.text)}</li>`).join('')}</ul>` : ''}</li>`).join('')}</ul>
       ${message ? `<div class="notice" role="status">${esc(message)}</div>` : ''}
       <div class="puzzle-items">${textOrder.items.map((it) => {
     const at = place[it.id];

@@ -244,6 +244,14 @@ async function sectionV43() {
     check('桌子謎題：每次打開，東西的順序和桌子的位置都會打亂', orders.size >= 3 && seats.size >= 2, `6 次打開出現 ${orders.size} 種順序、${seats.size} 種桌子排法`);
     await page.evaluate(() => window.__xzj.game.openPuzzle('E02'));
     await page.waitForSelector('#puzzle[open] svg.stage');
+    // 放大鏡：手上沒拿東西時點桌子，放大顯示桌上的東西與上面的字；點托盤上的東西改顯示那樣東西
+    await page.locator('#puzzle .zone[data-slot="t3"] .zone-hit').click({ force: true });
+    const lensTable = await page.evaluate(() => { const l = document.querySelector('#puzzle-body .lens'); return { shown: !l.classList.contains('hidden'), text: l.innerText, art: !!l.querySelector('svg') }; });
+    check('桌子謎題：點桌子會打開放大鏡，看得到桌上東西的字', lensTable.shown && lensTable.art && /明信片/.test(lensTable.text) && /合照/.test(lensTable.text) && !NO_JUDGE.test(lensTable.text), lensTable.text);
+    await page.locator('#puzzle .pot[data-item="bookmark"] .pot-hit').click({ force: true });
+    const lensItem = await page.evaluate(() => document.querySelector('#puzzle-body .lens').innerText);
+    check('桌子謎題：點托盤上的東西，放大鏡顯示那樣東西的描述', /書籤/.test(lensItem) && /公式/.test(lensItem), lensItem);
+    await page.locator('#puzzle .pot[data-item="bookmark"] .pot-hit').click({ force: true }); // 放下
     let cap = await caption(page);
     const decoy = [];
     for (const t of ['t1', 't2', 't3']) {

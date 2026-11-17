@@ -246,6 +246,19 @@
     .stage .pot.selected { animation: lift .8s ease-in-out infinite alternate; }
     @keyframes lift { to { translate: 0 -4px; } }
     .caption { min-height: 3.2em; background: var(--paper-2); border-radius: 12px; padding: 8px 12px; margin: 8px 0; }
+    /* 桌子謎題的放大鏡：圓形鏡片裡是放大的圖，旁邊是看得到的字 */
+    .lens { display: flex; gap: 12px; align-items: center; background: var(--paper); border: 2px solid var(--line); border-radius: 16px; padding: 10px 12px; margin: 8px 0; }
+    .lens.hidden { display: none; }
+    .lens-glass { flex: 0 0 104px; width: 104px; height: 104px; border-radius: 50%; background: #f6ecdc; border: 5px solid #8a7a6c; box-shadow: inset 0 0 0 3px #e6f1f4; display: grid; place-items: center; overflow: hidden; }
+    .lens-art { width: 92%; height: 92%; }
+    .lens-text h4 { margin: 0 0 4px; }
+    .lens-text ul { margin: 0; padding-left: 1.1em; }
+    .lens-text p { margin: 0; }
+    .lens.pop .lens-glass { animation: lens-pop .35s cubic-bezier(.34, 1.4, .64, 1); }
+    @keyframes lens-pop { from { scale: .6; } }
+    .reduce-motion .lens.pop .lens-glass { animation: none; }
+    .stage .zone.looking .zone-hit { stroke: #8a7a6c; stroke-width: 3; }
+    .stage .look-badge { pointer-events: none; }
     /* 植物：初始姿態就是線索；反應用 class 切換 */
     .plant .stems, .plant .extra { transform-box: fill-box; transform-origin: 50% 100%; transition: transform 1.2s cubic-bezier(.34, 1.2, .64, 1), opacity .8s; }
     .plant .edge { transition: stroke .8s, fill .8s; }

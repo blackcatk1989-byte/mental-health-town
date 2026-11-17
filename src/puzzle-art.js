@@ -149,7 +149,7 @@ const THEME_ICON = {
 
 function tableItems(id) {
   if (id === 't1') {
-    return `<rect x="-26" y="-14" width="30" height="22" rx="2" fill="#fffaf0" transform="rotate(-8)"/>
+    return `<rect x="-26" y="-14" width="30" height="22" rx="2" fill="#fffdf7" stroke="#d8c6ad" transform="rotate(-8)"/>
       <g transform="rotate(-8)"><rect x="-22" y="-9" width="20" height="3" fill="#f2e46a"/><rect x="-22" y="-2" width="16" height="3" fill="#f2e46a"/></g>
       ${[[14, -10], [22, 0], [12, 10]].map(([x, y]) => `<circle cx="${x}" cy="${y}" r="6" fill="#fff" stroke="#d8c6ad"/><circle cx="${x}" cy="${y}" r="3" fill="#c9a78a"/>`).join('')}
       <g class="table-win" opacity="0"><rect x="-20" y="-20" width="16" height="10" rx="1" fill="#f6d9c8" transform="rotate(-8)"/></g>`;
@@ -167,6 +167,16 @@ function tableItems(id) {
     <g class="table-win" opacity="0"><rect x="-8" y="-10" width="7" height="8" fill="#d2705f" stroke="#fff" stroke-width="0.8"/></g>`;
 }
 
+// 放大鏡的小圖示（桌子左下角：表示可以點桌子仔細看）
+const MAGNIFIER = '<circle cx="0" cy="0" r="11" fill="#fff" stroke="#c9b9a6"/><circle cx="-1.5" cy="-1.5" r="4.5" fill="#e6f1f4" stroke="#8a7a6c" stroke-width="1.6"/><path d="M2 2 L6.5 6.5" stroke="#8a7a6c" stroke-width="2.2" stroke-linecap="round"/>';
+
+// 放大鏡裡的近看圖：桌上的東西或托盤上的某一樣東西，放大顯示
+export function closeUpSvg(kind, id) {
+  const art = kind === 'table' ? tableItems(id) : ITEM_ART[id] ?? '';
+  const box = kind === 'table' ? '-34 -26 68 52' : '-22 -22 44 44';
+  return `<svg class="lens-art" viewBox="${box}" aria-hidden="true"><g>${art}</g></svg>`;
+}
+
 export function tableStageSvg(tables) {
   const { w, h } = TABLE_STAGE;
   return `<svg class="stage" viewBox="0 0 ${w} ${h}" role="group" aria-label="咖啡店外的三張桌子">
@@ -181,6 +191,7 @@ export function tableStageSvg(tables) {
           <g class="sigh-dots">${[-8, 0, 8].map((x) => `<circle cx="${x}" cy="0" r="2.2" fill="#a89e95"/>`).join('')}</g>
           <g class="sigh-theme" opacity="0">${THEME_ICON[t.theme]}</g>
         </g>
+        <g class="look-badge" transform="translate(${s.x - 40} ${s.y + 40})">${MAGNIFIER}</g>
         <circle class="zone-hit" cx="${s.x}" cy="${s.y}" r="${s.r}" fill="transparent"/>
       </g>`;
   }).join('')}

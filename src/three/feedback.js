@@ -79,7 +79,7 @@ export function createFeedback(scene, labelLayer) {
       s.userData.life = 0.55;
       s.visible = true;
     },
-    // 附近可互動的目標（null 表示沒有）
+    // 附近可互動的目標（null 表示沒有）。main.js 對麻糬與隱藏角色傳 null，不顯示光圈
     highlight(t) {
       ring.visible = !!t;
       sparkle.visible = !!t;
@@ -89,6 +89,7 @@ export function createFeedback(scene, labelLayer) {
       highlightY = sparkle.position.y;
     },
     emote,
+    get ringShown() { return ring.visible; }, // 測試用
     jump(obj) {
       jumps.set(obj, 0.6);
     },

@@ -279,12 +279,12 @@ async function sectionV43() {
 
     const nav = await page.innerText('#text-mode nav.places');
     const alleyBtn = await page.innerHTML('#text-mode [data-area="alley"]');
-    check('文字模式地點清單有「咖啡店旁的小巷」，沒有任何特殊標記', /咖啡店旁的小巷/.test(nav) && !/goal-dot|cat-dot/.test(alleyBtn));
+    check('文字模式地點清單有「舊倉庫旁的窄巷」，沒有任何特殊標記', /舊倉庫旁的窄巷/.test(nav) && !/咖啡店旁的小巷/.test(nav) && !/goal-dot|cat-dot/.test(alleyBtn));
     const hintTargets = await page.evaluate(() => window.__xzj.game.hintTopics().map((t) => t.target));
     const book0 = await page.evaluate(() => { window.__xzj.ui.openCardbook(); return document.getElementById('cardbook-body').innerText; });
     const secretTile = await page.$('#cardbook-body .card-tile.secret');
     await page.click('#cardbook .panel-head button:last-child');
-    check('完全不提示：麻糬、任務欄、卡冊都沒有小安的線索；隱藏卡只顯示「？」', !hintTargets.includes('xiaoan') && !/小安|小巷|不是你的錯/.test(book0 + await page.innerText('#goal')) && !!secretTile && /0\/6/.test(await page.innerText('#cardbook-count')));
+    check('完全不提示：麻糬、任務欄、卡冊都沒有小安的線索；隱藏卡只顯示「？」', !hintTargets.includes('xiaoan') && !/小安|小巷|窄巷|不是你的錯/.test(book0 + await page.innerText('#goal')) && !!secretTile && /0\/6/.test(await page.innerText('#cardbook-count')));
 
     // 沒有 E02 時
     await text.go(page, 'alley');
@@ -429,16 +429,23 @@ async function sectionV43() {
     await page.waitForFunction(() => window.__xzj?.view()?.position, null, { timeout: 30000 });
     const st = await state(page);
     check('舊存檔（沒有支線紀錄）可直接沿用，不需重新開始', !msg && st.step === 'thought' && st.cards.includes('K01') && typeof st.side === 'object');
-    // 主要步道上：互動提示不會出現小安，也沒有目標記號
-    await page.evaluate(() => window.__xzj.view().teleport(11.3, 12.6));
-    await page.waitForTimeout(1500);
-    const onLane = await page.evaluate(() => document.getElementById('interact-name').textContent);
-    await page.evaluate(() => window.__xzj.view().teleport(11.3, 3.2));
+    // 主要步道上：畫面裡看不到小安、互動提示不會出現小安，也沒有目標記號（小安在地圖西南角舊倉庫旁的窄巷）
+    const seenOnPath = [];
+    for (const [x, z] of [[3.0, 13.8], [9, 15], [5, 8.4], [18, 17], [18, 21.2], [26.5, 12], [30, 18]]) {
+      await page.evaluate(([px, pz]) => window.__xzj.view().teleport(px, pz), [x, z]);
+      await page.waitForTimeout(1500);
+      const seen = await page.evaluate(() => { const t = window.__xzj.game.target('xiaoan'); return window.__xzj.view().onScreen(t.x, 0.8, t.z); });
+      const name = await page.evaluate(() => document.getElementById('interact-name').textContent);
+      if (seen || name === '小安') seenOnPath.push(`${x},${z}`);
+    }
+    await page.evaluate(() => window.__xzj.view().teleport(3.0, 21.0));
     await page.waitForFunction(() => document.getElementById('interact-name').textContent === '小安' && !document.getElementById('interact').classList.contains('hidden'), null, { timeout: 30000 });
+    await page.waitForTimeout(1500);
+    const inCorner = await page.evaluate(() => { const t = window.__xzj.game.target('xiaoan'); const v = window.__xzj.view(); return { seen: v.onScreen(t.x, 0.8, t.z), ring: v.ringShown, x: t.x, z: t.z }; });
     const marks = await page.evaluate(() => document.querySelectorAll('.goal-mark').length);
     const goals = await page.evaluate(() => window.__xzj.game.goalTargets());
     await page.waitForFunction(() => JSON.parse(localStorage.getItem('xinzhijian.save')).area === 'alley', null, { timeout: 15000 }).catch(() => {});
-    check('3D：在主要步道上遇不到小安，走進巷子才會出現互動；沒有目標記號', onLane !== '小安' && !goals.includes('xiaoan') && marks === goals.length && (await state(page)).area === 'alley');
+    check('3D：主要步道上畫面裡看不到小安；走到西南角才會出現互動，看得到他，身上沒有光圈；沒有目標記號', !seenOnPath.length && inCorner.seen && !inCorner.ring && inCorner.x < 4 && inCorner.z > 20 && !goals.includes('xiaoan') && marks === goals.length && (await state(page)).area === 'alley', seenOnPath.join('、'));
     await page.screenshot({ path: `${process.env.OUT || '.'}/alley.png` });
     await page.keyboard.press('KeyE');
     await page.waitForSelector('#dialogue:not(.hidden)');
@@ -973,7 +980,19 @@ async function main() {
     // 靠近：光圈與提示音
     await page.evaluate(() => { const t = window.__xzj.game.target('xiaoqing'); window.__xzj.view().teleport(t.x, t.z + 1.1); });
     await page.waitForFunction(() => window.__sfx.some((x) => x.name === 'near'), null, { timeout: 30000 }).catch(() => {});
-    check('靠近可互動的人：有提示音與發光光圈', await page.evaluate(() => window.__sfx.some((x) => x.name === 'near')));
+    check('靠近可互動的人：有提示音與發光光圈', await page.evaluate(() => window.__sfx.some((x) => x.name === 'near')) && await page.evaluate(() => window.__xzj.view().ringShown));
+    // 麻糬：靠近、點牠時都沒有光圈（帶路功能不變）
+    await page.evaluate(() => { const c = window.__xzj.view().catPosition; window.__xzj.view().teleport(18, 17); });
+    await page.waitForTimeout(2500);
+    await page.evaluate(() => { const c = window.__xzj.view().catPosition; window.__xzj.view().teleport(c.x + 0.8, c.z); });
+    await page.waitForFunction(() => document.getElementById('interact-name').textContent === '橘貓麻糬', null, { timeout: 30000 }).catch(() => {});
+    const catNear = await page.evaluate(() => ({ name: document.getElementById('interact-name').textContent, ring: window.__xzj.view().ringShown }));
+    await page.keyboard.press('KeyE');
+    await page.waitForTimeout(400);
+    const catAfter = await page.evaluate(() => ({ ring: window.__xzj.view().ringShown, guide: window.__xzj.view().catGuide }));
+    check('靠近麻糬、問麻糬時都沒有光圈；麻糬照樣帶路', catNear.name === '橘貓麻糬' && !catNear.ring && !catAfter.ring && !!catAfter.guide, JSON.stringify({ catNear, catAfter }));
+    await page.evaluate(() => { const t = window.__xzj.game.target('xiaoqing'); window.__xzj.view().teleport(t.x, t.z + 1.1); });
+    await page.waitForFunction(() => document.getElementById('interact-name').textContent === '曉晴', null, { timeout: 30000 }).catch(() => {});
     // 對話：逐字出現、點一下顯示整句、表情圖示
     await page.waitForSelector('#interact:not(.hidden)');
     await page.keyboard.press('KeyE');

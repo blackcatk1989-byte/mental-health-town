@@ -2,7 +2,7 @@
 // 都只是氣氛，不影響任務與進度。物件在一開始建好，主迴圈裡只更新位置；
 // 「減少動畫」時全部靜止（麻雀與落葉不出現）；低畫質時關閉雲影、落葉與麻雀。
 import * as THREE from 'three';
-import { vertexToon } from './characters.js';
+import { animateCharacter, makeCharacter, vertexToon } from './characters.js';
 import { at, mergedMesh } from './merge.js';
 import { play } from '../sfx.js';
 
@@ -29,7 +29,7 @@ const RESIDENTS = [
   { x: -0.75, z: 9.75, ry: Math.PI / 2, act: 'water' }, // 西邊住家門口澆花
   { x: 33.4, z: 0.25, ry: 2.6, act: 'weed' }, // 花園北緣蹲著拔草
   { x: 20.55, y: 0.3, z: 7.85, ry: -0.7, act: 'sit' }, // 坐在榕樹的石椅上看書
-  { x: 13.8, z: 16.4, x2: 19.4, ry: Math.PI / 2, act: 'walk', solid: true }, // 在廣場南側來回散步的路人（玩家靠近時會停下來）
+  { x: 13.8, z: 16.4, x2: 19.4, ry: Math.PI / 2, act: 'walk', solid: true, look: { skin: '#eccdb0', hair: '#4f4038', hairStyle: 'short', outfit: '#a9c2a0', accent: '#f6ecd9', pants: '#7d8791' } }, // 在廣場南側來回散步的路人（玩家靠近時會停下來）
 ];
 // 蝴蝶：在花圃上方繞圈，玩家靠近時會過來繞著玩家飛一下
 const BUTTERFLIES = [[29.0, 4.0, 0xf6d98a], [33.5, 5.8, 0xf3b6a8], [31.2, 20.3, 0xf6d98a], [27.4, 7.2, 0xd9c3ea]];
@@ -233,7 +233,8 @@ export function createAmbient(scene, { banyan, fountain, cafeChime, censer }) {
 
   // ---- 居民 ----
   const residents = RESIDENTS.map((r) => {
-    const m = makeResident(r.act);
+    // 走在廣場上的路人離玩家很近，用和其他角色一樣的 Q 版造型（沒有名牌、不能對話）；遠處的居民維持剪影
+    const m = r.look ? makeCharacter(r.look) : makeResident(r.act);
     m.position.set(r.x, r.y ?? 0, r.z);
     m.rotation.y = r.ry;
     root.add(m);
@@ -261,27 +262,26 @@ export function createAmbient(scene, { banyan, fountain, cafeChime, censer }) {
         if (!r.m.visible) continue;
         const u = r.m.userData;
         const k = still ? 0 : 1;
-        if (u.act === 'sweep') {
+        if (r.act === 'sweep') {
           u.body.rotation.y = Math.sin(t * 1.6) * 0.18 * k;
           u.broom.rotation.z = (Math.sin(t * 1.6) * 0.35 + 0.15) * k;
           u.broom.rotation.x = 0.25;
-        } else if (u.act === 'sit') {
+        } else if (r.act === 'sit') {
           u.body.rotation.x = 0.12 + Math.sin(t * 0.6) * 0.05 * k; // 低頭看書，偶爾動一下
-        } else if (u.act === 'walk') {
+        } else if (r.act === 'walk') {
           // 來回散步；玩家靠近時停下來看一眼，不會撞到玩家
           const d = Math.hypot(pos.x - r.m.position.x, pos.z - r.m.position.z);
-          if (d < 1.5) {
-            r.m.rotation.y = Math.atan2(pos.x - r.m.position.x, pos.z - r.m.position.z);
-            r.m.position.y = 0;
-          } else if (!still) {
-            r.m.position.x += r.dir * 0.85 * dt;
+          const moving = d >= 1.5 && !still;
+          if (moving) {
+            r.m.position.x += r.dir * 1.3 * dt;
             if (r.m.position.x > r.x2) r.dir = -1;
             if (r.m.position.x < r.x) r.dir = 1;
             r.m.rotation.y = r.dir * Math.PI / 2;
-            r.m.position.y = Math.abs(Math.sin(t * 6.5)) * 0.035;
-            u.body.rotation.z = Math.sin(t * 6.5) * 0.05;
+          } else if (d < 1.5) {
+            r.m.rotation.y = Math.atan2(pos.x - r.m.position.x, pos.z - r.m.position.z);
           }
-        } else if (u.act === 'water') {
+          animateCharacter(r.m, t, moving, still);
+        } else if (r.act === 'water') {
           u.body.rotation.y = Math.sin(t * 0.5) * 0.25 * k; // 慢慢從這盆澆到那盆
           u.broom.rotation.x = 0.35 + Math.sin(t * 0.9) * 0.2 * k;
         } else {

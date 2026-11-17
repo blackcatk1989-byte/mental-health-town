@@ -3,7 +3,7 @@
 import { play } from '../sfx.js';
 import { esc } from '../ui.js';
 
-export function createToys(list, meshes, ui) {
+export function createToys(list, meshes, ui, effects = {}) {
   const targets = list.map((toy) => ({
     id: `toy:${toy.id}`, kind: 'toy', name: toy.name, verb: toy.verb, x: toy.x, z: toy.z, cardTarget: false, toy, turn: 0,
   }));
@@ -22,6 +22,7 @@ export function createToys(list, meshes, ui) {
       play(toy.sound ?? 'click');
       const mesh = meshes[toy.mesh];
       if (mesh) wobbles.set(mesh, 0.9);
+      effects[toy.effect]?.(); // 少數小東西有自己的效果（例如上香）
       return line;
     },
     update(dt, still) {

@@ -28,7 +28,7 @@ export function newSave(puzzleIds) {
     flags: {},
     side: {}, // 支線（隱藏角色）的進度
     practice: { thought: 0, present: 0 }, // 親手完成練習的次數
-    puzzles: Object.fromEntries(puzzleIds.map((id) => [id, { place: {}, solved: false }])), // 謎題：已擺放的位置、是否解開（「先別急著貼標籤」另有 tables：每張桌子看到第幾層線索）
+    puzzles: Object.fromEntries(puzzleIds.map((id) => [id, { place: {}, solved: false }])), // 謎題：已擺放的位置、是否解開（密碼鎖另有 seen、dial、opened，見 src/game.js）
     area: 'plaza',
     player: null, // { x, z }
     mode: '3d',

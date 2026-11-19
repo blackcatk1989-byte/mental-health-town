@@ -276,11 +276,11 @@ async function sectionV43() {
     const opened = await tryCode(page, CODE);
     await page.waitForSelector('#puzzle-body .box-items', { timeout: 10000 });
     const boxText = await page.innerText('#puzzle-body .box-items');
-    check('E02 全部正確：鎖彈開、箱子裡有三位客人的物品與他們說的話', /鎖彈開/.test(opened) && /生日卡/.test(boxText) && /火車/.test(boxText) && /鴿子/.test(boxText), boxText);
+    check('E02 全部正確：鎖彈開、箱子裡有三位客人的物品與他們說的話', /鎖彈開/.test(opened) && /阿嬤/.test(boxText) && /火車/.test(boxText) && /鴿子/.test(boxText), boxText);
     await page.click('#puzzle-body [data-done]');
     const solvedE02 = await page.innerText('#puzzle-body .solved');
     const saved = (await state(page)).puzzles.E02;
-    check('看完箱子裡的東西才取得 E02，說明「可以問，也可以等對方說」', saved.solved && (await state(page)).cards.includes('E02') && /可以問，也可以等對方說/.test(solvedE02), solvedE02);
+    check('看完箱子裡的東西才取得 E02，說明感受不是診斷、「可以問，也可以等對方說」，並指向找支持', /感受本身不是診斷/.test(solvedE02) && /找支持/.test(solvedE02) && saved.solved && (await state(page)).cards.includes('E02') && /可以問，也可以等對方說/.test(solvedE02), solvedE02);
     check('E02 的存檔只記看過的線索、撥到的數字、是否開鎖', Object.keys(saved).sort().join() === 'dial,opened,place,seen,solved', JSON.stringify(saved));
     // 重玩：不重複發卡
     await page.click('#puzzle-body [data-replay]');
@@ -536,8 +536,8 @@ async function main() {
     await text.go(page, 'cafe');
     await lookAt(page, 't2', SPOTS.t2);
     const tableText = await page.innerText('#puzzle-body .text-list');
-    const tx1 = await tryCode(page, [3, 2, 1]);
-    check('文字模式 E02：查看桌子的文字描述；拉不開時說明哪一格不對，不出現對錯字樣', /火車誤點/.test(tableText) && /第一格/.test(tx1) && /好像不只是看到的那樣/.test(tx1) && !NO_JUDGE.test(tx1.replace(/不對/g, '')), tx1);
+    const tx1 = await tryCode(page, SURFACE);
+    check('文字模式 E02：查看桌子的文字描述；拉不開時說明哪一格不對，不出現對錯字樣', /誤點/.test(tableText) && /第一格/.test(tx1) && /好像不只是看到的那樣/.test(tx1) && !NO_JUDGE.test(tx1.replace(/不對/g, '')), tx1);
     await tryCode(page, CODE);
     await page.click('#puzzle-body [data-done]');
     const solvedText = await page.innerText('#puzzle-body');

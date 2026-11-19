@@ -4,7 +4,7 @@
 // 兩個欄位都留空時：在本機（localhost）用假的收件端測試；在正式網站上，留言功能顯示「還在準備中」，只能許願不能留言。
 // 設定步驟見 docs/許願池設定說明.md。
 export const WISH_CONFIG = {
-  url: '', // 例如 https://xxxx.supabase.co
-  publicKey: '', // 公開金鑰：sb_publishable_… 或 anon public 那一把
+  url: 'https://kagbhcuaywodaufmdhut.supabase.co',
+  publicKey: 'sb_publishable_2XUdytVc-kuxeCXsI-dYDg_pAu9scFd', // 公開金鑰（publishable），設計上可以公開
   table: 'wishes',
 };

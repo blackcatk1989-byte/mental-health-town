@@ -109,9 +109,10 @@ async function playPresent(page) {
 
 // 謎題：直接操作。插畫版「點東西 → 點位置」；drag 為 true 時用滑鼠拖曳；文字模式按「放到……」
 const E01 = { rosemary: 'sun', mint: 'wet', fern: 'shade' };
-// 謎題「失物招領箱的密碼鎖」（E02）：密碼 5-4-2，三個表面數字 3-2-1 打不開
-const CODE = [5, 4, 2];
-const SURFACE = [3, 2, 1];
+// 謎題「失物招領箱的密碼鎖」（E02）：轉盤由左到右是 圓形（中間那桌）、拱門形（門口那桌）、方形（靠窗那桌）。
+// 密碼 4-2-5；三個表面數字 2-1-3 打不開
+const CODE = [4, 2, 5];
+const SURFACE = [2, 1, 3];
 const SPOTS = { t1: ['t1a', 't1b'], t2: ['t2a', 't2b'], t3: ['t3a', 't3b'] };
 // 打開一張桌子的特寫，查看指定的地方（文字模式按清單的按鈕；插畫版點桌面上的放大鏡）
 async function lookAt(page, table, spots) {
@@ -257,27 +258,29 @@ async function sectionV43() {
     const surface = await tryCode(page, SURFACE);
     const shaken = await page.evaluate(() => [...document.querySelectorAll('#puzzle .dial.shake')].map((d) => d.dataset.i).join());
     check('E02 用三個表面數字打不開，出現「好像不只是看到的那樣」，不出現對錯字樣', /拉不開/.test(surface) && /好像不只是看到的那樣/.test(surface) && !NO_JUDGE.test(surface) && shaken === '0,1,2', surface);
-    const oneOff = await tryCode(page, [5, 4, 1]);
+    const oneOff = await tryCode(page, [4, 2, 3]);
     const shaken1 = await page.evaluate(() => [...document.querySelectorAll('#puzzle .dial.shake')].map((d) => d.dataset.i).join());
     const lit = await page.evaluate(() => [...document.querySelectorAll('#puzzle .dial.right')].map((d) => d.dataset.i).join());
     check('E02 只錯一格：只有那一格會抖，撥對的兩格會亮', /拉不開/.test(oneOff) && shaken1 === '2' && lit === '0,1', `${shaken1}｜${lit}`);
     await lookAt(page, 't1', ['t1a']);
     const lensT1 = await page.innerText('#puzzle-body .lens');
+    const tableHints = await page.evaluate(() => ({ badges: document.querySelectorAll('#puzzle .spot-badge').length, text: document.querySelector('#puzzle-body .table-head').innerText.trim() }));
+    check('E02 桌子特寫：只有桌角的圖形記號，沒有放大鏡記號與「對應第幾格」的文字', tableHints.badges === 0 && !/對應|第.格/.test(tableHints.text), JSON.stringify(tableHints));
     check('E02 查看桌上的東西：放大鏡說明真正的樣子', /生日快樂/.test(lensT1) && !NO_JUDGE.test(lensT1), lensT1);
     await page.click('#puzzle .panel-head button:last-child');
     await settle(page);
     await page.evaluate(() => window.__xzj.game.openPuzzle('E02'));
     await page.waitForSelector('#puzzle[open] .lock-body');
-    const kept = await page.evaluate(() => ({ dial: window.__xzj.game.lockState('E02').dial.join(), notes: document.querySelectorAll('#puzzle .note-icon:not(.empty)').length }));
-    check('E02 中途離開再回來：撥好的數字保留，看過的線索記在小筆記上', kept.dial === '5,4,1' && kept.notes === 1, JSON.stringify(kept));
+    const kept = await page.evaluate(() => ({ dial: window.__xzj.game.lockState('E02').dial.join(), seen: window.__xzj.game.lockState('E02').seen.join(), notes: !!document.querySelector('#puzzle .lock-notes'), shapes: [...document.querySelectorAll('#puzzle .dial-shape')].map((e) => e.title).join() }));
+    check('E02 中途離開再回來：撥好的數字與看過的線索保留；鎖上只有圖形，沒有小筆記，順序打亂', kept.dial === '4,2,3' && kept.seen === 't1a' && !kept.notes && kept.shapes === '圓形,拱門形,方形', JSON.stringify(kept));
     const opened = await tryCode(page, CODE);
     await page.waitForSelector('#puzzle-body .box-items', { timeout: 10000 });
     const boxText = await page.innerText('#puzzle-body .box-items');
-    check('E02 全部正確：鎖彈開、箱子裡有三位客人的物品與他們說的話', /鎖彈開/.test(opened) && /生日卡/.test(boxText) && /火車/.test(boxText) && /鴿子/.test(boxText), boxText);
+    check('E02 全部正確：鎖彈開、箱子裡有三位客人的物品與他們說的話', /鎖彈開/.test(opened) && /阿嬤/.test(boxText) && /火車/.test(boxText) && /鴿子/.test(boxText), boxText);
     await page.click('#puzzle-body [data-done]');
     const solvedE02 = await page.innerText('#puzzle-body .solved');
     const saved = (await state(page)).puzzles.E02;
-    check('看完箱子裡的東西才取得 E02，說明「可以問，也可以等對方說」', saved.solved && (await state(page)).cards.includes('E02') && /可以問，也可以等對方說/.test(solvedE02), solvedE02);
+    check('看完箱子裡的東西才取得 E02，說明感受不是診斷、「可以問，也可以等對方說」，並指向找支持', /感受本身不是診斷/.test(solvedE02) && /找支持/.test(solvedE02) && saved.solved && (await state(page)).cards.includes('E02') && /可以問，也可以等對方說/.test(solvedE02), solvedE02);
     check('E02 的存檔只記看過的線索、撥到的數字、是否開鎖', Object.keys(saved).sort().join() === 'dial,opened,place,seen,solved', JSON.stringify(saved));
     // 重玩：不重複發卡
     await page.click('#puzzle-body [data-replay]');
@@ -533,8 +536,8 @@ async function main() {
     await text.go(page, 'cafe');
     await lookAt(page, 't2', SPOTS.t2);
     const tableText = await page.innerText('#puzzle-body .text-list');
-    const tx1 = await tryCode(page, [3, 2, 1]);
-    check('文字模式 E02：查看桌子的文字描述；拉不開時說明哪一格不對，不出現對錯字樣', /火車誤點/.test(tableText) && /第一格/.test(tx1) && /好像不只是看到的那樣/.test(tx1) && !NO_JUDGE.test(tx1.replace(/不對/g, '')), tx1);
+    const tx1 = await tryCode(page, SURFACE);
+    check('文字模式 E02：查看桌子的文字描述；拉不開時說明哪一格不對，不出現對錯字樣', /誤點/.test(tableText) && /第一格/.test(tx1) && /好像不只是看到的那樣/.test(tx1) && !NO_JUDGE.test(tx1.replace(/不對/g, '')), tx1);
     await tryCode(page, CODE);
     await page.click('#puzzle-body [data-done]');
     const solvedText = await page.innerText('#puzzle-body');
@@ -726,14 +729,14 @@ async function main() {
     await page.screenshot({ path: `${OUT}/3d-pots-solved.png` });
 
     // 謎題 E02（插畫版）：麻糬的三層提示，走到桌子旁查看，再去開鎖
-    const hints = await page.evaluate(() => { const g = window.__xzj.game; const out = []; for (let i = 0; i < 8 && out.length < 3; i++) { const r = g.catHint(); if (r.target?.id === 'table1') out.push({ text: r.text, at: !!r.at }); } return { out, mark: g.lockMark }; });
-    check('麻糬對密碼鎖的三層提示：走到桌子 → 坐到還沒看的地方旁 → 直接標出那個地方', hints.out.length === 3 && !hints.out[0].at && hints.out[1].at && /打開紙團/.test(hints.out[1].text) && /拍了拍/.test(hints.out[2].text) && hints.mark === 't1a', JSON.stringify(hints));
-    await go('table1', 0, 0.9);
+    const hints = await page.evaluate(() => { const g = window.__xzj.game; const out = []; for (let i = 0; i < 8 && out.length < 3; i++) { const r = g.catHint(); if (r.target?.id === 'table2') out.push({ text: r.text, at: !!r.at }); } return { out, mark: g.lockMark }; });
+    check('麻糬對密碼鎖的三層提示：走到桌子 → 坐到還沒看的地方旁 → 直接標出那個地方', hints.out.length === 3 && !hints.out[0].at && hints.out[1].at && /翻開收據背面/.test(hints.out[1].text) && /拍了拍/.test(hints.out[2].text) && hints.mark === 't2a', JSON.stringify(hints));
+    await go('table2', 0, 0.9);
     await pressE();
     await page.waitForSelector('#puzzle[open] .stage.table-close');
     const pawShown = await page.evaluate(() => !!document.querySelector('#puzzle .spot.marked .paw'));
     check('第三層提示：桌子特寫上標出麻糬拍過的地方', pawShown);
-    for (const sp of SPOTS.t1) await page.click(`#puzzle .spot[data-spot="${sp}"] .spot-hit`, { force: true });
+    for (const sp of SPOTS.t2) await page.click(`#puzzle .spot[data-spot="${sp}"] .spot-hit`, { force: true });
     await page.click('#puzzle .panel-head button:last-child');
     await settle(page);
     await go('lockbox', 0, 0.7);

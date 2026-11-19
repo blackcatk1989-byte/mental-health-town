@@ -272,8 +272,7 @@
     .wish-thanks { font-size: 1.15rem; text-align: center; margin: 20px 0; }
     #wish { overflow: auto; }
     /* 謎題「失物招領箱的密碼鎖」：箱子、鎖頭與三個轉盤、旁邊的小筆記、桌子特寫、打開的箱子 */
-    .lock-layout { display: grid; grid-template-columns: minmax(0, 1fr) 170px; gap: 12px; align-items: start; margin: 8px 0; }
-    @media (max-width: 560px) { .lock-layout { grid-template-columns: 1fr; } }
+    .lock-layout { max-width: 420px; margin: 8px auto; }
     .lockbox { text-align: center; }
     .lockbox .crate { background: linear-gradient(#b68a62, #9d7454); border: 3px solid #8e6a4c; border-radius: 16px; padding: 18px 10px 14px; box-shadow: inset 0 -6px 0 rgba(0,0,0,.08); }
     .padlock { display: inline-block; position: relative; }
@@ -297,21 +296,12 @@
     .dial-num.roll-down .n { animation: roll-down .18s ease-out; }
     @keyframes roll-up { from { translate: 0 10px; opacity: .3; } }
     @keyframes roll-down { from { translate: 0 -10px; opacity: .3; } }
-    .lock-note { font-size: .9rem; color: var(--ink-soft); margin: 8px 4px 0; }
-    .lock-notes { background: #fffdf2; border: 2px solid var(--line); border-radius: 14px; padding: 8px 10px; background-image: repeating-linear-gradient(transparent 0 25px, #ece2cf 25px 26px); }
-    .lock-notes h4 { margin: 0 0 6px; }
-    .note-row { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; margin: 6px 0; }
-    .note-name { font-size: .85rem; }
-    .note-icons { display: flex; gap: 4px; margin-left: auto; }
-    .note-icon { width: 34px; height: 34px; display: grid; place-items: center; border-radius: 8px; background: #fff; border: 1px solid #d8c6ad; position: relative; }
-    .note-icon.empty { border-style: dashed; background: transparent; }
     .sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
-    .table-head { display: flex; align-items: center; gap: 8px; margin: 4px 0; }
+    #puzzle-body .caption:empty { display: none; } /* 桌子特寫一開始沒有說明文字 */
+    .table-head { display: flex; align-items: center; gap: 8px; margin: 4px 0; } /* 只放桌角的圖形記號 */
     .stage.table-close .spot { cursor: pointer; }
     .stage.table-close .spot:focus { outline: none; }
     .stage.table-close .spot:hover .spot-hit, .stage.table-close .spot:focus .spot-hit { stroke: #c97f62; stroke-width: 3; stroke-dasharray: 6 5; }
-    .stage.table-close .spot-badge { transform-box: fill-box; transform-origin: 50% 50%; animation: mark-pulse 1.1s ease-in-out infinite alternate; }
-    .stage.table-close .spot.seen .spot-badge { animation: none; opacity: .35; }
     .stage.table-close .spot.marked .spot-hit { stroke: #d98d45; stroke-width: 3; }
     .box-open .lockbox.opened { position: relative; height: 70px; width: 200px; margin: 6px auto 4px; }
     .box-open .lockbox.opened .crate { position: absolute; inset: 22px 0 0; padding: 0; }
@@ -328,7 +318,6 @@
     .text-dials { display: flex; flex-wrap: wrap; gap: 12px; margin: 8px 0; }
     .text-dials label { display: grid; gap: 4px; font-size: .9rem; }
     .text-dials select { font-size: 1.2rem; min-width: 70px; min-height: 44px; }
-    @keyframes mark-pulse { to { scale: 1.25; } } /* 密碼鎖桌子特寫上的放大鏡記號 */
     /* 植物：初始姿態就是線索；反應用 class 切換 */
     .plant .stems, .plant .extra { transform-box: fill-box; transform-origin: 50% 100%; transition: transform 1.2s cubic-bezier(.34, 1.2, .64, 1), opacity .8s; }
     .plant .edge { transition: stroke .8s, fill .8s; }

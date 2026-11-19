@@ -40,7 +40,6 @@ const CLUE = {
   tag: '<path d="M0 -15 v6" stroke="#8a7a6c" stroke-width="1.4"/><circle cy="2" r="11" fill="#f2c46b" stroke="#c99a3e" stroke-width="1.6"/><path d="M-4 0 a2 2 0 1 1 4 0 a2 2 0 1 1 4 0 q0 4 -4 6 q-4 -2 -4 -6 Z" fill="#c99a3e" transform="translate(-2 0)"/>',
 };
 const clueSvg = (art, size = 34) => `<svg class="clue-svg" width="${size}" height="${size}" viewBox="-20 -20 40 40" aria-hidden="true">${CLUE[art] ?? ''}</svg>`;
-const MAGNIFIER = '<circle r="12" fill="#fff" stroke="#c9b9a6" stroke-width="1.5"/><circle cx="-1.5" cy="-1.5" r="5" fill="#e6f1f4" stroke="#8a7a6c" stroke-width="1.7"/><path d="M2.2 2.2 L7 7" stroke="#8a7a6c" stroke-width="2.4" stroke-linecap="round"/>';
 const PAW = '<g fill="#d98d45"><ellipse cx="0" cy="4" rx="5" ry="4"/><circle cx="-5" cy="-2.5" r="2.2"/><circle cx="0" cy="-5" r="2.2"/><circle cx="5" cy="-2.5" r="2.2"/></g>';
 
 // 桌子特寫：桌面上的東西（看過某個地方後會改變樣子）與可以點開的地方
@@ -79,7 +78,6 @@ function tableSvg(t, seen, mark) {
     const was = seen.has(s.id);
     return `<g class="spot ${was ? 'seen' : ''} ${mark === s.id ? 'marked' : ''}" data-spot="${s.id}" tabindex="0" role="button" aria-label="${esc(s.name)}${was ? '（看過了）' : ''}${mark === s.id ? '（麻糬拍過這裡）' : ''}">
         <circle class="spot-hit" cx="${x}" cy="${y}" r="26" fill="transparent"/>
-        <g class="spot-badge" transform="translate(${x + 20} ${y - 18})">${MAGNIFIER}</g>
         ${mark === s.id ? `<g class="paw" transform="translate(${x - 22} ${y - 20})">${PAW}</g>` : ''}
       </g>`;
   }).join('')}
@@ -138,17 +136,6 @@ export function openLockPuzzle(game, id, view) {
     if (animate) later(() => { const c = body.querySelector('.box-open .caption'); if (c) c.textContent = p.boxIntro; }, reduceMotion() ? 0 : 1600);
   };
 
-  // ---- 小筆記：查看過的線索以圖示記下來 ----
-  const notesHtml = () => {
-    const seen = new Set(st().seen);
-    return `<aside class="lock-notes" aria-label="小筆記"><h4>小筆記</h4>
-      ${p.tables.map((t) => `<div class="note-row">${shapeIcon(t.shape, 22)}<span class="note-name">${esc(t.short)}</span>
-        <span class="note-icons">${t.spots.map((s) => (seen.has(s.id)
-    ? `<span class="note-icon" title="${esc(s.name)}">${clueSvg(s.art, 30)}<span class="sr">${esc(s.name)}：${esc(s.text)}</span></span>`
-    : '<span class="note-icon empty" aria-hidden="true"></span>')).join('')}</span></div>`).join('')}
-      ${st().seen.length ? '' : '<p class="fine">還沒有查看過任何東西。</p>'}</aside>`;
-  };
-
   // ---- 密碼鎖特寫 ----
   function lockView() {
     showingBox = false;
@@ -162,17 +149,15 @@ export function openLockPuzzle(game, id, view) {
             <svg class="shackle" viewBox="0 0 120 70" aria-hidden="true"><path d="M22 70 V38 a38 34 0 0 1 76 0 V70" fill="none" stroke="#a89e95" stroke-width="12" stroke-linecap="round"/></svg>
             <div class="lock-body" role="group" aria-label="三位數密碼鎖">
               ${p.tables.map((t, i) => `<div class="dial ${dial[i] === p.code[i] ? 'right' : ''}" data-i="${i}">
-                <span class="dial-shape" title="${esc(t.shapeName)}・${esc(t.short)}">${shapeIcon(t.shape, 24)}</span>
+                <span class="dial-shape" title="${esc(t.shapeName)}">${shapeIcon(t.shape, 24)}</span>
                 <button type="button" class="dial-btn" data-step="1" aria-label="${ORDINAL[i]}加一">▲</button>
                 <div class="dial-num" tabindex="0" role="spinbutton" aria-valuemin="0" aria-valuemax="9" aria-valuenow="${dial[i]}"
-                  aria-label="${ORDINAL[i]}（${esc(t.shapeName)}，${esc(t.short)}）"><span class="n-prev">${(dial[i] + 9) % 10}</span><span class="n">${dial[i]}</span><span class="n-next">${(dial[i] + 1) % 10}</span></div>
+                  aria-label="${ORDINAL[i]}（${esc(t.shapeName)}）"><span class="n-prev">${(dial[i] + 9) % 10}</span><span class="n">${dial[i]}</span><span class="n-next">${(dial[i] + 1) % 10}</span></div>
                 <button type="button" class="dial-btn" data-step="-1" aria-label="${ORDINAL[i]}減一">▼</button>
               </div>`).join('')}
             </div>
           </div></div>
-          <p class="lock-note">「${esc(p.note)}」</p>
         </div>
-        ${notesHtml()}
       </div>
       <p class="caption" role="status" aria-live="polite">${esc(p.lockStart)}</p>
       <div class="mg-footer"><button type="button" class="btn" data-later>先離開，回去看看桌子</button><button type="button" class="btn primary" data-try>拉拉看</button></div>`;
@@ -253,14 +238,13 @@ export function openLockPuzzle(game, id, view) {
   function tableView(tid) {
     showingBox = false;
     const t = tableOf(tid);
-    const i = p.tables.indexOf(t);
     setTitle(t.short);
     const render = (spotId) => {
       const seen = new Set(st().seen);
-      body.innerHTML = `<p class="table-head">${shapeIcon(t.shape, 26)} <span>這張桌子對應密碼鎖的${ORDINAL[i]}（${esc(t.shapeName)}）。</span></p>
-        <p>${esc(t.look)}</p>
+      // 只留桌角的圖形記號，不寫對應第幾格，也不描述桌上的東西（看圖）
+      body.innerHTML = `<p class="table-head">${shapeIcon(t.shape, 30)}<span class="sr">桌角貼著一個${esc(t.shapeName)}的記號。${esc(t.look)}</span></p>
         <div class="stage-wrap">${tableSvg(t, seen, game.lockMark)}</div>
-        <p class="caption" role="status" aria-live="polite">${esc(p.tableStart)}</p>
+        <p class="caption" role="status" aria-live="polite"></p>
         <div class="lens hidden" aria-live="polite"></div>
         <div class="mg-footer"><button type="button" class="btn" data-later>先離開</button></div>`;
       body.querySelector('[data-later]').onclick = () => $('puzzle').close();
@@ -293,10 +277,9 @@ export function openLockPuzzle(game, id, view) {
   // ---- 文字模式：桌子與可以查看的地方用文字描述；密碼改成三個數字選單，拉不開時說明哪一格不對 ----
   function textTable(tid, message) {
     const t = tableOf(tid);
-    const i = p.tables.indexOf(t);
     const seen = new Set(st().seen);
     setTitle(t.short);
-    body.innerHTML = `<p>這張桌子對應密碼鎖的${ORDINAL[i]}（${esc(t.shapeName)}）。</p>
+    body.innerHTML = `<p>桌角貼著一個${esc(t.shapeName)}的記號。</p>
       <p>${esc(t.look)}</p>
       ${message ? `<div class="notice" role="status"><p><strong>${esc(message.name)}</strong>：${esc(message.text)}</p></div>` : ''}
       <h3>可以多看一眼的地方</h3>
@@ -312,17 +295,11 @@ export function openLockPuzzle(game, id, view) {
   function textLock(message) {
     showingBox = false;
     setTitle(p.title);
-    const { dial, seen } = st();
-    const seenSet = new Set(seen);
+    const { dial } = st();
     body.innerHTML = `<p class="fine">${esc(p.minutes)}・不計時，可以慢慢試</p>
       <p>${esc(p.intro)}</p>
-      <h3>小筆記</h3>
-      <ul class="text-list">${p.tables.map((t) => {
-    const got = t.spots.filter((s) => seenSet.has(s.id));
-    return `<li>${esc(t.short)}（${esc(t.shapeName)}）：${got.length ? got.map((s) => `${esc(s.name)}——${esc(s.text)}`).join('；') : '還沒有多看什麼。'}</li>`;
-  }).join('')}</ul>
       <h3>密碼鎖</h3>
-      <div class="text-dials">${p.tables.map((t, i) => `<label>${ORDINAL[i]}（${esc(t.shapeName)}・${esc(t.short)}）
+      <div class="text-dials">${p.tables.map((t, i) => `<label>${ORDINAL[i]}（${esc(t.shapeName)}）
         <select data-i="${i}">${Array.from({ length: 10 }, (_, n) => `<option value="${n}" ${dial[i] === n ? 'selected' : ''}>${n}</option>`).join('')}</select></label>`).join('')}</div>
       ${message ? `<div class="notice" role="status"><p>${esc(message)}</p></div>` : ''}
       <div class="mg-footer"><button type="button" class="btn" data-later>先離開，回去看看桌子</button><button type="button" class="btn primary" data-try>拉拉看</button></div>`;

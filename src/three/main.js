@@ -163,10 +163,13 @@ export async function start3D(game, ui, store) {
 
   // 問麻糬：牠自己走到可以提示的地方，在物件旁坐下等玩家
   const onHint = (e) => {
-    const { target, area } = e.detail;
-    routeTo({ x: target.x + 0.7, z: target.z + 0.6 }, area.id);
+    const { target, area, at } = e.detail;
+    routeTo(at ?? { x: target.x + 0.7, z: target.z + 0.6 }, area.id); // at：密碼鎖第二層以後的提示，坐到還沒看的地方旁邊
   };
   game.addEventListener('hint', onHint);
+  // 許願池：硬幣從玩家手上拋進池裡，水花、漣漪，池底多一枚硬幣；動畫播完才打開留言面板
+  const onCoin = (e) => { e.detail.wait = ambient.tossCoin(pos, store.settings.reduceMotion); };
+  game.addEventListener('coin', onCoin);
 
   // ---- 回饋：塵土、光圈（麻糬與小安除外）、表情、跳一下 ----
   const fx = createFeedback(scene, $('labels'));
@@ -290,7 +293,7 @@ export async function start3D(game, ui, store) {
     const id = hit.object.userData.targetId;
     const t = id === 'mochi' ? catTarget : toys.byId(id) ?? game.target(id);
     if (!t) return;
-    if (Math.hypot(t.x - pos.x, t.z - pos.z) - (t.toy?.r ?? 0) <= REACH) interact(t);
+    if (Math.hypot(t.x - pos.x, t.z - pos.z) - (t.r ?? t.toy?.r ?? 0) <= REACH) interact(t);
     else ui.toast(`再靠近${t.name}一點，就可以互動。`, { ms: 2200 });
   };
   renderer.domElement.addEventListener('pointerup', onPointer);
@@ -462,7 +465,7 @@ export async function start3D(game, ui, store) {
     if (!blockedUI()) {
       let best = REACH;
       for (const tg of targetList) {
-        const d = Math.hypot(tg.x - pos.x, tg.z - pos.z);
+        const d = Math.hypot(tg.x - pos.x, tg.z - pos.z) - (tg.r ?? 0); // 很大的東西（許願池）從邊緣算距離
         if (d <= best) { best = d; near = tg; }
       }
       // 劇情用的目標優先；附近沒有時才輪到小東西
@@ -535,6 +538,7 @@ export async function start3D(game, ui, store) {
       controls.stop();
       game.removeEventListener('change', onChange);
       game.removeEventListener('hint', onHint);
+      game.removeEventListener('coin', onCoin);
       game.removeEventListener('reaction', onReaction);
       document.removeEventListener('emote', onEmote);
       fx.dispose();

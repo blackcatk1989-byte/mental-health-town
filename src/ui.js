@@ -3,6 +3,7 @@
 import { cardArt, openCardbook, openUseCard } from './cards.js';
 import { openMinigame } from './minigames.js';
 import { openPuzzle } from './puzzles.js';
+import { openWish } from './wish.js';
 import { play } from './sfx.js';
 
 export const $ = (id) => document.getElementById(id);
@@ -177,7 +178,19 @@ export function createUI(content, store) {
   const dialogue = new DialogueBox(content.dialogues.dialogues);
   let game = null;
 
+  // 提示訊息條：同時最多 5 行。第 6 行出現時，最舊的一行淡出、其餘往上移；每一行幾秒後也會自己消失。
+  // 重要內容（取得卡片、缺卡指引）另外記在卡冊與任務欄，訊息條只是提醒。
+  const TOAST_MAX = 5;
+  function dropToast(el) {
+    if (el.dataset.gone) return;
+    el.dataset.gone = '1';
+    if (reduceMotion()) { el.remove(); return; }
+    el.classList.add('out');
+    setTimeout(() => el.remove(), 450);
+  }
   function toast(html, { action, ms = 4200 } = {}) {
+    const live = [...$('toasts').children].filter((x) => !x.dataset.gone);
+    for (const old of live.slice(0, Math.max(0, live.length - TOAST_MAX + 1))) dropToast(old);
     const el = document.createElement('div');
     el.className = 'toast';
     el.innerHTML = `<span>${html}</span>`;
@@ -186,12 +199,11 @@ export function createUI(content, store) {
       b.type = 'button';
       b.className = 'btn small';
       b.textContent = action.label;
-      b.onclick = () => { el.remove(); action.fn(); };
+      b.onclick = () => { dropToast(el); action.fn(); };
       el.append(b);
     }
     $('toasts').append(el);
-    setTimeout(() => el.classList.add('out'), ms);
-    setTimeout(() => el.remove(), ms + 600);
+    setTimeout(() => dropToast(el), ms);
   }
 
   function confirm(text, okLabel = '確定') {
@@ -241,7 +253,7 @@ export function createUI(content, store) {
           <button type="button" class="btn" data-act="restart">重新開始</button>
         </div>` : ''}
       ${store.hasSave() ? '<div class="setting-actions"><button type="button" class="btn danger" data-act="clear">清除進度</button></div>' : ''}
-      <p class="fine">進度與設定只存在這個瀏覽器裡，不會傳送到伺服器。</p>`;
+      <p class="fine">進度與設定只存在這個瀏覽器裡，不會傳送到伺服器。唯一的例外是許願池：你寫下留言並按「送出」時，留言文字會傳給遊戲製作者。</p>`;
     for (const b of $('settings-body').querySelectorAll('[data-key]')) {
       b.onclick = () => {
         const v = b.dataset.value;
@@ -326,7 +338,8 @@ export function createUI(content, store) {
     openCardbook: () => openCardbook(game),
     openUseCard: (targetId) => openUseCard(game, targetId),
     minigame: (id, data, done) => openMinigame(id, data, store.settings, done),
-    puzzle: (g, id) => openPuzzle(g, id),
+    puzzle: (g, id, view) => openPuzzle(g, id, view),
+    openWish: () => openWish(),
     hints,
     // 取得理解卡：卡片飛入、翻面、收進卡冊；點一下可以略過
     cardToast(card) {
@@ -336,15 +349,16 @@ export function createUI(content, store) {
         b.classList.remove('got');
         void b.offsetWidth;
         b.classList.add('got');
-        toast(`取得理解卡「<strong>${esc(card.title)}</strong>」`, { action: { label: '查看', fn: view } });
+        toast(`${gold ? '取得隱藏卡（金卡）' : '取得理解卡'}「<strong>${esc(card.title)}</strong>」`, { action: { label: '查看', fn: view } });
       };
+      const gold = !!card.hidden; // 隱藏卡：金色的卡面、光芒與音效
       if (reduceMotion()) {
-        play('card');
+        play(gold ? 'gold' : 'card');
         finish();
         return;
       }
       const fly = document.createElement('div');
-      fly.className = 'card-fly';
+      fly.className = `card-fly${gold ? ' gold' : ''}`;
       fly.setAttribute('role', 'status');
       const sparks = Array.from({ length: 12 }, (_, i) => `<i style="--a:${i * 30}deg;--d:${130 + (i % 3) * 30}px"></i>`).join('');
       fly.innerHTML = `<div class="rays"></div><div class="halo"></div>
@@ -353,13 +367,13 @@ export function createUI(content, store) {
           <div class="face front">${cardArt(card)}<strong>${esc(card.title)}</strong><small>${esc(card.keyPoint)}</small></div>
         </div></div>
         <div class="flash"></div><div class="sparks">${sparks}</div>
-        <span class="got-label">收集到理解卡！</span><span class="skip">點一下略過</span>`;
+        <span class="got-label">${gold ? '收集到隱藏卡！' : '收集到理解卡！'}</span><span class="skip">點一下略過</span>`;
       const target = $('cardbook-button').getBoundingClientRect();
       fly.style.setProperty('--fx', `${target.left + target.width / 2 - innerWidth / 2}px`);
       fly.style.setProperty('--fy', `${target.top + target.height / 2 - innerHeight / 2}px`);
       (document.querySelector('dialog[open]') ?? document.body).append(fly); // 面板開著時，飛在面板上面
       play('spin');
-      const shine = setTimeout(() => play('card'), 1150); // 轉到正面、閃光時
+      const shine = setTimeout(() => play(gold ? 'gold' : 'card'), 1150); // 轉到正面、閃光時
       fly.addEventListener('pointerdown', () => clearTimeout(shine), { once: true });
       let gone = false;
       const leave = () => {

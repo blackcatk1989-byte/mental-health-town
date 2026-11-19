@@ -241,14 +241,53 @@ export function createAmbient(scene, { banyan, fountain, cafeChime, censer }) {
     return { ...r, m, dir: 1 };
   });
 
+  // ---- 許願池的硬幣：拋物線飛進池裡，落水時起漣漪；池底的硬幣只是外觀，不存進進度 ----
+  const coinGeo = new THREE.CylinderGeometry(0.06, 0.06, 0.012, 14);
+  const coinMat = new THREE.MeshToonMaterial({ color: 0xe0c078 });
+  const flying = new THREE.Mesh(coinGeo, coinMat);
+  flying.visible = false;
+  root.add(flying);
+  const MAX_COINS = 40;
+  const pile = new THREE.InstancedMesh(coinGeo, coinMat, MAX_COINS);
+  pile.count = 0;
+  root.add(pile);
+  const splashRings = [0, 1, 2].map(() => {
+    const r = new THREE.Mesh(rippleGeo, new THREE.MeshBasicMaterial({ color: 0xf4fafb, transparent: true, opacity: 0, depthWrite: false }));
+    r.rotation.x = -Math.PI / 2;
+    r.visible = false;
+    root.add(r);
+    return r;
+  });
+  let toss = null; // { from, to, t }
+  const landCoin = (to) => {
+    const i = pile.count % MAX_COINS;
+    dummy.position.set(to.x, 0.445, to.z);
+    dummy.rotation.set(0, Math.random() * 3, 0);
+    dummy.updateMatrix();
+    pile.setMatrixAt(i, dummy.matrix);
+    pile.count = Math.min(MAX_COINS, pile.count + 1);
+    pile.instanceMatrix.needsUpdate = true;
+    state.coins++;
+  };
+
   let low = false;
   let lastFlutter = -9;
-  const state = { birdsAway: 0, ripples: 0, chimes: 0, visiting: 0, incense: 0 };
+  const state = { birdsAway: 0, ripples: 0, chimes: 0, visiting: 0, incense: 0, coins: 0 };
 
   return {
     state, // 測試用
     // 玩家在土地公廟上香
     offerIncense() { incense = 30; },
+    // 丟一枚硬幣進許願池；回傳動畫要多久（毫秒）。減少動畫時硬幣直接出現在池底
+    tossCoin(from, still) {
+      const a = Math.random() * Math.PI * 2;
+      const rr = 0.45 + Math.random() * (fountain.r - 0.9);
+      const to = { x: fountain.x + Math.cos(a) * rr, z: fountain.z + Math.sin(a) * rr };
+      if (still) { landCoin(to); return 300; }
+      toss = { from: { x: from.x, y: 1.0, z: from.z }, to, t: 0 };
+      flying.visible = true;
+      return 1300;
+    },
     // 站在路上的居民（會擋住玩家）：main.js 用來做碰撞
     solids: residents.filter((r) => r.solid).map((r) => r.m),
     setQuality(quality) {
@@ -257,6 +296,29 @@ export function createAmbient(scene, { banyan, fountain, cafeChime, censer }) {
       for (const r of residents) r.m.visible = !low || r.keepOnLow;
     },
     update(dt, t, still, pos, walking) {
+      // 飛行中的硬幣（0.7 秒的拋物線）與落水後的漣漪
+      if (toss) {
+        toss.t += dt / 0.7;
+        const k = Math.min(1, toss.t);
+        flying.position.set(toss.from.x + (toss.to.x - toss.from.x) * k, toss.from.y + (0.44 - toss.from.y) * k + Math.sin(k * Math.PI) * 1.4, toss.from.z + (toss.to.z - toss.from.z) * k);
+        flying.rotation.set(t * 14, 0, t * 9);
+        if (k >= 1) {
+          flying.visible = false;
+          splashRings.forEach((r, i) => { r.position.set(toss.to.x, 0.45, toss.to.z); r.userData.life = 0.9 + i * 0.25; r.userData.max = r.userData.life; r.visible = true; });
+          landCoin(toss.to);
+          toss = null;
+        }
+      }
+      for (const r of splashRings) {
+        if (!r.visible) continue;
+        r.userData.life -= dt;
+        const k = Math.max(0, r.userData.life / r.userData.max);
+        const s = 0.08 + (1 - k) * 0.5;
+        r.scale.set(s, s, 1);
+        r.material.opacity = 0.8 * k;
+        if (k <= 0) r.visible = false;
+      }
+
       // 居民的循環動作
       for (const r of residents) {
         if (!r.m.visible) continue;

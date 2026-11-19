@@ -6,7 +6,7 @@
 // 不計時、不扣分、不出現對錯字樣；「減少動畫」時改成靜態的前後變化加一行描述。文字模式用描述代替插畫。
 import { $, esc, openPanel } from './ui.js';
 import { play } from './sfx.js';
-import { openLabelPuzzle } from './puzzle-labels.js';
+import { openLockPuzzle } from './puzzle-lock.js';
 import { PLANT_STAGE, TABLE_STAGE, plantStageSvg, tableStageSvg, potSvg, itemSvg, shuffled, shuffleTableStage, closeUpSvg } from './puzzle-art.js';
 
 const DRAFT = '<p class="fine draft">內容草案，尚未完成專業審閱。</p>';
@@ -15,9 +15,9 @@ const REACT_DELAY = 2000; // 放下後多久做出反應（毫秒）
 
 const reduceMotion = () => document.body.classList.contains('reduce-motion');
 
-export function openPuzzle(game, id) {
+export function openPuzzle(game, id, view) {
   const p = game.c.puzzles.puzzles[id];
-  if (p.kind === 'labels') return openLabelPuzzle(game, id); // 「先別急著貼標籤」有自己的介面
+  if (p.kind === 'lock') return openLockPuzzle(game, id, view); // 失物招領箱的密碼鎖有自己的介面
   const body = $('puzzle-body');
   $('puzzle-title').textContent = p.title;
   const timers = [];

@@ -16,6 +16,8 @@ export class Game extends EventTarget {
     this.ui = ui;
     this.deferred = [];
     this.hintTurn = 0; // 麻糬這次要帶去第幾個地方
+    this.lockHint = null; // 密碼鎖的提示：同一個地方問了幾次（1～3）
+    this.lockMark = null; // 麻糬第三層提示標出的地方
     this.stepIds = content.quest.steps.map((s) => s.id);
     this.cardById = Object.fromEntries(content.cards.cards.map((k) => [k.id, k]));
     this.puzzleIds = Object.keys(content.puzzles.puzzles);
@@ -60,18 +62,19 @@ export class Game extends EventTarget {
         for (const [item, slot] of Object.entries(s.puzzles[id].place)) {
           if (!items.has(item) || !slots.has(slot)) delete s.puzzles[id].place[item];
         }
-        if (pz.kind === 'labels') {
-          // 「先別急著貼標籤」：每張桌子只記看到第幾層線索、主人回來了沒；舊玩法留下的資料直接丟掉（卡片保留）
-          const old = s.puzzles[id].tables ?? {};
-          s.puzzles[id].tables = {};
-          for (const t of pz.tables) {
-            const max = t.clues.length + 1;
-            const o = old[t.id];
-            if (!o) continue;
-            const layer = Math.min(max, Math.max(1, Math.floor(o.layer) || 1));
-            const seen = Math.min(layer, Math.max(1, Math.floor(o.seen) || 1));
-            s.puzzles[id].tables[t.id] = { layer, seen, done: !!o.done };
-          }
+        if (pz.kind === 'lock') {
+          // 密碼鎖：只留看過的線索、撥到的數字、開鎖了沒；之前版本的資料（擺放、貼紙）直接丟掉，卡片保留
+          const spots = new Set(pz.tables.flatMap((t) => t.spots.map((x) => x.id)));
+          const old = s.puzzles[id];
+          const dial = Array.isArray(old.dial) && old.dial.length === pz.code.length ? old.dial.map((n) => ((Math.floor(Number(n)) % 10) + 10) % 10 || 0) : pz.code.map(() => 0);
+          s.puzzles[id] = {
+            place: {},
+            solved: !!old.solved,
+            seen: Array.isArray(old.seen) ? [...new Set(old.seen.filter((x) => spots.has(x)))] : [],
+            dial,
+            opened: !!old.opened,
+            ...(old.replay ? { replay: true } : {}), // 已經有卡、正在重玩
+          };
         }
         const card = this.c.puzzles.puzzles[id].card;
         if (s.puzzles[id].solved && !s.cards.includes(card)) {
@@ -137,7 +140,7 @@ export class Game extends EventTarget {
     }
     for (const o of this.c.places.objects) {
       if (o.showWhen && !this.check(o.showWhen)) continue;
-      list.push({ id: o.id, kind: o.puzzle ? 'puzzle' : 'object', name: o.name, area: o.area, x: o.x, z: o.z, cardTarget: !!o.cardTarget, data: o });
+      list.push({ id: o.id, kind: o.puzzle ? 'puzzle' : o.wish ? 'wish' : 'object', name: o.name, area: o.area, x: o.x, z: o.z, r: o.r ?? 0, verb: o.verb, cardTarget: !!o.cardTarget, data: o });
     }
     return list;
   }
@@ -164,7 +167,15 @@ export class Game extends EventTarget {
   interact(id) {
     const t = this.target(id);
     if (!t || this.ui.busy()) return;
-    if (t.kind === 'puzzle') return this.openPuzzle(t.data.puzzle);
+    if (t.kind === 'puzzle') return this.openPuzzle(t.data.puzzle, t.data.view);
+    if (t.kind === 'wish') {
+      // 許願池：3D 會讓硬幣飛進池裡（listener 把 wait 設成動畫的長度），之後才打開留言面板。硬幣不記進存檔
+      const ev = new CustomEvent('coin', { detail: { wait: 0 } });
+      this.dispatchEvent(ev);
+      play('coin');
+      setTimeout(() => this.ui.openWish(), ev.detail.wait);
+      return;
+    }
     const entry = t.data.talk.find((e) => this.check(e.when));
     if (!entry) return;
     if (entry.dialogueCycle) {
@@ -188,8 +199,8 @@ export class Game extends EventTarget {
 
   // ---- 謎題 ----
   // 不計時、不扣分、可無限重試；已擺好的位置會存起來，中途離開再回來仍保留
-  openPuzzle(id) {
-    this.ui.puzzle(this, id);
+  openPuzzle(id, view) {
+    this.ui.puzzle(this, id, view);
   }
 
   // 把一項東西放到一個位置（slot 為 null 表示拿回托盤）。回傳 { fit, reaction, solved }。
@@ -217,61 +228,74 @@ export class Game extends EventTarget {
     return { fit, reaction, solved: solvedNow };
   }
 
-  // ---- 謎題「先別急著貼標籤」（kind 為 labels）----
-  // 每張桌子記三件事：layer（已經出現到第幾層線索，第 1 層是一開始就看得到的）、seen（看過到第幾層）、done（主人回來了）。
-  // 不記錄玩家貼過哪些貼紙，也沒有對錯：任何有圖示的貼紙都只會帶出下一層線索，然後被推翻。
-  labelTable(id, tableId) {
-    return this.s.puzzles[id].tables?.[tableId] ?? { layer: 1, seen: 1, done: false };
+  // ---- 謎題「失物招領箱的密碼鎖」（kind 為 lock）----
+  // 存檔只記：看過的線索（seen）、目前撥到的數字（dial）、開鎖了沒（opened）。不計次數、不記錄試過哪些數字。
+  lockState(id) {
+    const pz = this.s.puzzles[id];
+    return { seen: pz.seen ?? [], dial: pz.dial ?? this.c.puzzles.puzzles[id].code.map(() => 0), opened: !!pz.opened, solved: !!pz.solved, replay: !!pz.replay };
   }
 
-  // 把貼紙貼到一張桌子上。回傳：
-  //   { done: true, solved }   貼的是空白問號：先不猜，主人回來自己說
-  //   { reveal: n }            貼的是有圖示的貼紙：出現第 n 層線索（要玩家自己去看）
-  //   { pending: true }        這張桌子還有出現了但沒看的線索，先去看
-  //   null                     這張桌子已經完成，或資料不對
-  stickLabel(id, tableId, stickerId) {
+  // 查看桌上的一個地方；回傳那個地方的資料（看過的也可以再看）
+  lookSpot(id, spotId) {
     const p = this.c.puzzles.puzzles[id];
-    const t = p.tables.find((x) => x.id === tableId);
-    const sticker = p.stickers?.find((x) => x.id === stickerId);
-    const cur = this.labelTable(id, tableId);
-    if (!t || !sticker || cur.done) return null;
-    if (!sticker.blank && cur.layer > cur.seen) return { pending: true };
-    const next = { ...cur };
-    if (sticker.blank) next.done = true;
-    else next.layer = Math.min(t.clues.length + 1, cur.layer + 1);
-    const solved = this.saveLabelTable(id, tableId, next);
-    return sticker.blank ? { done: true, solved } : { reveal: next.layer };
+    const spot = p.tables.flatMap((t) => t.spots).find((x) => x.id === spotId);
+    if (!spot) return null;
+    if (!this.lockState(id).seen.includes(spotId)) {
+      this.store.mutate((s) => { s.puzzles[id].seen = [...(s.puzzles[id].seen ?? []), spotId]; });
+      if (this.lockMark === spotId) this.lockMark = null; // 麻糬標出的地方看過了，標記收起來
+      this.changed();
+    }
+    return spot;
   }
 
-  // 查看一張桌子新出現的線索。回傳 { clue, done, solved }；沒有新線索時回傳 null。
-  // 看完最後一層，主人就回來了（和貼問號的結果一樣）。
-  viewClue(id, tableId) {
+  // 撥轉盤：把第 i 格設成 n（0～9）
+  setDial(id, i, n) {
+    const d = [...this.lockState(id).dial];
+    d[i] = ((Math.floor(n) % 10) + 10) % 10;
+    this.store.mutate((s) => { s.puzzles[id].dial = d; });
+    return d;
+  }
+
+  // 拉拉看。回傳 { ok, wrong: [不對的格子], surface: 是不是三個表面數字 }
+  tryLock(id) {
     const p = this.c.puzzles.puzzles[id];
-    const t = p.tables.find((x) => x.id === tableId);
-    const cur = this.labelTable(id, tableId);
-    if (!t || cur.done || cur.layer <= cur.seen) return null;
-    const next = { ...cur, seen: cur.layer };
-    next.done = next.seen >= t.clues.length + 1;
-    const solved = this.saveLabelTable(id, tableId, next);
-    return { clue: t.clues[next.seen - 2], done: next.done, solved };
+    const { dial } = this.lockState(id);
+    const wrong = p.code.map((n, i) => (dial[i] === n ? -1 : i)).filter((i) => i >= 0);
+    const surface = p.tables.every((t, i) => dial[i] === t.surface);
+    const ok = wrong.length === 0;
+    if (ok) {
+      this.store.mutate((s) => { s.puzzles[id].opened = true; });
+      this.changed();
+    }
+    return { ok, wrong, surface };
   }
 
-  saveLabelTable(id, tableId, next) {
+  // 看完箱子裡的東西：取得卡片（已經有卡時不會重複發）
+  finishLock(id) {
     const p = this.c.puzzles.puzzles[id];
-    const all = { ...(this.s.puzzles[id].tables ?? {}), [tableId]: next };
-    const solvedNow = p.tables.every((x) => all[x.id]?.done);
-    // 已經有這張卡（舊玩法取得，或重玩）時，giveCard 不會重複發
-    this.apply(solvedNow ? [{ giveCard: p.card }] : [], (s) => {
-      s.puzzles[id].tables = all;
-      if (solvedNow) s.puzzles[id].solved = true;
-    });
-    return solvedNow;
+    if (!this.lockState(id).opened) return false;
+    this.apply([{ giveCard: p.card }], (s) => { s.puzzles[id].solved = true; delete s.puzzles[id].replay; });
+    return true;
   }
 
-  // 重玩：桌子回到一開始的樣子；卡片與「已解開」的紀錄保留，不會重複發卡
+  // 重玩：鎖回到一開始；卡片與「已解開」的紀錄保留，不會重複發卡
   replayPuzzle(id) {
-    this.store.mutate((s) => { s.puzzles[id].tables = {}; });
+    const p = this.c.puzzles.puzzles[id];
+    this.store.mutate((s) => { Object.assign(s.puzzles[id], { seen: [], dial: p.code.map(() => 0), opened: false, replay: true }); });
+    this.lockMark = null;
+    this.lockHint = null;
     this.changed();
+  }
+
+  // 密碼鎖的提示目標：第一張還有地方沒看的桌子，與那張桌子第一個沒看的地方；都看過了就是箱子
+  lockFocus(id) {
+    const p = this.c.puzzles.puzzles[id];
+    const { seen } = this.lockState(id);
+    for (const t of p.tables) {
+      const spot = t.spots.find((x) => !seen.includes(x.id));
+      if (spot) return { table: t, spot };
+    }
+    return null;
   }
 
   // ---- 麻糬的提示 ----
@@ -281,7 +305,10 @@ export class Game extends EventTarget {
     const goal = this.goalTargets()[0];
     if (goal) topics.push({ id: 'goal', target: goal });
     for (const id of this.puzzleIds) {
-      if (!this.s.puzzles[id].solved) topics.push({ id, target: this.c.puzzles.puzzles[id].entry });
+      if (this.s.puzzles[id].solved) continue;
+      const p = this.c.puzzles.puzzles[id];
+      const focus = p.kind === 'lock' && !this.s.puzzles[id].opened ? this.lockFocus(id) : null;
+      topics.push({ id, target: focus ? focus.table.object : p.entry, focus });
     }
     return topics;
   }
@@ -296,9 +323,25 @@ export class Game extends EventTarget {
     const area = this.areaById[t.area];
     const fill = (str) => str.replace('{area}', area.name).replace('{name}', t.name);
     const detail = { target: t, area };
+    // 密碼鎖：同一張桌子問第二次，坐到還沒看的地方旁邊；第三次，直接標出那個地方
+    let text = fill(this.s.area === t.area ? this.c.hints.here : this.c.hints.go);
+    if (topic.focus) {
+      const key = topic.focus.spot.id;
+      this.lockHint = this.lockHint?.spot === key ? { spot: key, level: Math.min(3, this.lockHint.level + 1) } : { spot: key, level: 1 };
+      const p = this.c.puzzles.puzzles[topic.id];
+      const { spot } = topic.focus;
+      const say = (str) => fill(str).replace('{spot}', spot.name);
+      if (this.lockHint.level >= 2) detail.at = { x: t.x + (spot.at?.dx ?? 0.7), z: t.z + (spot.at?.dz ?? 0.6) };
+      if (this.lockHint.level === 2) text = say(p.hintSpot);
+      if (this.lockHint.level === 3) {
+        this.lockMark = spot.id;
+        text = say(p.hintMark);
+        this.changed();
+      }
+    }
     this.dispatchEvent(new CustomEvent('hint', { detail }));
     play('meow');
-    return { ...detail, text: fill(this.s.area === t.area ? this.c.hints.here : this.c.hints.go) };
+    return { ...detail, text };
   }
 
   // 用卡：找出符合目標、卡號與任務階段的互動

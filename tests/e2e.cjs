@@ -538,6 +538,16 @@ async function main() {
       .filter((f) => /\.(js|json)$/.test(f)).map((f) => `${d}/${f}`))];
     const hits = files.filter((f) => /晴隅|沐雨|阿澄|muyu|acheng|佈置/.test(fs.readFileSync(path.join(root, f), 'utf8')));
     check('介面、對話、程式不殘留舊名（晴隅、沐雨、阿澄、佈置）', hits.length === 0, hits.join(','));
+    // 阿德的故事：約看電影，對方回「好像不錯耶」之後沒有下文；小葉不指定性別，結局不寫成約成了
+    const dlg = JSON.parse(fs.readFileSync(path.join(root, 'content/dialogues.json'), 'utf8')).dialogues;
+    const adeText = (k) => dlg[k].lines.map((l) => l.text).join('');
+    const ask = adeText('use.askAde');
+    const yeLines = Object.values(dlg).flatMap((v) => (v.lines ?? []).map((l) => l.text)).filter((t) => /小葉/.test(t));
+    const ends = ['ade.wrap.putAway', 'ade.wrap.reply', 'ade.wrap.sit'].map(adeText);
+    check('阿德的故事：以前天天聊、約電影被回「好像不錯耶」後沒下文；小葉不用他／她；三種收尾都是「目前還不知道」',
+      /每天都在聊/.test(ask) && /電影/.test(ask) && /好像不錯耶/.test(ask) && /沒有被接起來/.test(ask) && /比較忙/.test(ask)
+      && yeLines.length >= 3 && yeLines.every((t) => !/[他她]/.test(t.replace(/其他/g, '')))
+      && ends.every((t) => /目前還不知道/.test(t)) && !/再看看喔|展覽/.test(JSON.stringify(dlg)), `提到小葉的句子 ${yeLines.length} 句`);
   }
 
   // 0b. 背景音樂：曲目檔案存在、大小合理、授權有記錄

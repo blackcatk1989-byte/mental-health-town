@@ -3,7 +3,6 @@
 import { Store } from './state.js';
 import { Game } from './game.js';
 import { createUI, $, esc } from './ui.js';
-import { startTextMode } from './text-mode.js';
 import { createMusic } from './audio.js';
 import { setupSfx } from './sfx.js';
 
@@ -58,6 +57,8 @@ function showHome(message) {
   view = null;
   mode = null;
   document.body.classList.add('home-open');
+  document.body.classList.remove('nowebgl');
+  $('nowebgl').classList.add('hidden');
   document.body.dataset.mode = '';
   $('home').classList.remove('hidden');
   $('hud').classList.add('hidden');
@@ -69,31 +70,39 @@ function showHome(message) {
   (has ? $('home-continue') : $('home-new')).focus({ preventScroll: true });
 }
 
+// 3D 載不起來時的說明頁
+function showNoWebgl() {
+  mode = null;
+  music.stop();
+  document.body.classList.add('nowebgl');
+  $('hud').classList.add('hidden');
+  $('home').classList.add('hidden');
+  $('nowebgl').classList.remove('hidden');
+  $('nowebgl-retry').focus({ preventScroll: true });
+}
+
 async function enter(m) {
   view?.stop();
   view = null;
   mode = m;
   store.mutate((s) => { s.mode = m; });
-  document.body.classList.remove('home-open');
+  document.body.classList.remove('home-open', 'nowebgl');
+  $('nowebgl').classList.add('hidden');
   document.body.dataset.mode = m;
   music.start(store.data.area);
   $('home').classList.add('hidden');
   $('hud').classList.remove('hidden');
-  if (m === '3d') {
-    $('loading').classList.remove('hidden');
-    try {
-      const { start3D } = await import('./three/main.js');
-      view = await start3D(game, ui, store);
-    } catch (e) {
-      console.warn('3D 無法使用，改用文字模式', e);
-      $('loading').classList.add('hidden');
-      ui.toast('3D 畫面無法載入，已切換成文字模式。進度不受影響。', { ms: 7000 });
-      return enter('text');
-    }
+  $('loading').classList.remove('hidden');
+  try {
+    const { start3D } = await import('./three/main.js');
+    view = await start3D(game, ui, store);
+  } catch (e) {
+    // 畫面載不起來時不能只丟錯誤：顯示說明頁，「找支持」仍然打得開
+    console.warn('3D 無法使用', e);
     $('loading').classList.add('hidden');
-  } else {
-    view = startTextMode(game, ui);
+    return showNoWebgl();
   }
+  $('loading').classList.add('hidden');
   ui.renderGoal();
   for (const n of pendingNotes) ui.toast(esc(n), { ms: 7000 });
   pendingNotes = [];
@@ -112,7 +121,6 @@ async function newGame(m) {
 const settingsHandlers = {
   inGame: () => !!mode,
   mode: () => mode,
-  setMode: (m) => enter(m),
   home: () => showHome(),
   restart: () => { game.newGame(); enter(mode ?? '3d'); },
   clear: () => { store.clear(); showHome('進度已清除。'); },
@@ -123,10 +131,10 @@ const settingsHandlers = {
 };
 
 $('home-new').onclick = () => newGame('3d');
-$('home-text').onclick = () => (store.data ? enter('text') : newGame('text'));
-$('home-continue').onclick = () => enter(store.data.mode === 'text' ? 'text' : '3d');
+$('home-continue').onclick = () => enter('3d');
 for (const b of document.querySelectorAll('[data-open-settings]')) b.onclick = () => ui.openSettings(settingsHandlers);
 $('cardbook-button').onclick = () => ui.openCardbook();
+$('nowebgl-retry').onclick = () => location.reload();
 
 // 對話選項可以用數字鍵選擇
 addEventListener('keydown', (e) => {

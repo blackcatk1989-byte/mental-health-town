@@ -24,7 +24,7 @@
       font-family: "XZJ Round", "PingFang TC", "Microsoft JhengHei", "Noto Sans TC", system-ui, sans-serif; line-height: 1.65; }
     .hand { font-family: "XZJ Hand", "XZJ Round", "PingFang TC", "Microsoft JhengHei", sans-serif; letter-spacing: .02em; }
     body { overflow: hidden; overscroll-behavior: none; }
-    body[data-mode="text"], body.home-open { overflow: auto; }
+    body.home-open, body.nowebgl { overflow: auto; }
     button, a.btn { font: inherit; color: inherit; cursor: pointer; }
     a { color: #9b5a40; }
     .hidden { display: none !important; }
@@ -48,7 +48,7 @@
 
     #scene { position: fixed; inset: 0; }
     #scene canvas { display: block; touch-action: none; }
-    body[data-mode="text"] #scene, body.home-open #scene { display: none; }
+    body.home-open #scene, body.nowebgl #scene { display: none; }
     #labels { position: fixed; inset: 0; pointer-events: none; z-index: 5; overflow: hidden; }
     .tag { position: absolute; transform: translate(-50%, -100%); white-space: nowrap; font-size: .85rem;
       background: var(--paper); border: 2px solid var(--line); border-radius: 999px; padding: 0 10px; }
@@ -94,7 +94,6 @@
     @keyframes pulse { 50% { box-shadow: 0 0 0 8px rgba(201, 127, 98, .35); } }
     #controls-tip { position: fixed; left: 12px; bottom: 12px; font-size: .8rem; color: var(--ink-soft);
       background: rgba(255, 250, 243, .8); border-radius: 10px; padding: 4px 10px; }
-    body[data-mode="text"] #controls-tip, body[data-mode="text"] #stick, body[data-mode="text"] #interact { display: none !important; }
     #interact { position: fixed; left: 50%; bottom: max(20px, env(safe-area-inset-bottom)); transform: translateX(-50%);
       display: flex; align-items: center; gap: 10px; flex-wrap: wrap; justify-content: center;
       background: rgba(255, 250, 243, .96); border: 2px solid var(--line); border-radius: 999px; padding: 8px 10px 8px 18px; box-shadow: var(--shadow); }
@@ -179,7 +178,6 @@
     .draft { margin: 0; }
     .dlg-actions .draft { font-size: .72rem; }
     .cat-dot { display: inline-block; font-size: .75rem; background: #f6d9b0; border-radius: 999px; padding: 0 8px; margin-left: 6px; }
-    .text-targets li.marked { border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-soft); }
     .mg-footer { display: flex; flex-wrap: wrap; gap: 10px; justify-content: flex-end; margin-top: 16px; }
 
     .setting { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 10px 0; border-bottom: 1px solid var(--line); flex-wrap: wrap; }
@@ -203,14 +201,11 @@
     .resource-links { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 6px; }
 
     /* 文字模式 */
-    #text-mode { max-width: 720px; margin: 0 auto; padding: 150px 16px 220px; box-sizing: border-box; }
-    #text-mode h2 { margin: 0 0 4px; }
-    .places { display: flex; flex-wrap: wrap; gap: 8px; margin: 12px 0 16px; }
-    .places .btn.on { background: var(--accent-soft); opacity: 1; }
+    #nowebgl { position: fixed; inset: 0; z-index: 60; overflow: auto; background:
+      radial-gradient(circle at 20% 10%, #fde9d2 0, transparent 50%), radial-gradient(circle at 90% 90%, #e2eedb 0, transparent 55%), #f8ecdb; }
+    #nowebgl-actions { display: grid; gap: 10px; margin-top: 10px; }
+    #nowebgl-actions .btn { width: 100%; min-height: 48px; }
     .goal-dot { display: inline-block; font-size: .75rem; background: var(--accent); color: #fff; border-radius: 999px; padding: 0 8px; margin-left: 6px; }
-    .text-targets { list-style: none; padding: 0; display: grid; gap: 10px; }
-    .text-targets li { background: var(--paper); border: 2px solid var(--line); border-radius: 16px; padding: 10px 14px; }
-    .text-targets small { margin-left: 8px; color: var(--ink-soft); }
 
     /* 提示訊息條：最多 5 行（src/ui.js）。只用畫面上方，下緣留給對話框、互動按鈕與手機搖桿；
        螢幕太矮時，超出的舊訊息從上方被裁掉，新的一行永遠看得到 */
@@ -315,9 +310,6 @@
     .box-open.animate .box-items li { animation: item-in .5s calc(.9s + var(--i) * .45s) both ease-out; }
     @keyframes item-in { from { opacity: 0; translate: 0 10px; } }
     .item-art { flex: none; width: 52px; height: 52px; display: grid; place-items: center; background: #fff8e6; border-radius: 12px; border: 1px solid #e0cdb4; }
-    .text-dials { display: flex; flex-wrap: wrap; gap: 12px; margin: 8px 0; }
-    .text-dials label { display: grid; gap: 4px; font-size: .9rem; }
-    .text-dials select { font-size: 1.2rem; min-width: 70px; min-height: 44px; }
     /* 植物：初始姿態就是線索；反應用 class 切換 */
     .plant .stems, .plant .extra { transform-box: fill-box; transform-origin: 50% 100%; transition: transform 1.2s cubic-bezier(.34, 1.2, .64, 1), opacity .8s; }
     .plant .edge { transition: stroke .8s, fill .8s; }
@@ -368,7 +360,6 @@
     .card-tile.secret { align-items: center; justify-content: center; min-height: 120px; font-size: 2rem; color: #b9aea4; border-style: dashed; }
     .notice.puzzled { display: flex; gap: 10px; align-items: flex-start; }
     .emote-inline svg { width: 32px; height: 32px; flex: none; }
-    .text-list { padding-left: 18px; }
 
     /* 表情氣泡（圖示，不是文字） */
     .emote { position: absolute; transform: translate(-50%, -100%); width: 40px; height: 40px; border-radius: 50%; background: #fff;
@@ -435,7 +426,6 @@
     @media (max-width: 560px) {
       #goal { max-width: calc(100vw - 140px); padding: 6px 10px; font-size: .9rem; }
       #dlg-box { padding: 22px 14px 10px; }
-      #text-mode { padding-top: 170px; }
     }
   </style>
   <script type="importmap">
@@ -470,12 +460,11 @@
       <div id="home-actions">
         <button type="button" id="home-continue" class="btn primary hidden">繼續遊戲</button>
         <button type="button" id="home-new" class="btn primary">開始遊戲</button>
-        <button type="button" id="home-text" class="btn">文字模式（不需要 3D）</button>
         <button type="button" class="btn" data-open-support>找支持</button>
         <button type="button" class="btn" data-open-settings>設定</button>
       </div>
       <p class="fine">電腦：WASD／方向鍵移動，E 互動，F 使用理解卡。手機：左下角搖桿移動，右下角按鈕互動。</p>
-      <p class="fine version">版本 v4.3（2026-11-16）</p>
+      <p class="fine version">版本 v4.4（2026-11-21）</p>
     </div>
   </section>
 
@@ -500,7 +489,33 @@
     <div id="stick" class="hidden" aria-hidden="true"><div id="stick-thumb"></div></div>
   </div>
 
-  <main id="text-mode" class="hidden"></main>
+  <!-- 3D 無法載入時顯示的說明頁（不能只有錯誤畫面：要說明原因、可以試什麼，並讓「找支持」隨時打得開） -->
+  <section id="nowebgl" class="hidden" aria-labelledby="nowebgl-title">
+    <div class="home-inner">
+      <h1 id="nowebgl-title" class="hand">載入不了畫面</h1>
+      <p class="tagline">微光里的 3D 畫面在這個瀏覽器上跑不起來。</p>
+      <div class="card-box">
+        <h2>可能的原因</h2>
+        <p>瀏覽器版本比較舊，或關掉了 3D 繪圖（WebGL）；也可能是目前的網路擋住了遊戲需要的檔案。</p>
+      </div>
+      <div class="card-box">
+        <h2>可以試試看</h2>
+        <p>換成新版的 Chrome、Edge 或 Safari 再打開一次。</p>
+        <p>換一個網路（例如從公司或學校的網路換成手機網路）。</p>
+        <p>如果是在手機上，關掉省電模式再重新整理。</p>
+        <p class="fine">你的進度存在這個瀏覽器裡，不會因此消失。</p>
+      </div>
+      <div class="card-box">
+        <h2>還是需要幫忙的話</h2>
+        <p>就算遊戲打不開，下面的求助資源都還可以用。</p>
+        <div id="nowebgl-actions">
+          <button type="button" class="btn primary" data-open-support>找支持</button>
+          <a class="btn" href="tel:1925">撥打 1925 安心專線</a>
+          <button type="button" class="btn" id="nowebgl-retry">重新整理</button>
+        </div>
+      </div>
+    </div>
+  </section>
 
   <section id="dialogue" class="hidden" aria-live="polite">
     <div id="dlg-box">

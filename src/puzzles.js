@@ -23,7 +23,6 @@ export function openPuzzle(game, id, view) {
   const timers = [];
   const later = (fn, ms) => timers.push(setTimeout(fn, ms));
 
-  let textOrder = null; // 文字模式也打亂桌子與東西的順序（這次打開期間固定）
   const solvedView = () => {
     body.innerHTML = `<div class="solved">
       <h3 class="hand">${esc(p.solvedTitle)}</h3>
@@ -35,7 +34,6 @@ export function openPuzzle(game, id, view) {
   };
 
   if (game.s.puzzles[id].solved) solvedView();
-  else if (document.body.dataset.mode === 'text') textView();
   else stageView();
   openPanel('puzzle', () => timers.forEach(clearTimeout));
 
@@ -270,48 +268,4 @@ export function openPuzzle(game, id, view) {
     });
   }
 
-  // ---- 文字模式：用描述代替插畫，放置後描述反應 ----
-  function textView(message) {
-    const plants = p.kind === 'plants';
-    const place = game.s.puzzles[id].place;
-    textOrder ??= plants ? { slots: p.spots, items: p.items } : { slots: shuffled(p.tables), items: shuffled(p.items) };
-    const slots = textOrder.slots;
-    const where = (sid) => slots.find((x) => x.id === sid)?.short;
-    body.innerHTML = `<p class="fine">${esc(p.minutes)}・不計時，可以一直重新擺</p>
-      <p>${esc(p.intro)}</p>
-      <h3>${plants ? '地上的位置' : '三張桌子'}</h3>
-      <ul class="text-list">${slots.map((x) => `<li>${esc(x.look)}${x.details ? `<ul>${x.details.map((n) => `<li>${esc(n.name)}：${esc(n.text)}</li>`).join('')}</ul>` : ''}</li>`).join('')}</ul>
-      ${message ? `<div class="notice" role="status">${esc(message)}</div>` : ''}
-      <div class="puzzle-items">${textOrder.items.map((it) => {
-    const at = place[it.id];
-    return `<div class="puzzle-item">
-          <h4>${esc(it.label)}</h4>
-          <p>${esc(plants ? it.looks.join('') : it.look)}</p>
-          <p class="fine">${at ? `現在在：${esc(where(at))}${plants ? `。${esc(it.reactions[at].text)}` : ''}` : '現在在托盤上。'}</p>
-          ${plants || !at ? `<div class="bin-buttons">${slots.map((x) => `<button type="button" class="btn small ${at === x.id ? 'on' : ''}" data-item="${it.id}" data-slot="${x.id}" aria-pressed="${at === x.id}">放到${esc(x.short)}</button>`).join('')}
-            ${at ? `<button type="button" class="btn small" data-item="${it.id}" data-slot="">拿回托盤</button>` : ''}</div>` : ''}
-        </div>`;
-  }).join('')}</div>
-      <div class="mg-footer"><button type="button" class="btn" data-later>先離開，等等再來</button></div>`;
-    body.querySelector('[data-later]').onclick = () => $('puzzle').close();
-    for (const b of body.querySelectorAll('[data-slot]')) {
-      b.onclick = () => {
-        const item = b.dataset.item;
-        const slot = b.dataset.slot || null;
-        const it = p.items.find((x) => x.id === item);
-        const r = game.placePuzzle(id, item, slot);
-        play(slot ? 'drop' : 'pickup');
-        if (!r || !slot) return textView();
-        if (r.solved) { play('good'); return solvedView(); }
-        if (plants) {
-          play(r.fit ? 'good' : 'hmm');
-          return textView(`${it.label}：${r.reaction.text}${r.fit ? '' : ` ${p.catLook}`}`);
-        }
-        if (r.fit) { play('good'); return textView(it.win); }
-        play('slide');
-        const t = p.tables.find((x) => x.id === slot);
-        return textView(p.wrongReaction.replace('{table}', t.short).replace('{theme}', t.themeName).replace('{item}', it.label));
-      };
-    }
-  }
 }

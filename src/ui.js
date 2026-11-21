@@ -1,5 +1,5 @@
 // 共用的 HTML 介面：對話框、提示訊息、確認視窗、設定、麻糬的提示、任務目標。
-// 3D 模式與文字模式都用這一套；所有文字都在 HTML 裡呈現，不畫進 3D 場景。
+// 所有文字都在 HTML 裡呈現，不畫進 3D 場景。
 import { cardArt, openCardbook, openUseCard } from './cards.js';
 import { openMinigame } from './minigames.js';
 import { openPuzzle } from './puzzles.js';
@@ -245,10 +245,7 @@ export function createUI(content, store) {
       <div class="setting"><span>動畫</span><div class="segs">${opt('reduceMotion', false, '開啟')}${opt('reduceMotion', true, '關閉')}</div></div>
       <div class="setting"><span>文字大小</span><div class="segs">${opt('textSize', 's', '小')}${opt('textSize', 'm', '中')}${opt('textSize', 'l', '大')}</div></div>
       <div class="setting"><span>3D 畫質</span><div class="segs">${opt('quality', 'high', '高')}${opt('quality', 'low', '低')}</div></div>
-      ${inGame ? `<div class="setting"><span>遊玩模式</span><div class="segs">
-        <button type="button" class="seg ${handlers.mode() === '3d' ? 'on' : ''}" data-mode="3d">3D</button>
-        <button type="button" class="seg ${handlers.mode() === 'text' ? 'on' : ''}" data-mode="text">文字</button></div></div>
-        <div class="setting-actions">
+      ${inGame ? `<div class="setting-actions">
           <button type="button" class="btn" data-act="home">回到首頁</button>
           <button type="button" class="btn" data-act="restart">重新開始</button>
         </div>` : ''}
@@ -271,9 +268,6 @@ export function createUI(content, store) {
       handlers.onSettings();
     };
     vol.onchange = () => store.saveSettings();
-    for (const b of $('settings-body').querySelectorAll('[data-mode]')) {
-      b.onclick = () => { $('settings').close(); handlers.setMode(b.dataset.mode); };
-    }
     for (const b of $('settings-body').querySelectorAll('[data-act]')) {
       b.onclick = async () => {
         const act = b.dataset.act;

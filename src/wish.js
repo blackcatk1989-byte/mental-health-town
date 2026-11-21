@@ -82,8 +82,8 @@ export function openWish(ui) {
   const done = $('wish-done');
   const mode = wishMode();
 
-  // 文字模式沒有動畫：用一行描述代替
-  $('wish-coin-line').classList.toggle('hidden', document.body.dataset.mode !== 'text');
+  // 關閉動畫時沒有投幣的動畫：用一行描述代替
+  $('wish-coin-line').classList.toggle('hidden', !document.body.classList.contains('reduce-motion'));
   form.classList.remove('hidden');
   done.classList.add('hidden');
   $('wish-off').classList.toggle('hidden', mode !== 'off');

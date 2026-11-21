@@ -89,7 +89,6 @@ export function openLockPuzzle(game, id, view) {
   const body = $('puzzle-body');
   const timers = [];
   const later = (fn, ms) => timers.push(setTimeout(fn, ms));
-  const textMode = () => document.body.dataset.mode === 'text';
   const st = () => game.lockState(id);
   const tableOf = (tid) => p.tables.find((x) => x.id === tid);
   let showingBox = false;
@@ -111,7 +110,7 @@ export function openLockPuzzle(game, id, view) {
     body.querySelector('[data-replay]').onclick = () => {
       game.replayPuzzle(id);
       hadCard = true;
-      (textMode() ? textLock : lockView)();
+      lockView();
     };
   };
 
@@ -274,59 +273,12 @@ export function openLockPuzzle(game, id, view) {
     render();
   }
 
-  // ---- 文字模式：桌子與可以查看的地方用文字描述；密碼改成三個數字選單，拉不開時說明哪一格不對 ----
-  function textTable(tid, message) {
-    const t = tableOf(tid);
-    const seen = new Set(st().seen);
-    setTitle(t.short);
-    body.innerHTML = `<p>桌角貼著一個${esc(t.shapeName)}的記號。</p>
-      <p>${esc(t.look)}</p>
-      ${message ? `<div class="notice" role="status"><p><strong>${esc(message.name)}</strong>：${esc(message.text)}</p></div>` : ''}
-      <h3>可以多看一眼的地方</h3>
-      <ul class="text-list">${t.spots.map((s) => `<li>${seen.has(s.id) ? `<strong>${esc(s.name)}</strong>：${esc(s.text)}`
-    : `<button type="button" class="btn small" data-spot="${s.id}">${esc(s.name)}</button>${game.lockMark === s.id ? ' <span class="cat-dot">麻糬拍過這裡</span>' : ''}`}</li>`).join('')}</ul>
-      <div class="mg-footer"><button type="button" class="btn" data-later>先離開</button></div>`;
-    body.querySelector('[data-later]').onclick = () => $('puzzle').close();
-    for (const b of body.querySelectorAll('[data-spot]')) {
-      b.onclick = () => { const s = game.lookSpot(id, b.dataset.spot); play('flip'); textTable(tid, s); };
-    }
-  }
-
-  function textLock(message) {
-    showingBox = false;
-    setTitle(p.title);
-    const { dial } = st();
-    body.innerHTML = `<p class="fine">${esc(p.minutes)}・不計時，可以慢慢試</p>
-      <p>${esc(p.intro)}</p>
-      <h3>密碼鎖</h3>
-      <div class="text-dials">${p.tables.map((t, i) => `<label>${ORDINAL[i]}（${esc(t.shapeName)}）
-        <select data-i="${i}">${Array.from({ length: 10 }, (_, n) => `<option value="${n}" ${dial[i] === n ? 'selected' : ''}>${n}</option>`).join('')}</select></label>`).join('')}</div>
-      ${message ? `<div class="notice" role="status"><p>${esc(message)}</p></div>` : ''}
-      <div class="mg-footer"><button type="button" class="btn" data-later>先離開，回去看看桌子</button><button type="button" class="btn primary" data-try>拉拉看</button></div>`;
-    body.querySelector('[data-later]').onclick = () => $('puzzle').close();
-    for (const sel of body.querySelectorAll('select')) {
-      sel.onchange = () => {
-        const i = Number(sel.dataset.i);
-        const d = game.setDial(id, i, Number(sel.value));
-        play(d[i] === p.code[i] ? 'latch' : 'tick');
-      };
-    }
-    body.querySelector('[data-try]').onclick = () => {
-      const r = game.tryLock(id);
-      if (r.ok) { play('unlock'); boxView(true); return; }
-      play('stuck');
-      const which = r.wrong.map((i) => `${ORDINAL[i]}（${p.tables[i].shapeName}）`).join('、');
-      textLock(`${p.stuck}${which}不對，轉不動。${r.surface ? ` ${p.surfaceHint}` : ''}`);
-    };
-  }
-
   // ---- 打開哪一個畫面 ----
   const s0 = st();
   const active = !s0.solved || s0.replay; // 還沒解開，或已經有卡、正在重玩
-  if (view && tableOf(view)) (textMode() ? textTable : tableView)(view);
+  if (view && tableOf(view)) tableView(view);
   else if (!active) solvedView();
   else if (s0.opened) boxView(false);
-  else if (textMode()) textLock();
   else lockView();
   // 箱子打開了、還沒按「收好」就離開：也算看過了，取得卡片
   openPanel('puzzle', () => { timers.forEach(clearTimeout); finish(); });

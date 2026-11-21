@@ -2,31 +2,101 @@
   "_說明": "主線任務《今天有點卡卡的》。steps 依順序排列，條件中的 stepFrom 用這個順序比較。needCard 是這一步的必要卡（用來顯示缺卡指引）；guaranteed 是「走到某一步時一定已經持有」的卡，讀檔時用來補回異常存檔缺少的必要卡。targetFlags：這一步有多個目標時，已完成（有該記號）的目標不再顯示。內容草案，尚未完成專業審閱。",
   "id": "a-bit-stuck-today",
   "title": "今天有點卡卡的",
-  "summary": "平凡的一天，微光里有兩件小事：曉晴約了週末聚餐，小月已讀沒回；阿德下班後一直看手機，反覆猜客戶那句「再看看」。陪他們聊聊，各自找一個今天做得到的小決定。",
+  "summary": "平凡的一天，微光里有兩件小事：曉晴約了週末聚餐，小月已讀沒回；阿德和曖昧了一陣子的小葉傳訊息，對方回了一句「再看看喔」，他反覆猜那是什麼意思。陪他們聊聊，各自找一個今天做得到的小決定。",
   "steps": [
-    { "id": "arrive", "goal": "到小廣場的公布欄看看", "target": "board" },
-    { "id": "meetXiaoqing", "goal": "到咖啡店外，認識曉晴", "target": "xiaoqing" },
-    { "id": "thought", "goal": "看看曉晴桌上的便條，完成「想法放大鏡」", "target": "note" },
-    { "id": "clarify", "goal": "在曉晴旁邊使用理解卡「想法不等於事實」", "target": "xiaoqing", "needCard": "K02" },
-    { "id": "askAde", "goal": "到小花園，在阿德旁邊使用理解卡「先問，再陪伴」", "target": "ade", "needCard": "K01" },
-    { "id": "present", "goal": "和阿德一起完成「回到這座花園」", "target": "ade" },
-    { "id": "tonight", "goal": "在花園長椅使用理解卡「回到此刻」，陪阿德想想今晚的一小步", "target": "bench", "needCard": "K03" },
     {
-      "id": "wrap", "goal": "聽聽曉晴和阿德各自的小決定", "target": ["xiaoqing", "ade"],
-      "targetFlags": { "xiaoqing": "confirmedXiaoqing", "ade": "confirmedAde" },
-      "completeWhen": { "flags": ["confirmedXiaoqing", "confirmedAde"] },
+      "id": "arrive",
+      "goal": "到小廣場的公布欄看看",
+      "target": "board"
+    },
+    {
+      "id": "meetXiaoqing",
+      "goal": "到咖啡店外，認識曉晴",
+      "target": "xiaoqing"
+    },
+    {
+      "id": "thought",
+      "goal": "看看曉晴桌上的便條，完成「想法放大鏡」",
+      "target": "note"
+    },
+    {
+      "id": "clarify",
+      "goal": "在曉晴旁邊使用理解卡「想法不等於事實」",
+      "target": "xiaoqing",
+      "needCard": "K02"
+    },
+    {
+      "id": "askAde",
+      "goal": "到小花園，在阿德旁邊使用理解卡「先問，再陪伴」",
+      "target": "ade",
+      "needCard": "K01"
+    },
+    {
+      "id": "present",
+      "goal": "和阿德一起完成「回到這座花園」",
+      "target": "ade"
+    },
+    {
+      "id": "tonight",
+      "goal": "在花園長椅使用理解卡「回到此刻」，陪阿德想想今晚的一小步",
+      "target": "bench",
+      "needCard": "K03"
+    },
+    {
+      "id": "wrap",
+      "goal": "聽聽曉晴和阿德各自的小決定",
+      "target": [
+        "xiaoqing",
+        "ade"
+      ],
+      "targetFlags": {
+        "xiaoqing": "confirmedXiaoqing",
+        "ade": "confirmedAde"
+      },
+      "completeWhen": {
+        "flags": [
+          "confirmedXiaoqing",
+          "confirmedAde"
+        ]
+      },
       "onComplete": [
-        { "giveCard": "K04" },
-        { "advance": { "from": ["wrap"], "to": "done" } },
-        { "dialogue": "wrap.end" }
+        {
+          "giveCard": "K04"
+        },
+        {
+          "advance": {
+            "from": [
+              "wrap"
+            ],
+            "to": "done"
+          }
+        },
+        {
+          "dialogue": "wrap.end"
+        }
       ]
     },
-    { "id": "done", "goal": "今天的小事告一段落。可以四處逛逛、解開里內的謎題，或查看支持資源" }
+    {
+      "id": "done",
+      "goal": "今天的小事告一段落。可以四處逛逛、解開里內的謎題，或查看支持資源"
+    }
   ],
   "guaranteed": [
-    { "card": "K01", "fromStep": "thought" },
-    { "card": "K02", "fromStep": "clarify" },
-    { "card": "K03", "fromStep": "tonight" },
-    { "card": "K04", "fromStep": "done" }
+    {
+      "card": "K01",
+      "fromStep": "thought"
+    },
+    {
+      "card": "K02",
+      "fromStep": "clarify"
+    },
+    {
+      "card": "K03",
+      "fromStep": "tonight"
+    },
+    {
+      "card": "K04",
+      "fromStep": "done"
+    }
   ]
 }

@@ -7,17 +7,56 @@
     "intro": "曉晴把心裡的話一口氣寫在便條上。用放大鏡一句一句看：哪些是確定發生的事？哪些是猜測？哪些是感受？",
     "note": "週末聚餐的訊息傳出去了。小月已讀，兩個小時都沒回。她一定覺得我很煩。我是不是不該約？心裡悶悶的。",
     "boxes": [
-      { "id": "fact", "label": "我確定知道的事", "icon": "■", "explain": "看得到、確認得了的事。" },
-      { "id": "guess", "label": "我的猜測", "icon": "？", "explain": "腦中對事情的解讀，還沒確認。" },
-      { "id": "feeling", "label": "我的感受", "icon": "♡", "explain": "心裡或身體的感覺。感受是真的。" }
+      {
+        "id": "fact",
+        "label": "我確定知道的事",
+        "icon": "■",
+        "explain": "看得到、確認得了的事。"
+      },
+      {
+        "id": "guess",
+        "label": "我的猜測",
+        "icon": "？",
+        "explain": "腦中對事情的解讀，還沒確認。"
+      },
+      {
+        "id": "feeling",
+        "label": "我的感受",
+        "icon": "♡",
+        "explain": "心裡或身體的感覺。感受是真的。"
+      }
     ],
     "fragments": [
-      { "id": "f1", "text": "週末聚餐的訊息傳出去了", "type": "fact" },
-      { "id": "f2", "text": "小月已讀", "type": "fact" },
-      { "id": "f3", "text": "兩個小時都沒回", "type": "fact" },
-      { "id": "f4", "text": "她一定覺得我很煩", "type": "guess" },
-      { "id": "f5", "text": "我是不是不該約", "type": "guess" },
-      { "id": "f6", "text": "心裡悶悶的", "type": "feeling" }
+      {
+        "id": "f1",
+        "text": "週末聚餐的訊息傳出去了",
+        "type": "fact"
+      },
+      {
+        "id": "f2",
+        "text": "小月已讀",
+        "type": "fact"
+      },
+      {
+        "id": "f3",
+        "text": "兩個小時都沒回",
+        "type": "fact"
+      },
+      {
+        "id": "f4",
+        "text": "她一定覺得我很煩",
+        "type": "guess"
+      },
+      {
+        "id": "f5",
+        "text": "我是不是不該約",
+        "type": "guess"
+      },
+      {
+        "id": "f6",
+        "text": "心裡悶悶的",
+        "type": "feeling"
+      }
     ],
     "wrongHints": {
       "fact": "這句是看得到、確認得了的事嗎？再看看手機畫面上有沒有。",
@@ -27,10 +66,22 @@
     "factRule": "「我確定知道的事」只放得進確認得了的句子。",
     "alternativesIntro": "「我太煩了」是一種猜測。「已讀沒回」還可能是什麼？選幾個看看，沒有標準答案。",
     "alternatives": [
-      { "text": "小月在上班，看了一眼還沒空回", "note": "很多人已讀之後，打算晚點再回。" },
-      { "text": "她想去，但還沒確定週末有沒有空", "note": "想好再回，有時反而比較慢。" },
-      { "text": "她看到了，但忘記回", "note": "已讀不等於有意見。" },
-      { "text": "她真的有點不想去", "note": "這也是一種可能。就算是這樣，也不代表曉晴很煩。" }
+      {
+        "text": "小月在上班，看了一眼還沒空回",
+        "note": "很多人已讀之後，打算晚點再回。"
+      },
+      {
+        "text": "她想去，但還沒確定週末有沒有空",
+        "note": "想好再回，有時反而比較慢。"
+      },
+      {
+        "text": "她看到了，但忘記回",
+        "note": "已讀不等於有意見。"
+      },
+      {
+        "text": "她真的有點不想去",
+        "note": "這也是一種可能。就算是這樣，也不代表曉晴很煩。"
+      }
     ],
     "unknown": "目前還不知道。",
     "resultTitle": "曉晴的便條，整理好了",
@@ -40,10 +91,27 @@
       "分開之後，「我太煩了」只是好幾種可能的其中一種。目前還不知道，也是一個誠實的答案。",
       "這是認識想法、情緒與行為關係的入門練習，不是完整的認知行為治療，也不是要把所有想法都改成正面。"
     ],
-    "source": { "title": "NIMH：心理治療介紹", "url": "https://www.nimh.nih.gov/health/topics/psychotherapies" },
+    "source": {
+      "title": "NIMH：心理治療介紹",
+      "url": "https://www.nimh.nih.gov/health/topics/psychotherapies"
+    },
     "onComplete": [
-      { "giveCard": "K02" },
-      { "advance": { "from": ["thought"], "to": "clarify", "then": [{ "dialogue": "thought.after" }] } }
+      {
+        "giveCard": "K02"
+      },
+      {
+        "advance": {
+          "from": [
+            "thought"
+          ],
+          "to": "clarify",
+          "then": [
+            {
+              "dialogue": "thought.after"
+            }
+          ]
+        }
+      }
     ]
   },
   "present": {
@@ -56,12 +124,24 @@
         "sense": "看",
         "prompt": "找一樣看得見的東西，留意它的樣子。",
         "options": [
-          { "label": "薄荷葉", "detail": "葉緣有小小的鋸齒" },
-          { "label": "長椅", "detail": "木紋一條一條的" },
-          { "label": "石板步道", "detail": "每塊形狀都不太一樣" },
-          { "label": "說不上來", "detail": "只是看著，也可以" }
+          {
+            "label": "薄荷葉",
+            "detail": "葉緣有小小的鋸齒"
+          },
+          {
+            "label": "長椅",
+            "detail": "木紋一條一條的"
+          },
+          {
+            "label": "石板步道",
+            "detail": "每塊形狀都不太一樣"
+          },
+          {
+            "label": "說不上來",
+            "detail": "只是看著，也可以"
+          }
         ],
-        "thought": "筱玉姐說「再看看」，是不是不滿意？"
+        "thought": "「再看看喔」到底是什麼意思？"
       },
       {
         "sense": "聽",
@@ -69,10 +149,22 @@
         "soundOn": "如果你願意，可以按「播放風鈴聲」，或留意你身邊真實的聲音。",
         "soundOff": "（音效目前關閉）想像一陣風吹過：木頭風鈴輕輕碰在一起，聲音一下近、一下遠。",
         "options": [
-          { "label": "風鈴", "detail": "輕輕碰在一起" },
-          { "label": "樹葉", "detail": "沙沙地響" },
-          { "label": "巷口的機車", "detail": "遠遠地經過" },
-          { "label": "沒特別聽到", "detail": "也沒關係" }
+          {
+            "label": "風鈴",
+            "detail": "輕輕碰在一起"
+          },
+          {
+            "label": "樹葉",
+            "detail": "沙沙地響"
+          },
+          {
+            "label": "巷口的機車",
+            "detail": "遠遠地經過"
+          },
+          {
+            "label": "沒特別聽到",
+            "detail": "也沒關係"
+          }
         ],
         "thought": "要不要現在就回訊息？"
       },
@@ -80,12 +172,24 @@
         "sense": "摸",
         "prompt": "感覺一下碰得到的東西（可以在遊戲裡想像，也可以摸摸身邊真實的東西）。",
         "options": [
-          { "label": "長椅的木頭", "detail": "有一點粗粗的" },
-          { "label": "石板", "detail": "涼涼的" },
-          { "label": "薄荷葉", "detail": "軟軟的，有味道" },
-          { "label": "說不上來", "detail": "也可以" }
+          {
+            "label": "長椅的木頭",
+            "detail": "有一點粗粗的"
+          },
+          {
+            "label": "石板",
+            "detail": "涼涼的"
+          },
+          {
+            "label": "薄荷葉",
+            "detail": "軟軟的，有味道"
+          },
+          {
+            "label": "說不上來",
+            "detail": "也可以"
+          }
         ],
-        "thought": "我是不是又搞砸了？"
+        "thought": "是不是我太主動了？"
       }
     ],
     "thoughtIntro": "念頭又冒出來了：",
@@ -98,10 +202,28 @@
       "念頭冒出來是很正常的。不用趕走它，看見它，再把注意力輕輕帶回來，就是在練習。",
       "遊戲裡的點選只是練習的引子，不是完整的心理治療。你也可以在真實環境裡，留意身邊的東西。"
     ],
-    "source": { "title": "WHO：壓力調適指南（Doing What Matters in Times of Stress）", "url": "https://www.who.int/thailand/activities/doing-what-matters-in-times-of-stress" },
+    "source": {
+      "title": "WHO：壓力調適指南（Doing What Matters in Times of Stress）",
+      "url": "https://www.who.int/thailand/activities/doing-what-matters-in-times-of-stress"
+    },
     "onComplete": [
-      { "giveCard": "K03" },
-      { "advance": { "from": ["askAde", "present"], "to": "tonight", "then": [{ "dialogue": "present.after" }] } }
+      {
+        "giveCard": "K03"
+      },
+      {
+        "advance": {
+          "from": [
+            "askAde",
+            "present"
+          ],
+          "to": "tonight",
+          "then": [
+            {
+              "dialogue": "present.after"
+            }
+          ]
+        }
+      }
     ]
   }
 }
